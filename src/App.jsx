@@ -552,3 +552,193 @@ export default function App() {
                 </>
               )}
             </div>
+            <div style={{padding:16}}>
+              <div style={{display:"flex",gap:10,marginBottom:14}}>
+                {[{l:"CURRENT MAX",v:effMax,c:lift.color},{l:"EST MAX",v:sessionEstMax||"—",c:sessionEstMax?"#06d6a0":"#333"},{l:"NEXT WEEK",v:nextMax,c:willProgress?"#06d6a0":"#333"}].map(x=>(
+                  <div key={x.l} style={{...card,flex:1,borderLeft:`3px solid ${x.c}`,marginBottom:0}}>
+                    <div style={{color:"#555",fontSize:9,marginBottom:2}}>{x.l}</div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:x.c}}>{x.v} <span style={{fontSize:9,color:"#555"}}>lbs</span></div>
+                  </div>
+                ))}
+              </div>
+              <div style={{...card,display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                <div style={{textAlign:"center",minWidth:64}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
+                    {restTimer!==null?`${Math.floor(restTimer/60)}:${String(restTimer%60).padStart(2,"0")}`:restDuration+"s"}
+                  </div>
+                  <div style={{color:"#555",fontSize:9}}>REST</div>
+                </div>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                  {[60,90,120,180].map(s=><button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}} style={{background:restDuration===s?"#1a1a2e":"#111",border:`1px solid ${restDuration===s?"#555":"#222"}`,color:restDuration===s?"#aaa":"#444",borderRadius:4,padding:"3px 7px",fontSize:10,cursor:"pointer"}}>{s}s</button>)}
+                  <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}} style={{background:"#f7b731",border:"none",color:"#000",borderRadius:4,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>GO</button>
+                  <button onClick={()=>{setRestTimer(null);setRestRunning(false);}} style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:4,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>RST</button>
+                </div>
+              </div>
+              <div style={{marginBottom:20}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:2,color:lift.color,marginBottom:10}}>{lift.name} — MAIN SETS</div>
+                <div className="srow" style={{color:"#555",fontSize:10}}><div>SET</div><div>WEIGHT</div><div>REPS</div></div>
+                {weights.map((w,i)=>(
+                  <div key={i} className="srow">
+                    <div style={{color:"#555"}}>{i+1}</div>
+                    <div style={{color:"#ccc"}}>{w} lbs</div>
+                    {i<3?<div style={{color:lift.color,fontSize:12}}>× 10</div>:<input type="number" value={getReps(week,activeId,i)} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&setReps(week,activeId,i,e.target.value)} />}
+                  </div>
+                ))}
+              </div>
+              <div style={{marginBottom:20}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:2,color:"#888",marginBottom:10}}>ACCESSORIES</div>
+                {!isReadOnly && (
+                  <div style={{marginBottom:12}}>
+                    <div style={{display:"flex",gap:8,marginBottom:selectedAcc[activeId]==="__custom__"?8:0}}>
+                      <select style={{flex:1}} value={selectedAcc[activeId]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId]:e.target.value}))}>
+                        <option value="">— Select exercise —</option>
+                        {(ACCESSORIES_BY_LIFT[lift?.mainLiftOption]||ACCESSORIES_BY_LIFT["Custom"]).map(a=><option key={a} value={a}>{a}</option>)}
+                        {(customAccessories[lift?.mainLiftOption]||[]).map(a=><option key={a} value={a}>{a}</option>)}
+                        <option value="__custom__">✏️ Custom...</option>
+                      </select>
+                      {selectedAcc[activeId]&&selectedAcc[activeId]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId]);setSelectedAcc(prev=>({...prev,[activeId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
+                    </div>
+                    {selectedAcc[activeId]==="__custom__" && (
+                      <div style={{display:"flex",gap:8}}>
+                        <input type="text" value={customAccInput[activeId]||""} placeholder="Exercise name..." autoFocus onChange={e=>setCustomAccInput(prev=>({...prev,[activeId]:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){const n=customAccInput[activeId]?.trim();if(!n)return;addAcc(week,activeId,n);const k=lift?.mainLiftOption||"Custom";setCustomAccessories(prev=>({...prev,[k]:[...new Set([...(prev[k]||[]),n])]}));setCustomAccInput(prev=>({...prev,[activeId]:""}));setSelectedAcc(prev=>({...prev,[activeId]:""}));}}} style={{flex:1,borderColor:lift.color,color:lift.color}} />
+                        <button onClick={()=>{const n=customAccInput[activeId]?.trim();if(!n)return;addAcc(week,activeId,n);const k=lift?.mainLiftOption||"Custom";setCustomAccessories(prev=>({...prev,[k]:[...new Set([...(prev[k]||[]),n])]}));setCustomAccInput(prev=>({...prev,[activeId]:""}));setSelectedAcc(prev=>({...prev,[activeId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {getAccList(week,activeId).length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"12px 0"}}>No accessories added</div>}
+                {getAccList(week,activeId).map(acc=>{
+                  const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
+                  return (
+                    <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                        <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{color:"#555",fontSize:11,fontFamily:"'Bebas Neue',sans-serif"}}>3 × 10</span>
+                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:15,padding:0}}>×</button>}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"weight",e.target.value)} />
+                        <span style={{color:"#555",fontSize:11}}>lbs</span>
+                        <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value)} />
+                        <span style={{color:"#555",fontSize:11}}>reps</span>
+                        {!isReadOnly&&(
+                          <div style={{marginLeft:"auto",display:"flex",gap:4}}>
+                            <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:`1px solid ${adj==="down"?"#222":"#06d6a0"}`,color:adj==="up"?"#000":adj==="down"?"#333":"#06d6a0",borderRadius:4,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
+                            <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:`1px solid ${adj==="up"?"#222":"#e85d04"}`,color:adj==="down"?"#000":adj==="up"?"#333":"#e85d04",borderRadius:4,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {!isReadOnly && (
+                <div style={{marginBottom:14}}>
+                  <div style={{color:"#555",fontSize:10,marginBottom:6}}>SESSION NOTES</div>
+                  <textarea value={sessionNotes} rows={3} placeholder="How did it feel? Any PRs or notes..." onChange={e=>setSessionNotes(e.target.value)} />
+                </div>
+              )}
+              {isPastWeek&&editingPastWeek&&<button className="bigbtn" onClick={()=>setEditingPastWeek(false)} style={{background:lift.color,color:"#000"}}>SAVE CHANGES</button>}
+              {!isPastWeek && (
+                <>
+                  <button className="bigbtn" onClick={finishDay} style={{background:isDayDone?"#0f0f1a":lift.color,color:isDayDone?lift.color:"#000",border:isDayDone?`1px solid ${lift.color}`:"none"}}>
+                    {isDayDone?"✓ DAY COMPLETE":"FINISH DAY"}
+                  </button>
+                  {willProgress&&!isDayDone&&<div style={{textAlign:"center",color:"#06d6a0",fontSize:12}}>🔥 Next week's max: {nextMax} lbs</div>}
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {view==="progress" && (
+          <div style={{padding:16}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>PROGRESS</div>
+            {lifts.map(l=>{
+              const startMax=calcCurrentMax(l.startingMax||0);
+              const curMax=getEffMax(l.id,liftWeeks[l.id]||1);
+              const maxData=[{w:"Start",max:startMax},...Array.from({length:12},(_,i)=>({w:`W${i+1}`,max:getEffMax(l.id,i+1)}))];
+              const volData=sessionLedger.filter(s=>s.liftId===l.id).slice(0,10).reverse().map(s=>({d:fmtDate(s.date),v:Math.round((s.volume||0)/1000)}));
+              return (
+                <div key={l.id} style={{...card,borderLeft:`3px solid ${l.color}`}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:l.color,marginBottom:2}}>{l.name}</div>
+                  <div style={{color:"#555",fontSize:11,marginBottom:10}}>Start: <span style={{color:"#aaa"}}>{startMax} lbs</span>{"  →  "}Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax} lbs</span>{curMax>startMax&&<span style={{color:"#06d6a0"}}> (+{curMax-startMax})</span>}</div>
+                  <div style={{color:"#555",fontSize:10,marginBottom:4}}>MAX PROGRESSION</div>
+                  <ResponsiveContainer width="100%" height={110}>
+                    <LineChart data={maxData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" /><XAxis dataKey="w" tick={{fill:"#555",fontSize:9}} /><YAxis tick={{fill:"#555",fontSize:9}} domain={["auto","auto"]} />
+                      <Tooltip contentStyle={{background:"#1a1a2e",border:`1px solid ${l.color}`,borderRadius:6,fontSize:11}} />
+                      <ReferenceLine y={startMax} stroke="#333" strokeDasharray="4 4" />
+                      <Line type="monotone" dataKey="max" stroke={l.color} strokeWidth={2} dot={{fill:l.color,r:3}} name="Max" connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  {volData.length>0 && (
+                    <>
+                      <div style={{color:"#555",fontSize:10,marginTop:10,marginBottom:4}}>VOLUME (1000s lbs)</div>
+                      <ResponsiveContainer width="100%" height={80}>
+                        <BarChart data={volData}><XAxis dataKey="d" tick={{fill:"#555",fontSize:8}} /><YAxis tick={{fill:"#555",fontSize:8}} /><Tooltip contentStyle={{background:"#1a1a2e",border:`1px solid ${l.color}`,borderRadius:6,fontSize:11}} /><Bar dataKey="v" fill={l.color} radius={[3,3,0,0]} name="Vol(k)" /></BarChart>
+                      </ResponsiveContainer>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+            {bodyStats.entries.length>1 && (
+              <div style={{...card}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:10}}>BODYWEIGHT</div>
+                <ResponsiveContainer width="100%" height={110}>
+                  <LineChart data={[...bodyStats.entries].reverse().slice(-12).map(e=>({d:fmtDate(e.date),w:e.weightLbs}))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" /><XAxis dataKey="d" tick={{fill:"#555",fontSize:9}} /><YAxis tick={{fill:"#555",fontSize:9}} domain={["auto","auto"]} />
+                    <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid #06d6a0",borderRadius:6,fontSize:11}} />
+                    <Line type="monotone" dataKey="w" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="lbs" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        )}
+
+        {view==="ledger" && (
+          <div style={{padding:16}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>WORKOUT LEDGER</div>
+            {sessionLedger.length===0&&<div style={{color:"#333",fontSize:13,textAlign:"center",padding:40}}>No sessions logged yet</div>}
+            {sessionLedger.map((s,i)=>(
+              <div key={i} style={{...card,borderLeft:`3px solid ${s.liftColor||"#555"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:s.liftColor||"#f0f0f0"}}>{s.liftName}</div>
+                  <div style={{color:"#555",fontSize:11}}>{fmtDate(s.date)} · Wk {s.week}</div>
+                </div>
+                <div style={{display:"flex",gap:14,marginBottom:6,flexWrap:"wrap"}}>
+                  {s.sets?.map((set,j)=>(
+                    <div key={j} style={{textAlign:"center"}}>
+                      <div style={{color:"#555",fontSize:9}}>SET {j+1}</div>
+                      <div style={{color:s.liftColor,fontFamily:"'Bebas Neue',sans-serif",fontSize:14}}>{set.weight}</div>
+                      <div style={{color:"#555",fontSize:10}}>×{set.reps}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{color:"#555",fontSize:11}}>
+                  Vol: <span style={{color:"#aaa"}}>{s.volume?.toLocaleString()} lbs</span>
+                  {s.estMax&&<> · Est: <span style={{color:"#06d6a0"}}>{s.estMax} lbs</span></>}
+                </div>
+                {s.accessories?.length>0&&<div style={{color:"#444",fontSize:10,marginTop:3}}>+ {s.accessories.length} accessories</div>}
+                {s.notes&&<div style={{color:"#555",fontSize:11,marginTop:5,fontStyle:"italic"}}>"{s.notes}"</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0a0a0f",borderTop:"1px solid #1a1a1a",display:"flex",zIndex:10}}>
+        {[{id:"dashboard",icon:"🏠",label:"HOME"},{id:"workout",icon:"🏋️",label:"LIFT"},{id:"progress",icon:"📈",label:"PROGRESS"},{id:"ledger",icon:"📋",label:"LEDGER"},{id:"setup",icon:"⚙️",label:"SETUP"}].map(t=>(
+          <button key={t.id} className={`ntab ${view===t.id?"on":""}`} onClick={()=>setView(t.id)}>
+            <span style={{fontSize:18}}>{t.icon}</span>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
