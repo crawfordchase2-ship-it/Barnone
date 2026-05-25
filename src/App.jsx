@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar } from "recharts";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://tzbyqtcncrgaougrbbdk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_kojIVAb_sIhRYr4lEv2kFQ_7Vpc0KIz";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar } from "recharts";
 
 const COLORS = ["#e85d04","#3a86ff","#8338ec","#06d6a0","#f7b731","#ff006e","#00b4d8","#80b918"];
 const MAIN_LIFT_OPTIONS = ["Bench","Deadlift","Military Press","Squat","Weighted Pull Up","Assisted Pull Up","Hip Thrust","Custom"];
