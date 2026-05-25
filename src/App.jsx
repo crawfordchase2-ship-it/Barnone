@@ -281,7 +281,13 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       setBodyStats(d.body_stats || { heightIn:"", entries:[] });
       setProgramHistory(d.program_history || []);
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
-      setProgramStarted(d.program_started || false);
+      // If program_started not saved yet, infer from existing data
+      const inferred = d.program_started || (
+        d.logs && Object.keys(d.logs).length > 0
+      ) || (
+        d.completed_days && Object.keys(d.completed_days).length > 0
+      ) || false;
+      setProgramStarted(inferred);
     }
     setView("dashboard");
     loadSocialData(userId);
@@ -608,7 +614,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   const card = { background:"#0f0f1a", borderRadius:10, padding:"14px 16px", marginBottom:14 };
 
   return (
-    <div style={{minHeight:"100vh",background:"#000000",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:70,margin:0,padding:0}}>
+    <div style={{minHeight:"100vh",background:"#000000",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:100}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
