@@ -514,8 +514,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
       {authScreen && authScreen!=="profile" && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:100,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,letterSpacing:4,lineHeight:1}}>BAR NONE</div>
-          <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#444",letterSpacing:2,marginBottom:36}}>THE PROGRAM</div>
+          <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain",marginBottom:36}} />
           <div style={{width:"100%",maxWidth:360}}>
             <div style={{display:"flex",marginBottom:20,background:"#0f0f1a",borderRadius:8,padding:4}}>
               {["login","register"].map(tab=>(
@@ -562,7 +561,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
       {loading && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:200,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,letterSpacing:4,color:"#e85d04",lineHeight:1}}>BAR NONE</div>
+          <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
           <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#444",letterSpacing:2,marginTop:8}}>LOADING...</div>
         </div>
       )}
