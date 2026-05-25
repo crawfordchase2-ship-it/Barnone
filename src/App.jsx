@@ -195,7 +195,7 @@ export default function App() {
   const readyToStart = lifts.every(l=>l.startingMax>0) && 
     startDate && 
     (heightFtEntry || bodyStats.heightIn) && 
-    weightEntry &&
+    (weightEntry || bodyStats.entries.length > 0) &&
     lifts.every(l=>(l.trainingDays||[]).length>0);
   const hasSetup = readyToStart && programStarted;
 
@@ -295,7 +295,10 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       setLiftWeeks(d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1])));
       setCustomAccessories(d.custom_accessories || {});
       setSessionLedger(d.session_ledger || []);
-      setBodyStats(d.body_stats || { heightIn:"", entries:[] });
+      const loadedStats = d.body_stats || { heightIn:"", entries:[] };
+      // Make sure entries is always an array
+      if (!Array.isArray(loadedStats.entries)) loadedStats.entries = [];
+      setBodyStats(loadedStats);
       setProgramHistory(d.program_history || []);
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
       // Infer programStarted from any existing data
@@ -458,10 +461,11 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   const weights = isAssisted ? calcAssistedWeights(effMax) : calcWorkingWeights(workingMax);
   const set4Reps = logs?.[week]?.[activeId]?.[3]?.reps ?? "10";
   const sessionEstMax = +set4Reps>10 ? calcEstMax(weights[3],+set4Reps) : null;
-  const nextWorkingMax = isAssisted
+  const nextTrueMax = isAssisted
     ? calcNextAssistedMax(effMax, +set4Reps)
-    : calcNextMax(workingMax, sessionEstMax, lift?.isLower);
-  const nextMax = isAssisted ? nextWorkingMax : Math.round(nextWorkingMax / 0.9 / 5) * 5;
+    : calcNextMax(effMax, sessionEstMax, lift?.isLower);
+  const nextMax = nextTrueMax;
+  const nextWorkingMax = isAssisted ? nextTrueMax : calcCurrentMax(nextTrueMax);
   const willProgress = isAssisted ? nextMax < effMax : nextMax > effMax;
   const isDayDone = completedDays?.[week]?.[activeId];
 
@@ -658,7 +662,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     for(const d of dates){const diff=(new Date(cur)-new Date(d))/(86400000);if(diff<=1){s++;cur=d;}else break;}
     return s;
   })();
-  const PRs = lifts.map(l=>({...l,startMax:calcCurrentMax(l.startingMax||0),curMax:getEffMax(l.id,liftWeeks[l.id]||1)}));
+  const PRs = lifts.map(l=>({...l,startMax:l.startingMax||0,curMax:getEffMax(l.id,liftWeeks[l.id]||1)}));
 
   const iS = { background:"#0f0f1a",border:"1px solid #333",color:"#f0f0f0",borderRadius:8,padding:"12px 16px",fontFamily:"'DM Mono',monospace",fontSize:14,outline:"none",display:"block",width:"100%" };
   const card = { background:"#0f0f1a", borderRadius:10, padding:"14px 16px", marginBottom:14 };
@@ -774,11 +778,10 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
 }
 
-      {showSocial && (
-        <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:100,display:"flex",flexDirection:"column",overflowY:"auto"}}>
-          <div style={{padding:"14px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#0a0a0f"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2}}>SOCIAL</div>
-            <button onClick={()=>setShowSocial(false)} style={{background:"none",border:"none",color:"#555",fontSize:24,cursor:"pointer"}}>{"×"}</button>
+      {view==="social" && (
+        <div style={{maxWidth:600,margin:"0 auto"}}>
+          <div style={{padding:"16px 16px 0"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>SOCIAL</div>
           </div>
           <div style={{display:"flex",borderBottom:"1px solid #1a1a1a"}}>
             {[{id:"friends",label:"FRIENDS"},{id:"requests",label:friendRequests.length > 0 ? "REQUESTS (" + friendRequests.length + ")" : "REQUESTS"},{id:"profile",label:"MY PROFILE"}].map(t => (
@@ -1329,9 +1332,6 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
               </div>
 
               <div style={{...card,display:"flex",alignItems:"center",gap:12,marginBottom:14,
-                position:restRunning?"sticky":"relative",
-                top:restRunning?56:undefined,
-                zIndex:restRunning?9:undefined,
                 borderLeft:restRunning?"3px solid #06d6a0":undefined,
                 transition:"all 0.2s"}}>
                 {/* Timer display */}
@@ -1412,7 +1412,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                         <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
                           <span style={{color:"#555",fontSize:11,fontFamily:"'Bebas Neue',sans-serif"}}>3 × 10</span>
-                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:15,padding:0}}>×</button>}
+                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>DEL</button>}
                         </div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1615,10 +1615,10 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
           {id:"social",    label:"SOCIAL",   color:"#ff006e", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
           {id:"setup",     label:hasSetup?"PROGRAM":"SETUP", color:"#f7b731", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>},
         ].map(t=>(
-          <button key={t.id} onClick={()=>t.id==="social"?setShowSocial(true):setView(t.id)} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id||( t.id==="social"&&showSocial)?t.color:"#444",position:"relative"}}>
+          <button key={t.id} onClick={()=>setView(t.id)} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id?t.color:"#444",position:"relative"}}>
             {t.svg}
             <span style={{fontSize:9,letterSpacing:1,fontFamily:"'DM Mono',monospace"}}>{t.label}</span>
-            <div style={{width:4,height:4,borderRadius:"50%",background:view===t.id||( t.id==="social"&&showSocial)?t.color:"transparent"}}></div>
+            <div style={{width:4,height:4,borderRadius:"50%",background:view===t.id?t.color:"transparent"}}></div>
             {t.id==="social" && (friendRequests.length + newReactionCount) > 0 && (
               <span style={{position:"absolute",top:4,right:"15%",background:"#e85d04",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace"}}>{friendRequests.length + newReactionCount}</span>
             )}
