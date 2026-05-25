@@ -588,8 +588,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
       <div style={{padding:"12px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#0a0a0f",zIndex:10}}>
         <div>
-          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:3,color:lift?.color||"#f0f0f0",lineHeight:1}}>BAR NONE</div>
-          <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,color:"#333",letterSpacing:2}}>THE PROGRAM</div>
+          <img src="/logo.png" alt="Bar None" style={{height:40,objectFit:"contain"}} />
         </div>
         <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
           {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
