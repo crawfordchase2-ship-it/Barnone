@@ -90,6 +90,8 @@ export default function App() {
   const [restDuration, setRestDuration] = useState(90);
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
+  const [weightNudge, setWeightNudge] = useState(saved?.weightNudge || { weekKey:"", skips:0 });
+  const [showWeightModal, setShowWeightModal] = useState(false);
   const timerRef = useRef(null);
 
   const hasSetup = lifts.every(l=>l.startingMax>0) && startDate;
@@ -97,7 +99,7 @@ export default function App() {
 
   useEffect(() => {
     if (!uid) return;
-    saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory });
+    saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge });
   }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,uid]);
 
   useEffect(() => {
@@ -282,6 +284,37 @@ export default function App() {
     setWeightEntry("");
   }
 
+  function getWeekKey() {
+    const d = new Date();
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${week}`;
+  }
+
+  const thisWeek = getWeekKey();
+  const loggedThisWeek = bodyStats.entries.some(e => {
+    const d = new Date(e.date);
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${week}` === thisWeek;
+  });
+
+  const nudgeLevel = (!loggedThisWeek && hasSetup) ? (weightNudge.weekKey === thisWeek ? weightNudge.skips : 0) : -1;
+  // -1 = logged, 0 = first ask (banner), 1 = second ask (big card), 2+ = modal
+
+  function skipWeightNudge() {
+    const skips = weightNudge.weekKey === thisWeek ? weightNudge.skips + 1 : 1;
+    const newNudge = { weekKey: thisWeek, skips };
+    setWeightNudge(newNudge);
+    if (skips >= 2) setShowWeightModal(true);
+  }
+
+  function logWeightAndDismiss() {
+    addWeightEntry();
+    setShowWeightModal(false);
+    setWeightNudge({ weekKey: thisWeek, skips: -1 });
+  }
+
   const latestWeight = bodyStats.entries[0]?.weightLbs;
   const bmi = calcBMI(latestWeight, +bodyStats.heightIn);
   const totalSessions = sessionLedger.length;
@@ -364,6 +397,23 @@ export default function App() {
         </div>
       )}
 
+      {showWeightModal && (
+        <div style={{position:"fixed",inset:0,background:"#0a0a0fdd",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,borderTop:"4px solid #f7b731"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,color:"#f7b731",marginBottom:6}}>HEY! LOG YOUR WEIGHT</div>
+            <div style={{color:"#aaa",fontSize:13,marginBottom:20,lineHeight:1.6}}>You've skipped a couple times this week. Tracking your weight is just as important as tracking your lifts. Takes 5 seconds.</div>
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <input type="number" value={weightEntry} placeholder="185 lbs"
+                onChange={e=>setWeightEntry(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&logWeightAndDismiss()}
+                style={{flex:1,background:"#1a1a2e",border:"1px solid #f7b731",color:"#f7b731",borderRadius:6,padding:"10px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,textAlign:"center"}} />
+            </div>
+            <button onClick={logWeightAndDismiss} style={{width:"100%",background:"#f7b731",border:"none",color:"#000",borderRadius:8,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG IT NOW</button>
+            <button onClick={()=>setShowWeightModal(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:8,padding:"10px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>maybe later</button>
+          </div>
+        </div>
+      )}
+
       <div style={{padding:"12px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#0a0a0f",zIndex:10}}>
         <div>
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:3,color:lift?.color||"#f0f0f0",lineHeight:1}}>BAR NONE</div>
@@ -386,6 +436,38 @@ export default function App() {
                 <button onClick={()=>setView("setup")} className="bn" style={{background:"#f7b731",color:"#000"}}>GO TO SETUP</button>
               </div>
             )}
+            {nudgeLevel === 0 && (
+              <div style={{...card,borderLeft:"3px solid #f7b731",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                <div>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#f7b731",letterSpacing:1}}>LOG THIS WEEK'S WEIGHT</div>
+                  <div style={{color:"#555",fontSize:11}}>Last: {latestWeight ? `${latestWeight} lbs` : "never"}</div>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <input type="number" value={weightEntry} placeholder="lbs" onFocus={e=>e.target.select()}
+                    onChange={e=>setWeightEntry(e.target.value)}
+                    onKeyDown={e=>e.key==="Enter"&&logWeightAndDismiss()}
+                    style={{width:64,color:"#f7b731",borderColor:"#f7b731"}} />
+                  <button onClick={logWeightAndDismiss} className="bn" style={{background:"#f7b731",color:"#000",fontSize:13,padding:"4px 10px"}}>LOG</button>
+                  <button onClick={skipWeightNudge} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>
+                </div>
+              </div>
+            )}
+
+            {nudgeLevel === 1 && (
+              <div style={{...card,borderLeft:"3px solid #f7b731",marginBottom:14}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f7b731",letterSpacing:1,marginBottom:4}}>YOUR BODY IS CHANGING</div>
+                <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>You're putting in the work — track the results. Log this week's weight to see how your body is responding to the program.</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <input type="number" value={weightEntry} placeholder="lbs" onFocus={e=>e.target.select()}
+                    onChange={e=>setWeightEntry(e.target.value)}
+                    onKeyDown={e=>e.key==="Enter"&&logWeightAndDismiss()}
+                    style={{flex:1,color:"#f7b731",borderColor:"#f7b731"}} />
+                  <button onClick={logWeightAndDismiss} className="bn" style={{background:"#f7b731",color:"#000"}}>LOG WEIGHT</button>
+                  <button onClick={skipWeightNudge} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>
+                </div>
+              </div>
+            )}
+
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
               {[{l:"SESSIONS",v:totalSessions,c:"#f0f0f0"},{l:"STREAK",v:streak+"🔥",c:"#f7b731"},{l:"BMI",v:bmi||"—",c:bmi?bmiCol(bmi):"#333"}].map(s=>(
                 <div key={s.l} style={{...card,textAlign:"center",marginBottom:0}}>
