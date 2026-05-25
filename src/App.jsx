@@ -605,8 +605,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     setWeightEntry("");
     setShowWeightModal(false);
     setWeightNudge(newNudge);
-    // Save immediately
-    if(uid) saveUD(uid, {lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats:newStats,programHistory,weightNudge:newNudge,programStarted});
+
   }
 
   const latestWeight = bodyStats.entries[0]?.weightLbs;
