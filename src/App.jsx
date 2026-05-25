@@ -856,7 +856,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                           <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
                           <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
                         </div>
-                        <button onClick={()=>{setIsPublic(p=>!p);savePublicProfile();}} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                        <button onClick={()=>{const newVal=!isPublic;setIsPublic(newVal);if(username){supabase.from("public_profiles").update({is_public:newVal}).eq("id",uid);}}} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
                           {isPublic ? "ON" : "OFF"}
                         </button>
                       </div>
