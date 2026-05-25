@@ -50,8 +50,8 @@ async function hashPw(pw) {
 }
 const getUsers = () => { try { return JSON.parse(localStorage.getItem(ROOT_KEY+"_users")||"[]"); } catch { return []; } };
 const saveUsers = u => { try { localStorage.setItem(ROOT_KEY+"_users", JSON.stringify(u)); } catch {} };
-const getSession = () => sessionStorage.getItem(ROOT_KEY+"_session") || null;
-const setSession = id => id ? sessionStorage.setItem(ROOT_KEY+"_session",id) : sessionStorage.removeItem(ROOT_KEY+"_session");
+const getSession = () => localStorage.getItem(ROOT_KEY+"_session") || null;
+const setSession = id => id ? localStorage.setItem(ROOT_KEY+"_session",id) : localStorage.removeItem(ROOT_KEY+"_session");
 const loadUD = id => { try { const r=localStorage.getItem(ROOT_KEY+"_d_"+id); return r?JSON.parse(r):null; } catch { return null; } };
 const saveUD = (id,d) => { try { localStorage.setItem(ROOT_KEY+"_d_"+id, JSON.stringify(d)); } catch {} };
 
@@ -366,6 +366,7 @@ export default function App() {
       </div>
 
       <div style={{maxWidth:600,margin:"0 auto"}}>
+
         {view==="dashboard" && (
           <div style={{padding:16}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>DASHBOARD</div>
@@ -384,6 +385,7 @@ export default function App() {
                 </div>
               ))}
             </div>
+
             <div style={{...card}}>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
               <div style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap",marginBottom:10}}>
@@ -415,6 +417,7 @@ export default function App() {
                 </ResponsiveContainer>
               )}
             </div>
+
             <div style={{...card}}>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>CURRENT MAXES</div>
               {PRs.map(l=>(
@@ -430,6 +433,7 @@ export default function App() {
                 </div>
               ))}
             </div>
+
             {sessionLedger[0] && (
               <div style={{...card,borderLeft:`3px solid ${sessionLedger[0].liftColor||"#555"}`}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>LAST SESSION</div>
@@ -441,6 +445,7 @@ export default function App() {
                 {sessionLedger[0].notes && <div style={{color:"#444",fontSize:11,marginTop:4,fontStyle:"italic"}}>"{sessionLedger[0].notes}"</div>}
               </div>
             )}
+
             {latestWeight && PRs.some(l=>l.curMax>0) && (
               <div style={{...card}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>STRENGTH / BW RATIO</div>
@@ -561,6 +566,7 @@ export default function App() {
                   </div>
                 ))}
               </div>
+
               <div style={{...card,display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
                 <div style={{textAlign:"center",minWidth:64}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
@@ -574,6 +580,7 @@ export default function App() {
                   <button onClick={()=>{setRestTimer(null);setRestRunning(false);}} style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:4,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>RST</button>
                 </div>
               </div>
+
               <div style={{marginBottom:20}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:2,color:lift.color,marginBottom:10}}>{lift.name} — MAIN SETS</div>
                 <div className="srow" style={{color:"#555",fontSize:10}}><div>SET</div><div>WEIGHT</div><div>REPS</div></div>
@@ -585,6 +592,7 @@ export default function App() {
                   </div>
                 ))}
               </div>
+
               <div style={{marginBottom:20}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:2,color:"#888",marginBottom:10}}>ACCESSORIES</div>
                 {!isReadOnly && (
@@ -634,12 +642,14 @@ export default function App() {
                   );
                 })}
               </div>
+
               {!isReadOnly && (
                 <div style={{marginBottom:14}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:6}}>SESSION NOTES</div>
                   <textarea value={sessionNotes} rows={3} placeholder="How did it feel? Any PRs or notes..." onChange={e=>setSessionNotes(e.target.value)} />
                 </div>
               )}
+
               {isPastWeek&&editingPastWeek&&<button className="bigbtn" onClick={()=>setEditingPastWeek(false)} style={{background:lift.color,color:"#000"}}>SAVE CHANGES</button>}
               {!isPastWeek && (
                 <>
