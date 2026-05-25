@@ -562,13 +562,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   }
 
   function addWeightEntry() {
-    if(!weightEntry)return;
-    const newEntry = {date:todayISO(),weightLbs:+weightEntry};
-    const newStats = {...bodyStats,entries:[newEntry,...bodyStats.entries.filter(e=>e.date!==todayISO())]};
-    setBodyStats(newStats);
-    setWeightEntry("");
-    // Save immediately so it persists
-    if(uid) saveUD(uid, {lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats:newStats,programHistory,weightNudge,programStarted});
+    logWeightAndDismiss();
   }
 
   function getWeekKey() {
@@ -598,9 +592,16 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   }
 
   function logWeightAndDismiss() {
-    addWeightEntry();
+    if (!weightEntry) return;
+    const newEntry = {date:todayISO(), weightLbs:+weightEntry};
+    const newStats = {...bodyStats, entries:[newEntry,...bodyStats.entries.filter(e=>e.date!==todayISO())]};
+    const newNudge = { weekKey: thisWeek, skips: -1 };
+    setBodyStats(newStats);
+    setWeightEntry("");
     setShowWeightModal(false);
-    setWeightNudge({ weekKey: thisWeek, skips: -1 });
+    setWeightNudge(newNudge);
+    // Save immediately
+    if(uid) saveUD(uid, {lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats:newStats,programHistory,weightNudge:newNudge,programStarted});
   }
 
   const latestWeight = bodyStats.entries[0]?.weightLbs;
@@ -912,16 +913,29 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
             <div style={{...card}}>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
-              <div style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap",marginBottom:10}}>
-                <div>
-                  <div style={{color:"#555",fontSize:10,marginBottom:4}}>HEIGHT (inches)</div>
-                  <input type="number" value={bodyStats.heightIn} placeholder="70" onChange={e=>setBodyStats(prev=>({...prev,heightIn:e.target.value}))} style={{width:72}} />
-                </div>
+              <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap",marginBottom:10}}>
+                {/* Height — show as info once entered, input if not */}
+                {bodyStats.heightIn
+                  ? <div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:2}}>HEIGHT</div>
+                      <div style={{color:"#aaa",fontSize:13}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
+                    </div>
+                  : <div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:4}}>HEIGHT</div>
+                      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                        <input type="number" placeholder="5" min="3" max="8" style={{width:44}} onChange={e=>setBodyStats(prev=>({...prev,heightIn:String(+e.target.value*12+(+(prev.heightIn||0)%12))}))} />
+                        <span style={{color:"#555",fontSize:11}}>ft</span>
+                        <input type="number" placeholder="10" min="0" max="11" style={{width:44}} onChange={e=>setBodyStats(prev=>({...prev,heightIn:String(Math.floor((+(prev.heightIn||0))/12)*12+(+e.target.value||0))}))} />
+                        <span style={{color:"#555",fontSize:11}}>in</span>
+                      </div>
+                    </div>
+                }
+                {/* Weight — show as info if logged this week, input if not */}
                 {!loggedThisWeek && (
                   <div>
                     <div style={{color:"#555",fontSize:10,marginBottom:4}}>LOG WEIGHT (lbs)</div>
                     <div style={{display:"flex",gap:6}}>
-                      <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&e.target.value){logWeightAndDismiss();}}} style={{width:72,color:"#06d6a0"}} />
+                      <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&e.target.value)logWeightAndDismiss();}} style={{width:72,color:"#06d6a0"}} />
                       <button onClick={()=>{if(weightEntry)logWeightAndDismiss();}} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"4px 10px"}}>LOG</button>
                     </div>
                   </div>
