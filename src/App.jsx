@@ -1088,16 +1088,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                       <div style={{color:"#555",fontSize:10,marginBottom:4}}>STARTING WEIGHT (lbs)</div>
                       <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} style={{width:80,color:"#06d6a0"}} />
                     </div>
-                    <button onClick={()=>{
-                      const totalIn = (+heightFtEntry||0)*12+(+heightInEntry||0);
-                      if(totalIn>0) {
-                        const newStats = {...bodyStats,heightIn:String(totalIn)};
-                        setBodyStats(newStats);
-                        setHeightFtEntry(""); setHeightInEntry("");
-                        if(uid) saveUD(uid,{lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats:newStats,programHistory,weightNudge,programStarted});
-                      }
-                      if(weightEntry) logWeightAndDismiss();
-                    }} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"6px 16px"}}>SAVE</button>
+
                   </div>
                   {bodyStats.heightIn && latestWeight && (
                     <div style={{marginTop:10,color:"#555",fontSize:11}}>
