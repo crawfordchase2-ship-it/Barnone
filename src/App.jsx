@@ -53,6 +53,7 @@ function calcNextAssistedMax(currentAssist, reps, isLower) {
 }
 
 function calcCurrentMax(s) { return Math.round(s * 0.9 / 5) * 5; }
+function calcTrueMax(s) { return s; } // The actual max the user entered
 function calcWorkingWeights(m) {
   return [Math.round(m*.50/5)*5, Math.round(m*.5833/5)*5, Math.round(m*.6667/5)*5, Math.round(m*.75/5)*5];
 }
@@ -104,6 +105,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const [authForm, setAuthForm] = useState({ name:"", email:"", password:"", confirm:"" });
   const [authErr, setAuthErr] = useState("");
@@ -146,6 +148,8 @@ export default function App() {
   const [showSocial, setShowSocial] = useState(false);
   const [newReactionCount, setNewReactionCount] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [editingName, setEditingName] = useState(false);
   const [lastSeenReaction, setLastSeenReaction] = useState("");
   const [socialTab, setSocialTab] = useState("friends");
   const [friends, setFriends] = useState([]);
@@ -173,7 +177,13 @@ export default function App() {
       if (session) {
         setCurrentUser(session.user);
         setAuthScreen(null);
+        // Only reload data on SIGNED_IN event, not token refresh
+        if (_event === "SIGNED_IN") {
+          setDataLoaded(false);
+          loadUserIntoState(session.user.id);
+        }
       } else {
+        setDataLoaded(false);
         setAuthScreen("login");
         setLoading(false);
       }
@@ -190,9 +200,9 @@ export default function App() {
   const hasSetup = readyToStart && programStarted;
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid || !dataLoaded) return;
     saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted });
-  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,programStarted,uid]);
+  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,programStarted,uid,dataLoaded]);
 
   useEffect(() => {
     if (restRunning && restTimer > 0) {
@@ -297,6 +307,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       setProgramStarted(inferred);
     }
     setView("dashboard");
+    setDataLoaded(true);
     loadSocialData(userId);
   }
 
@@ -307,6 +318,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     if (profile) {
       setUsername(profile.username || "");
       setIsPublic(profile.is_public || false);
+      setDisplayName(profile.name || currentUser?.user_metadata?.name || "");
     }
     const { data: requests } = await supabase
       .from("friend_requests")
@@ -395,15 +407,24 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       }
       return assist;
     }
-    let max = calcCurrentMax(lift.startingMax||0);
+    // Start with the true max (what user entered), convert to working max internally
+    let workingMax = calcCurrentMax(lift.startingMax||0);
     for (let w=1; w<targetWeek; w++) {
       const log = logs?.[w]?.[liftId]?.[3];
       if (log?.reps && +log.reps>10) {
-        const em = calcEstMax(calcWorkingWeights(max)[3], +log.reps);
-        max = calcNextMax(max, em, lift.isLower);
+        const em = calcEstMax(calcWorkingWeights(workingMax)[3], +log.reps);
+        workingMax = calcNextMax(workingMax, em, lift.isLower);
       }
     }
-    return max;
+    // Return true max (working max / 0.9)
+    return Math.round(workingMax / 0.9 / 5) * 5;
+  }
+
+  function getWorkingMax(liftId, targetWeek) {
+    const lift = lifts.find(l=>l.id===liftId);
+    if (!lift) return 0;
+    if (isAssistedPullUp(lift)) return getEffMax(liftId, targetWeek);
+    return calcCurrentMax(getEffMax(liftId, targetWeek));
   }
 
   function calcVolume(liftId, w) {
@@ -432,13 +453,15 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   const isReadOnly = isPastWeek && !editingPastWeek;
   const week = viewingWeek;
   const effMax = getEffMax(activeId, week);
+  const workingMax = getWorkingMax(activeId, week);
   const isAssisted = isAssistedPullUp(lift);
-  const weights = isAssisted ? calcAssistedWeights(effMax) : calcWorkingWeights(effMax);
+  const weights = isAssisted ? calcAssistedWeights(effMax) : calcWorkingWeights(workingMax);
   const set4Reps = logs?.[week]?.[activeId]?.[3]?.reps ?? "10";
   const sessionEstMax = +set4Reps>10 ? calcEstMax(weights[3],+set4Reps) : null;
-  const nextMax = isAssisted
+  const nextWorkingMax = isAssisted
     ? calcNextAssistedMax(effMax, +set4Reps)
-    : calcNextMax(effMax, sessionEstMax, lift?.isLower);
+    : calcNextMax(workingMax, sessionEstMax, lift?.isLower);
+  const nextMax = isAssisted ? nextWorkingMax : Math.round(nextWorkingMax / 0.9 / 5) * 5;
   const willProgress = isAssisted ? nextMax < effMax : nextMax > effMax;
   const isDayDone = completedDays?.[week]?.[activeId];
 
@@ -543,6 +566,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
       if(adj==="up") setExerciseHistory(h=>({...h,[acc.name]:String((+(h[acc.name]||acc.weight||0))+5)}));
       else if(adj==="down") setExerciseHistory(h=>({...h,[acc.name]:String(Math.max(0,(+(h[acc.name]||acc.weight||0))-5))}));
+      // "same" = no change, weight stays as is
     });
     const vol = calcVolume(activeId, week);
     const entry = {
@@ -846,6 +870,24 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 <div style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:14}}>
                   {username ? (
                     <>
+                      <div style={{marginBottom:12}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:4}}>DISPLAY NAME</div>
+                        {editingName
+                          ? <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={displayName} onChange={e=>setDisplayName(e.target.value)}
+                                style={{flex:1,background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"6px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
+                              <button onClick={async()=>{
+                                await supabase.from("public_profiles").update({name:displayName}).eq("id",uid);
+                                setEditingName(false);
+                              }} style={{background:"#e85d04",border:"none",color:"#000",borderRadius:6,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>SAVE</button>
+                              <button onClick={()=>setEditingName(false)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:6,padding:"6px 10px",fontSize:12,cursor:"pointer"}}>✕</button>
+                            </div>
+                          : <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              <div style={{color:"#f0f0f0",fontSize:15}}>{displayName || currentUser?.user_metadata?.name || currentUser?.email}</div>
+                              <button onClick={()=>setEditingName(true)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"2px 8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,cursor:"pointer"}}>EDIT</button>
+                            </div>
+                        }
+                      </div>
                       <div style={{marginBottom:12}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:4}}>USERNAME</div>
                         <div style={{color:"#f0f0f0",fontSize:16,fontFamily:"'DM Mono',monospace"}}>@{username}</div>
@@ -1286,17 +1328,22 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 ))}
               </div>
 
-              <div style={{...card,display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+              <div style={{...card,display:"flex",alignItems:"center",gap:12,marginBottom:14,
+                position:restRunning?"sticky":"relative",
+                top:restRunning?56:undefined,
+                zIndex:restRunning?9:undefined,
+                borderLeft:restRunning?"3px solid #f7b731":undefined,
+                transition:"all 0.2s"}}>
                 <div style={{textAlign:"center",minWidth:64}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
                     {restTimer!==null?`${Math.floor(restTimer/60)}:${String(restTimer%60).padStart(2,"0")}`:restDuration+"s"}
                   </div>
                   <div style={{color:"#555",fontSize:9}}>REST</div>
                 </div>
-                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                  {[60,90,120,180].map(s=><button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}} style={{background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:4,padding:"3px 7px",fontSize:10,cursor:"pointer"}}>{s}s</button>)}
-                  <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}} style={{background:"#f7b731",border:"none",color:"#000",borderRadius:4,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>GO</button>
-                  <button onClick={()=>{setRestTimer(null);setRestRunning(false);}} style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:4,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>RST</button>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                  {[60,90,120,180].map(s=><button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}} style={{background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:6,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>{s}s</button>)}
+                  <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}} style={{background:"#f7b731",border:"none",color:"#000",borderRadius:6,padding:"6px 16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,cursor:"pointer"}}>GO</button>
+                  <button onClick={()=>{setRestTimer(null);setRestRunning(false);}} style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>RST</button>
                 </div>
               </div>
 
@@ -1362,9 +1409,19 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                         <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value)} />
                         <span style={{color:"#555",fontSize:11}}>reps</span>
                         {!isReadOnly&&(
-                          <div style={{marginLeft:"auto",display:"flex",gap:4}}>
-                            <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="down"?"#222":"#06d6a0"),color:adj==="up"?"#000":adj==="down"?"#333":"#06d6a0",borderRadius:4,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
-                            <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="up"?"#222":"#e85d04"),color:adj==="down"?"#000":adj==="up"?"#333":"#e85d04",borderRadius:4,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+                          <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                            <div style={{display:"flex",gap:4}}>
+                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
+                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
+                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+                            </div>
+                            {adj && acc.weight && (
+                              <div style={{fontSize:10,color:"#555"}}>
+                                next: <span style={{color:adj==="up"?"#06d6a0":adj==="down"?"#e85d04":"#3a86ff"}}>
+                                  {adj==="up"?+acc.weight+5:adj==="down"?Math.max(0,+acc.weight-5):+acc.weight} lbs
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
