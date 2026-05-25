@@ -179,7 +179,11 @@ export default function App() {
   }, []);
 
   const uid = session?.user?.id;
-  const readyToStart = lifts.every(l=>l.startingMax>0) && startDate;
+  const readyToStart = lifts.every(l=>l.startingMax>0) && 
+    startDate && 
+    (heightFtEntry || bodyStats.heightIn) && 
+    weightEntry &&
+    lifts.every(l=>(l.trainingDays||[]).length>0);
   const hasSetup = readyToStart && programStarted;
 
   useEffect(() => {
@@ -1148,6 +1152,16 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 <button onClick={()=>Notification.requestPermission()} className="bn" style={{background:"#f7b731",color:"#000",fontSize:13,padding:"5px 12px"}}>ENABLE</button>
               </div>
             )}
+                {/* Show checklist of what's still needed */}
+                {!readyToStart && !hasSetup && startDate && (
+                  <div style={{...card,borderLeft:"3px solid #555",marginTop:8}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#555",marginBottom:8,letterSpacing:1}}>COMPLETE TO START:</div>
+                    {lifts.some(l=>!l.startingMax) && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Enter starting max for all lifts</div>}
+                    {lifts.some(l=>!(l.trainingDays||[]).length) && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Select training days for all lifts</div>}
+                    {!heightFtEntry && !bodyStats.heightIn && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Enter your height</div>}
+                    {!weightEntry && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Enter your starting weight</div>}
+                  </div>
+                )}
                 {readyToStart && !hasSetup && (
                   <>
                     {!confirmStart && (
@@ -1170,7 +1184,23 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                           Starting {fmtDate(startDate)} with {lifts.length} lift{lifts.length>1?"s":""}. Your maxes are locked in once you start — you cannot change them mid-program.
                         </div>
                         <div style={{display:"flex",gap:8}}>
-                          <button className="bigbtn" onClick={()=>{setProgramStarted(true);setActiveId(lifts[0].id);setViewingWeek(liftWeeks[lifts[0].id]||1);setView("workout");setConfirmStart(false);}} style={{background:"#06d6a0",color:"#000",flex:2,marginBottom:0}}>LET'S GO →</button>
+                          <button className="bigbtn" onClick={()=>{
+  // Save height and weight together when starting
+  const totalIn = (+heightFtEntry||0)*12+(+heightInEntry||0);
+  const newStats = {...bodyStats};
+  if(totalIn>0) newStats.heightIn = String(totalIn);
+  if(weightEntry) {
+    const newEntry = {date:todayISO(), weightLbs:+weightEntry};
+    newStats.entries = [newEntry,...(newStats.entries||[]).filter(e=>e.date!==todayISO())];
+  }
+  setBodyStats(newStats);
+  setHeightFtEntry(""); setHeightInEntry(""); setWeightEntry("");
+  setProgramStarted(true);
+  setActiveId(lifts[0].id);
+  setViewingWeek(liftWeeks[lifts[0].id]||1);
+  setView("workout");
+  setConfirmStart(false);
+}} style={{background:"#06d6a0",color:"#000",flex:2,marginBottom:0}}>LET'S GO →</button>
                           <button className="bigbtn" onClick={()=>setConfirmStart(false)} style={{background:"none",border:"1px solid #555",color:"#555",flex:1,marginBottom:0}}>BACK</button>
                         </div>
                       </div>
