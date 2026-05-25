@@ -137,6 +137,7 @@ export default function App() {
   const [weightEntry, setWeightEntry] = useState("");
   const [weightNudge, setWeightNudge] = useState({ weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
+  const [confirmStart, setConfirmStart] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
   const [socialTab, setSocialTab] = useState("friends");
   const [friends, setFriends] = useState([]);
@@ -531,11 +532,22 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   }
 
   function startNewProgram() {
-    const archive={startDate,lifts,endDate:todayISO(),finalMaxes:Object.fromEntries(lifts.map(l=>[l.id,getEffMax(l.id,liftWeeks[l.id]||1)]))};
+    // Save final maxes before archiving
+    const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
+    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes};
     setProgramHistory(prev=>[archive,...prev]);
-    const nl=lifts.map(l=>({...l,startingMax:0,trainingDays:[]}));
-    setLifts(nl);setStartDate("");setLogs({});setCompletedDays({});setAccList({});setWeightAdjust({});
-    setLiftWeeks(Object.fromEntries(nl.map(l=>[l.id,1])));setActiveId(nl[0].id);setViewingWeek(1);setView("setup");
+    // Carry over final maxes as new starting maxes + keep exercise history
+    const nl = lifts.map(l=>({...l, startingMax:finalMaxes[l.id]||0, trainingDays:[]}));
+    setLifts(nl);
+    setStartDate("");
+    setLogs({});
+    setCompletedDays({});
+    setAccList({});
+    setWeightAdjust({});
+    setLiftWeeks(Object.fromEntries(nl.map(l=>[l.id,1])));
+    setActiveId(nl[0].id);
+    setViewingWeek(1);
+    setView("setup");
   }
 
   function addWeightEntry() {
@@ -972,7 +984,19 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                   ))}
                 </div>
                 <div style={{marginTop:20}}>
-                  <button onClick={()=>{if(window.confirm("⚠️ Starting a new program will archive your current one.\n\nYour workout history, progress and custom exercises will all be saved.\n\nAre you sure?"))startNewProgram();}} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04"}}>START NEW 12-WEEK PROGRAM</button>
+                  {!confirmStart && (
+                  <button onClick={()=>setConfirmStart(true)} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04"}}>START NEW 12-WEEK PROGRAM</button>
+                )}
+                {confirmStart && (
+                  <div style={{background:"#0f0f1a",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #e85d04"}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#e85d04",marginBottom:6,letterSpacing:1}}>⚠️ START NEW PROGRAM?</div>
+                    <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>Your current program will be archived. All workout history, progress and custom exercises will be saved. Enter your new starting maxes before confirming.</div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button className="bigbtn" onClick={()=>{startNewProgram();setConfirmStart(false);}} style={{background:"#e85d04",color:"#000",flex:2,marginBottom:0}}>CONFIRM →</button>
+                      <button className="bigbtn" onClick={()=>setConfirmStart(false)} style={{background:"none",border:"1px solid #555",color:"#555",flex:1,marginBottom:0}}>BACK</button>
+                    </div>
+                  </div>
+                )}
                 </div>
               </>
             )}
@@ -1029,7 +1053,33 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
               </div>
             )}
                 {startDate && lifts.every(l=>l.startingMax>0) && (
-                  <button className="bigbtn" onClick={()=>{setActiveId(lifts[0].id);setViewingWeek(liftWeeks[lifts[0].id]||1);setView("workout");}} style={{background:"#fff",color:"#000",marginTop:8}}>START PROGRAM →</button>
+                  <>
+                    {!confirmStart && (
+                      <div style={{...card,borderLeft:"3px solid #06d6a0",marginTop:8}}>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:4,letterSpacing:1}}>✅ READY TO GO</div>
+                        <div style={{color:"#555",fontSize:11,marginBottom:12}}>All lifts configured. Review your maxes above then confirm to lock them in.</div>
+                        {lifts.map(l=>(
+                          <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #1a1a1a",fontSize:12}}>
+                            <span style={{color:l.color,fontFamily:"'Bebas Neue',sans-serif"}}>{l.name}</span>
+                            <span style={{color:"#aaa"}}>{calcCurrentMax(l.startingMax)} lbs training max</span>
+                          </div>
+                        ))}
+                        <button className="bigbtn" onClick={()=>setConfirmStart(true)} style={{background:"#06d6a0",color:"#000",marginTop:14,marginBottom:0}}>CONFIRM & START PROGRAM →</button>
+                      </div>
+                    )}
+                    {confirmStart && (
+                      <div style={{background:"#0f0f1a",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #06d6a0"}}>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:6,letterSpacing:1}}>LAST CHANCE!</div>
+                        <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>
+                          Starting {fmtDate(startDate)} with {lifts.length} lift{lifts.length>1?"s":""}. Your maxes are locked in once you start — you cannot change them mid-program.
+                        </div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button className="bigbtn" onClick={()=>{setActiveId(lifts[0].id);setViewingWeek(liftWeeks[lifts[0].id]||1);setView("workout");setConfirmStart(false);}} style={{background:"#06d6a0",color:"#000",flex:2,marginBottom:0}}>LET'S GO →</button>
+                          <button className="bigbtn" onClick={()=>setConfirmStart(false)} style={{background:"none",border:"1px solid #555",color:"#555",flex:1,marginBottom:0}}>BACK</button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -1315,11 +1365,18 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
         )}
       </div>
 
-      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0a0a0f",borderTop:"1px solid #1a1a1a",display:"flex",zIndex:10}}>
-        {[{id:"dashboard",icon:"🏠",label:"HOME"},{id:"workout",icon:"🏋️",label:"LIFT"},{id:"progress",icon:"📈",label:"PROGRESS"},{id:"ledger",icon:"📋",label:"LEDGER"},{id:"setup",icon:"⚙️",label:hasSetup?"PROGRAM":"SETUP"}].map(t=>(
-          <button key={t.id} className={`ntab ${view===t.id?"on":""}`} onClick={()=>setView(t.id)}>
-            <span style={{fontSize:18}}>{t.icon}</span>
-            <span>{t.label}</span>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0a0a0f",borderTop:"1px solid #1a1a1a",display:"flex",zIndex:10,padding:"4px"}}>
+        {[
+          {id:"dashboard", label:"HOME", color:"#e85d04", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
+          {id:"workout",   label:"LIFT",     color:"#3a86ff", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><circle cx="4" cy="12" r="2"/><circle cx="20" cy="12" r="2"/><rect x="7" y="8" width="2" height="8" rx="1"/><rect x="15" y="8" width="2" height="8" rx="1"/></svg>},
+          {id:"progress",  label:"PROGRESS", color:"#8338ec", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>},
+          {id:"ledger",    label:"LEDGER",   color:"#06d6a0", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>},
+          {id:"setup",     label:hasSetup?"PROGRAM":"SETUP", color:"#f7b731", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>},
+        ].map(t=>(
+          <button key={t.id} onClick={()=>setView(t.id)} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id?t.color:"#444"}}>
+            {t.svg}
+            <span style={{fontSize:9,letterSpacing:1,fontFamily:"'DM Mono',monospace"}}>{t.label}</span>
+            <div style={{width:4,height:4,borderRadius:"50%",background:view===t.id?t.color:"transparent"}}></div>
           </button>
         ))}
       </div>
