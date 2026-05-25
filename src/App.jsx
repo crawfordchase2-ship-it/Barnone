@@ -184,11 +184,8 @@ export default function App() {
 
   useEffect(() => {
     if (!uid) return;
-    const timer = setTimeout(() => {
-      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted });
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,uid]);
+    saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted });
+  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,programStarted,uid]);
 
   useEffect(() => {
     if (restRunning && restTimer > 0) {
@@ -954,7 +951,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                     <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:bmiCol(bmi)}}>{bmi} <span style={{fontSize:11}}>{bmiCat(bmi)}</span></div>
                   </div>
                 )}
-                {!bodyStats.heightIn && (
+                {!bodyStats.heightIn && !latestWeight && (
                   <div style={{color:"#444",fontSize:11}}>Set up height & weight in PROGRAM setup</div>
                 )}
               </div>
