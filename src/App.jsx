@@ -100,9 +100,7 @@ async function saveUD(userId, d) {
 }
 
 export default function App() {
-  const [users, setUsers] = useState(getUsers());
-  const [uid, setUid] = useState(getSession());
-  const [authScreen, setAuthScreen] = useState(!getSession() ? "login" : null);
+
   const [authForm, setAuthForm] = useState({ name:"", email:"", password:"", confirm:"" });
   const [authErr, setAuthErr] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -138,6 +136,7 @@ export default function App() {
   const [showWeightModal, setShowWeightModal] = useState(false);
   const timerRef = useRef(null);
 
+  const uid = session?.user?.id;
   const hasSetup = lifts.every(l=>l.startingMax>0) && startDate;
   const currentUser = users.find(u=>u.id===uid);
 
@@ -275,7 +274,6 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     const hash = await hashPw(password);
     if (hash !== user.hash) { setAuthErr("Incorrect password."); return; }
     setUid(user.id);
-    if (rememberMe) setSession(user.id);
     loadUserIntoState(user.id);
     setAuthScreen(null);
     setAuthForm({ name:"", email:"", password:"", confirm:"" });
@@ -283,7 +281,6 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    setSession(null);
     setCurrentUser(null);
     setAuthScreen("login");
     setShowProfile(false);
