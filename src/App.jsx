@@ -108,6 +108,7 @@ export default function App() {
   const [authErr, setAuthErr] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [authScreen, setAuthScreen] = useState("login");
 
   const [lifts, setLifts] = useState(DEFAULT_LIFTS);
   const [startDate, setStartDate] = useState("");
