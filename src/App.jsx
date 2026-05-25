@@ -608,10 +608,11 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   const card = { background:"#0f0f1a", borderRadius:10, padding:"14px 16px", marginBottom:14 };
 
   return (
-    <div style={{minHeight:"100vh",background:"#0a0a0f",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:70}}>
+    <div style={{minHeight:"100vh",background:"#000000",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:70,margin:0,padding:0}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
-        *{box-sizing:border-box;}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        html,body,#root{background:#000000!important;min-height:100%;}
         input[type=number],input[type=text],input[type=date],input[type=email],input[type=password]{background:#1a1a2e;border:1px solid #333;color:#f0f0f0;border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:13px;}
         input[type=number]{width:64px;text-align:center;-moz-appearance:textfield;}
         input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;}
