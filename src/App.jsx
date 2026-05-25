@@ -106,7 +106,6 @@ export default function App() {
   const [showPw, setShowPw] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  const saved = uid ? loadUD(uid) : null;
   const [lifts, setLifts] = useState(saved?.lifts || DEFAULT_LIFTS);
   const [startDate, setStartDate] = useState(saved?.startDate || "");
   const [activeId, setActiveId] = useState(saved?.activeId || DEFAULT_LIFTS[0].id);
@@ -138,7 +137,6 @@ export default function App() {
 
   const uid = session?.user?.id;
   const hasSetup = lifts.every(l=>l.startingMax>0) && startDate;
-  const currentUser = users.find(u=>u.id===uid);
 
   useEffect(() => {
     if (!uid) return;
@@ -269,12 +267,11 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     setAuthErr("");
     const { email, password } = authForm;
     if (!email||!password) { setAuthErr("Email and password required."); return; }
-    const user = users.find(u=>u.email.toLowerCase()===email.toLowerCase());
-    if (!user) { setAuthErr("No account found."); return; }
-    const hash = await hashPw(password);
-    if (hash !== user.hash) { setAuthErr("Incorrect password."); return; }
-    setUid(user.id);
-    loadUserIntoState(user.id);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setAuthErr(error.message); return; }
+    setCurrentUser(data.user);
+    setSession(data.session);
+    await loadUserIntoState(data.user.id);
     setAuthScreen(null);
     setAuthForm({ name:"", email:"", password:"", confirm:"" });
   }
