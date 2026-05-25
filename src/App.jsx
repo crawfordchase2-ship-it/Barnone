@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar } from "recharts";
 
 const COLORS = ["#e85d04","#3a86ff","#8338ec","#06d6a0","#f7b731","#ff006e","#00b4d8","#80b918"];
-const MAIN_LIFT_OPTIONS = ["Bench","Deadlift","Military Press","Squat","Weighted Pull Up","Hip Thrust","Custom"];
+const MAIN_LIFT_OPTIONS = ["Bench","Deadlift","Military Press","Squat","Weighted Pull Up","Assisted Pull Up","Hip Thrust","Custom"];
 const DEFAULT_LIFTS = [
   { id:"lift_1", name:"Bench",          mainLiftOption:"Bench",          color:"#e85d04", startingMax:0, trainingDays:[], isLower:false },
   { id:"lift_2", name:"Deadlift",       mainLiftOption:"Deadlift",       color:"#3a86ff", startingMax:0, trainingDays:[], isLower:true  },
@@ -16,11 +16,36 @@ const ACCESSORIES_BY_LIFT = {
   "Squat":           ["Smith Lunges","Stiff Leg Deadlift","Leg Extension","Prone Leg Curl","Calf Raises","Hip Abductor","Hip Adductor","Hip Thrust","Bulgarian Split Squat","Cable Kickbacks","Leg Press","Step Ups","Box Jumps","Goblet Squat","Wall Sit"],
   "Weighted Pull Up":["Lat Pull-Down","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-bar Row","Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Face Pulls","Band Pull Apart"],
   "Hip Thrust":      ["Glute Bridge","Cable Kickback","Donkey Kicks","Bulgarian Split Squat","Calf Raises","Hip Abductor","Hip Adductor","Leg Press","Romanian Deadlift","Step Ups","Sumo Squat","Reverse Hyper"],
+  "Assisted Pull Up":["Lat Pull-Down","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-bar Row","Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Face Pulls","Band Pull Apart","Dead Hang","Scapular Pull Up"],
   "Custom":          ["Incline Bench","Pullups","Lat Pull-Down","Dumbbell Row","Dumbbell Curls","Arnold Press","Front Raises","Lateral Raises","Face Pulls","Romanian Deadlift","Leg Extension","Calf Raises","Hip Thrust","Leg Press","Ab Roller","Farmers Walk","Shrugs"],
 };
 const HYPE = ["Time to move some weight!","Let's get after it!","No excuses. Let's go!","Your future self will thank you.","The bar is waiting.","Stronger than last week. Prove it."];
 const DAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const ROOT_KEY = "barnone_v5";
+
+function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
+
+// For assisted pullups, working weights are assistance amounts that decrease
+// Starting max = assistance weight (e.g. 50 lbs)
+// Each set uses less assistance, encouraging more bodyweight strength
+function calcAssistedWeights(assistanceMax) {
+  // Sets go from most assistance to least — hardest set last
+  // Always round to nearest 5, minimum 5 lbs
+  const r = v => Math.max(5, Math.round(v / 5) * 5);
+  return [
+    r(assistanceMax * 0.75),
+    r(assistanceMax * 0.60),
+    r(assistanceMax * 0.45),
+    r(assistanceMax * 0.30),
+  ];
+}
+
+// Reverse progression — assistance goes DOWN over time
+function calcNextAssistedMax(currentAssist, reps, isLower) {
+  if (+reps <= 10) return currentAssist; // 10 reps = stay same
+  const drop = +reps >= 15 ? 10 : 5; // >15 reps = drop 10 lbs, else 5
+  return Math.max(0, currentAssist - drop);
+}
 
 function calcCurrentMax(s) { return Math.round(s * 0.9 / 5) * 5; }
 function calcWorkingWeights(m) {
@@ -235,6 +260,14 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   function getEffMax(liftId, targetWeek) {
     const lift = lifts.find(l=>l.id===liftId);
     if (!lift) return 0;
+    if (isAssistedPullUp(lift)) {
+      let assist = lift.startingMax || 0;
+      for (let w=1; w<targetWeek; w++) {
+        const log = logs?.[w]?.[liftId]?.[3];
+        if (log?.reps) assist = calcNextAssistedMax(assist, +log.reps);
+      }
+      return assist;
+    }
     let max = calcCurrentMax(lift.startingMax||0);
     for (let w=1; w<targetWeek; w++) {
       const log = logs?.[w]?.[liftId]?.[3];
@@ -272,11 +305,14 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
   const isReadOnly = isPastWeek && !editingPastWeek;
   const week = viewingWeek;
   const effMax = getEffMax(activeId, week);
-  const weights = calcWorkingWeights(effMax);
+  const isAssisted = isAssistedPullUp(lift);
+  const weights = isAssisted ? calcAssistedWeights(effMax) : calcWorkingWeights(effMax);
   const set4Reps = logs?.[week]?.[activeId]?.[3]?.reps ?? "10";
   const sessionEstMax = +set4Reps>10 ? calcEstMax(weights[3],+set4Reps) : null;
-  const nextMax = calcNextMax(effMax, sessionEstMax, lift?.isLower);
-  const willProgress = nextMax > effMax;
+  const nextMax = isAssisted
+    ? calcNextAssistedMax(effMax, +set4Reps)
+    : calcNextMax(effMax, sessionEstMax, lift?.isLower);
+  const willProgress = isAssisted ? nextMax < effMax : nextMax > effMax;
   const isDayDone = completedDays?.[week]?.[activeId];
 
   function getReps(w,id,i) { return logs?.[w]?.[id]?.[i]?.reps ?? "10"; }
@@ -668,7 +704,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <input type="number" value={l.startingMax||""} placeholder="0" style={{width:80,fontSize:18,fontFamily:"'Bebas Neue',sans-serif",borderColor:l.color,color:l.color,textAlign:"center"}} onChange={e=>updateLift(l.id,"startingMax",+e.target.value||0)} />
-                      <span style={{color:"#555",fontSize:11}}>lbs</span>
+                      <span style={{color:"#555",fontSize:11}}>{l.mainLiftOption==="Assisted Pull Up"?"lbs assist":"lbs"}</span>
                       {lifts.length>1 && <button onClick={()=>removeLift(l.id)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>}
                     </div>
                   </div>
@@ -738,7 +774,11 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
             </div>
             <div style={{padding:16}}>
               <div style={{display:"flex",gap:10,marginBottom:14}}>
-                {[{l:"CURRENT MAX",v:effMax,c:lift.color},{l:"EST MAX",v:sessionEstMax||"—",c:sessionEstMax?"#06d6a0":"#333"},{l:"NEXT WEEK",v:nextMax,c:willProgress?"#06d6a0":"#333"}].map(x=>(
+                {[
+                {l: isAssisted ? "ASSISTANCE" : "CURRENT MAX", v: isAssisted ? `${effMax} lbs` : effMax, c: lift.color},
+                {l: isAssisted ? "EFFECTIVE PULL" : "EST MAX", v: isAssisted ? (latestWeight ? `${latestWeight - effMax} lbs` : "—") : (sessionEstMax||"—"), c: isAssisted ? (latestWeight?"#06d6a0":"#333") : (sessionEstMax?"#06d6a0":"#333")},
+                {l:"NEXT WEEK", v: isAssisted ? (nextMax === 0 ? "UNASSISTED!" : `${nextMax} lbs`) : nextMax, c: willProgress ? "#06d6a0" : "#333"}
+              ].map(x=>(
                   <div key={x.l} style={{...card,flex:1,borderLeft:`3px solid ${x.c}`,marginBottom:0}}>
                     <div style={{color:"#555",fontSize:9,marginBottom:2}}>{x.l}</div>
                     <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:x.c}}>{x.v} <span style={{fontSize:9,color:"#555"}}>lbs</span></div>
@@ -766,8 +806,19 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 {weights.map((w,i)=>(
                   <div key={i} className="srow">
                     <div style={{color:"#555"}}>{i+1}</div>
-                    <div style={{color:"#ccc"}}>{w} lbs</div>
-                    {i<3?<div style={{color:lift.color,fontSize:12}}>× 10</div>:<input type="number" value={getReps(week,activeId,i)} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&setReps(week,activeId,i,e.target.value)} />}
+                    <div style={{color:"#ccc"}}>{w} {isAssisted ? 'assist' : 'lbs'}</div>
+                    {i<3
+                      ? <div style={{color:lift.color,fontSize:12}}>× 10</div>
+                      : isReadOnly
+                        ? <div style={{color:lift.color,fontSize:13}}>{getReps(week,activeId,i)} reps</div>
+                        : <div style={{display:"flex",alignItems:"center",gap:0}}>
+                            <button onClick={()=>setReps(week,activeId,i,String(Math.max(1,+(getReps(week,activeId,i)||10)-1)))}
+                              style={{background:"#0f0f1a",border:`2px solid ${lift.color}`,color:lift.color,borderRadius:"8px 0 0 8px",width:44,height:44,cursor:"pointer",fontSize:22,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                            <div style={{background:"#1a1a2e",borderTop:`2px solid ${lift.color}`,borderBottom:`2px solid ${lift.color}`,color:lift.color,width:48,height:44,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:24}}>{getReps(week,activeId,i)}</div>
+                            <button onClick={()=>setReps(week,activeId,i,String(+(getReps(week,activeId,i)||10)+1))}
+                              style={{background:"#0f0f1a",border:`2px solid ${lift.color}`,color:lift.color,borderRadius:"0 8px 8px 0",width:44,height:44,cursor:"pointer",fontSize:22,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                          </div>
+                    }
                   </div>
                 ))}
               </div>
@@ -835,7 +886,10 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                   <button className="bigbtn" onClick={finishDay} style={{background:isDayDone?"#0f0f1a":lift.color,color:isDayDone?lift.color:"#000",border:isDayDone?`1px solid ${lift.color}`:"none"}}>
                     {isDayDone?"✓ DAY COMPLETE":"FINISH DAY"}
                   </button>
-                  {willProgress&&!isDayDone&&<div style={{textAlign:"center",color:"#06d6a0",fontSize:12}}>🔥 Next week's max: {nextMax} lbs</div>}
+                  {willProgress&&!isDayDone&&!isAssisted&&<div style={{textAlign:"center",color:"#06d6a0",fontSize:12}}>🔥 Next week's max: {nextMax} lbs</div>}
+                  {willProgress&&!isDayDone&&isAssisted&&nextMax>0&&<div style={{textAlign:"center",color:"#06d6a0",fontSize:12}}>💪 Next week: {nextMax} lbs assistance — getting closer!</div>}
+                  {willProgress&&!isDayDone&&isAssisted&&nextMax===0&&<div style={{textAlign:"center",color:"#f7b731",fontSize:13,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>🎉 UNASSISTED NEXT WEEK! YOU DID IT!</div>}
+                  {!isDayDone&&isAssisted&&effMax===0&&<div style={{textAlign:"center",color:"#f7b731",fontSize:12,marginTop:8}}>🏆 You're doing unassisted pullups! Consider switching to Weighted Pull Up.</div>}
                 </>
               )}
             </div>
@@ -850,10 +904,36 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
               const curMax=getEffMax(l.id,liftWeeks[l.id]||1);
               const maxData=[{w:"Start",max:startMax},...Array.from({length:12},(_,i)=>({w:`W${i+1}`,max:getEffMax(l.id,i+1)}))];
               const volData=sessionLedger.filter(s=>s.liftId===l.id).slice(0,10).reverse().map(s=>({d:fmtDate(s.date),v:Math.round((s.volume||0)/1000)}));
+              // For assisted pullups, build effective pull strength data
+              const effPullData = isAssistedPullUp(l) ? (() => {
+                let assist = l.startingMax || 0;
+                const data = [];
+                for (let w = 1; w <= (liftWeeks[l.id]||1); w++) {
+                  const bwEntry = bodyStats.entries.find(e => {
+                    const log = logs?.[w]?.[l.id]?.[3];
+                    return log && e.date <= (log.date || todayISO());
+                  });
+                  const bw = bwEntry?.weightLbs || latestWeight || 0;
+                  if (bw) data.push({ w: `W${w}`, pull: bw - assist });
+                  const log = logs?.[w]?.[l.id]?.[3];
+                  if (log?.reps) assist = calcNextAssistedMax(assist, +log.reps);
+                }
+                return data;
+              })() : [];
               return (
                 <div key={l.id} style={{...card,borderLeft:`3px solid ${l.color}`}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:l.color,marginBottom:2}}>{l.name}</div>
-                  <div style={{color:"#555",fontSize:11,marginBottom:10}}>Start: <span style={{color:"#aaa"}}>{startMax} lbs</span>{"  →  "}Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax} lbs</span>{curMax>startMax&&<span style={{color:"#06d6a0"}}> (+{curMax-startMax})</span>}</div>
+                  <div style={{color:"#555",fontSize:11,marginBottom:10}}>
+                    {isAssistedPullUp(l)
+                      ? <>
+                          Start: <span style={{color:"#aaa"}}>{l.startingMax} lbs assist</span>{"  →  "}
+                          Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax === 0 ? "UNASSISTED! 🎉" : `${curMax} lbs assist`}</span>
+                          {latestWeight && curMax > 0 && <span style={{color:"#06d6a0"}}> · Pulling {latestWeight - curMax} lbs</span>}
+                          {latestWeight && curMax === 0 && <span style={{color:"#f7b731"}}> · Full {latestWeight} lbs!</span>}
+                        </>
+                      : <>Start: <span style={{color:"#aaa"}}>{startMax} lbs</span>{"  →  "}Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax} lbs</span>{curMax>startMax&&<span style={{color:"#06d6a0"}}> (+{curMax-startMax})</span>}</>
+                    }
+                  </div>
                   <div style={{color:"#555",fontSize:10,marginBottom:4}}>MAX PROGRESSION</div>
                   <ResponsiveContainer width="100%" height={110}>
                     <LineChart data={maxData}>
@@ -863,7 +943,21 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                       <Line type="monotone" dataKey="max" stroke={l.color} strokeWidth={2} dot={{fill:l.color,r:3}} name="Max" connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
-                  {volData.length>0 && (
+                  {isAssistedPullUp(l) && effPullData.length>1 && (
+                    <>
+                      <div style={{color:"#555",fontSize:10,marginTop:10,marginBottom:4}}>EFFECTIVE PULL STRENGTH (lbs)</div>
+                      <ResponsiveContainer width="100%" height={80}>
+                        <LineChart data={effPullData}>
+                          <XAxis dataKey="w" tick={{fill:"#555",fontSize:8}} />
+                          <YAxis tick={{fill:"#555",fontSize:8}} domain={["auto","auto"]} />
+                          <Tooltip contentStyle={{background:"#1a1a2e",border:`1px solid ${l.color}`,borderRadius:6,fontSize:11}} />
+                          <Line type="monotone" dataKey="pull" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="Effective Pull" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                      {latestWeight && <div style={{color:"#555",fontSize:10,marginTop:4}}>Bodyweight: {latestWeight} lbs · Current pull: <span style={{color:"#06d6a0"}}>{latestWeight - (getEffMax(l.id, liftWeeks[l.id]||1))} lbs</span></div>}
+                    </>
+                  )}
+                  {volData.length>0 && !isAssistedPullUp(l) && (
                     <>
                       <div style={{color:"#555",fontSize:10,marginTop:10,marginBottom:4}}>VOLUME (1000s lbs)</div>
                       <ResponsiveContainer width="100%" height={80}>
