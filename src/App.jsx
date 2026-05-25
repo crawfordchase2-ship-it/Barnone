@@ -563,8 +563,12 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
   function addWeightEntry() {
     if(!weightEntry)return;
-    setBodyStats(prev=>({...prev,entries:[{date:todayISO(),weightLbs:+weightEntry},...prev.entries.filter(e=>e.date!==todayISO())]}));
+    const newEntry = {date:todayISO(),weightLbs:+weightEntry};
+    const newStats = {...bodyStats,entries:[newEntry,...bodyStats.entries.filter(e=>e.date!==todayISO())]};
+    setBodyStats(newStats);
     setWeightEntry("");
+    // Save immediately so it persists
+    if(uid) saveUD(uid, {lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats:newStats,programHistory,weightNudge,programStarted});
   }
 
   function getWeekKey() {
@@ -917,8 +921,8 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                   <div>
                     <div style={{color:"#555",fontSize:10,marginBottom:4}}>LOG WEIGHT (lbs)</div>
                     <div style={{display:"flex",gap:6}}>
-                      <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} onKeyDown={e=>e.key==="Enter"&&logWeightAndDismiss()} style={{width:72,color:"#06d6a0"}} />
-                      <button onClick={logWeightAndDismiss} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"4px 10px"}}>LOG</button>
+                      <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&e.target.value){logWeightAndDismiss();}}} style={{width:72,color:"#06d6a0"}} />
+                      <button onClick={()=>{if(weightEntry)logWeightAndDismiss();}} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"4px 10px"}}>LOG</button>
                     </div>
                   </div>
                 )}
