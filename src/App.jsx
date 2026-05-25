@@ -700,7 +700,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                       {/* Friend maxes */}
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:lastSession?10:0}}>
                         {fLifts.filter(l=>l.startingMax>0).map(l=>(
-                          <div key={l.id} style={{background:"#1a1a2e",borderRadius:6,padding:"6px 10px",borderLeft:`2px solid ${l.color}`}}>
+                          <div key={l.id} style={{background:"#1a1a2e",borderRadius:6,padding:"6px 10px",borderLeft:"2px solid "+l.color}}>
                             <div style={{color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:13}}>{l.name}</div>
                             <div style={{color:"#aaa",fontSize:12}}>{l.startingMax} lbs</div>
                           </div>
