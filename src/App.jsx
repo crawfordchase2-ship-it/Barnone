@@ -915,58 +915,50 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
             <div style={{...card}}>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
-              {/* Show as info once both are set */}
-              {bodyStats.heightIn && loggedThisWeek ? (
-                <div style={{display:"flex",gap:20,alignItems:"center",marginBottom:10}}>
-                  <div>
-                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>HEIGHT</div>
-                    <div style={{color:"#aaa",fontSize:14}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
-                  </div>
-                  <div>
-                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>WEIGHT</div>
-                    <div style={{color:"#06d6a0",fontSize:14}}>{latestWeight} lbs</div>
-                  </div>
-                  {bmi && <div>
-                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>BMI</div>
-                    <div style={{fontSize:14,color:bmiCol(bmi)}}>{bmi} · {bmiCat(bmi)}</div>
-                  </div>}
-                </div>
-              ) : (
-                <div style={{marginBottom:10}}>
-                  <div style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap",marginBottom:10}}>
-                    {!bodyStats.heightIn && (
-                      <div>
-                        <div style={{color:"#555",fontSize:10,marginBottom:4}}>HEIGHT</div>
-                        <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                          <input type="number" value={heightFtEntry} placeholder="5" min="3" max="8" style={{width:44}} onChange={e=>setHeightFtEntry(e.target.value)} />
-                          <span style={{color:"#555",fontSize:11}}>ft</span>
-                          <input type="number" value={heightInEntry} placeholder="10" min="0" max="11" style={{width:44}} onChange={e=>setHeightInEntry(e.target.value)} />
-                          <span style={{color:"#555",fontSize:11}}>in</span>
-                        </div>
+              <div style={{display:"flex",gap:16,alignItems:"flex-end",flexWrap:"wrap",marginBottom:10}}>
+                {/* HEIGHT */}
+                {bodyStats.heightIn
+                  ? <div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:2}}>HEIGHT</div>
+                      <div style={{color:"#aaa",fontSize:14,fontFamily:"'Bebas Neue',sans-serif"}}>{Math.floor(+bodyStats.heightIn/12)}′ {+bodyStats.heightIn%12}″</div>
+                    </div>
+                  : <div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:4}}>HEIGHT</div>
+                      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                        <input type="number" value={heightFtEntry} placeholder="5" style={{width:44}} onChange={e=>setHeightFtEntry(e.target.value)} />
+                        <span style={{color:"#555",fontSize:11}}>ft</span>
+                        <input type="number" value={heightInEntry} placeholder="10" style={{width:44}} onChange={e=>setHeightInEntry(e.target.value)} />
+                        <span style={{color:"#555",fontSize:11}}>in</span>
                       </div>
-                    )}
-                    {bodyStats.heightIn && (
-                      <div>
-                        <div style={{color:"#555",fontSize:10,marginBottom:2}}>HEIGHT</div>
-                        <div style={{color:"#aaa",fontSize:14}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
-                      </div>
-                    )}
-                    {!loggedThisWeek && (
-                      <div>
-                        <div style={{color:"#555",fontSize:10,marginBottom:4}}>WEIGHT (lbs)</div>
-                        <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} style={{width:72,color:"#06d6a0"}} />
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                }
+                {/* WEIGHT */}
+                {loggedThisWeek
+                  ? <div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:2}}>WEIGHT</div>
+                      <div style={{color:"#06d6a0",fontSize:14,fontFamily:"'Bebas Neue',sans-serif"}}>{latestWeight} lbs</div>
+                    </div>
+                  : <div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:4}}>WEIGHT (lbs)</div>
+                      <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} style={{width:72,color:"#06d6a0"}} />
+                    </div>
+                }
+                {/* BMI */}
+                {bmi && <div>
+                  <div style={{color:"#555",fontSize:10,marginBottom:2}}>BMI</div>
+                  <div style={{fontSize:13,color:bmiCol(bmi),fontFamily:"'Bebas Neue',sans-serif"}}>{bmi} <span style={{fontSize:10,color:bmiCol(bmi)}}>{bmiCat(bmi)}</span></div>
+                </div>}
+                {/* LOG button — only shows if something needs logging */}
+                {(!bodyStats.heightIn || !loggedThisWeek) && (
                   <button onClick={()=>{
-                    if(heightFtEntry){
+                    if(!bodyStats.heightIn && heightFtEntry) {
                       const totalIn = (+heightFtEntry||0)*12+(+heightInEntry||0);
-                      if(totalIn>0){setBodyStats(prev=>({...prev,heightIn:String(totalIn)}));setHeightFtEntry("");setHeightInEntry("");}
+                      if(totalIn>0) { setBodyStats(prev=>({...prev,heightIn:String(totalIn)})); setHeightFtEntry(""); setHeightInEntry(""); }
                     }
-                    if(weightEntry) logWeightAndDismiss();
-                  }} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"6px 16px"}}>LOG</button>
-                </div>
-              )}
+                    if(!loggedThisWeek && weightEntry) logWeightAndDismiss();
+                  }} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"6px 16px",marginBottom:4}}>LOG</button>
+                )}
+              </div>
               {bodyStats.entries.length>1 && (
                 <ResponsiveContainer width="100%" height={90}>
                   <LineChart data={[...bodyStats.entries].reverse().slice(-10).map(e=>({d:fmtDate(e.date),w:e.weightLbs}))}>
