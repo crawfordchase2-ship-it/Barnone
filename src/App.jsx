@@ -113,6 +113,72 @@ export default function App() {
     return () => clearTimeout(timerRef.current);
   }, [restRunning, restTimer]);
 
+  // PR notification
+  function checkForPR(liftId, estMax) {
+    if (!estMax) return;
+    const lift = lifts.find(l => l.id === liftId);
+    if (!lift) return;
+    const prevMax = getEffMax(liftId, liftWeeks[liftId] || 1);
+    if (estMax > prevMax && Notification.permission === "granted") {
+      new Notification(`🏆 NEW PR - ${lift.name.toUpperCase()}!`, {
+        body: `Est. max: ${estMax} lbs — up from ${prevMax} lbs. Beast mode activated.`
+      });
+    }
+  }
+
+  // New week notification
+  useEffect(() => {
+    if (!hasSetup || !uid) return;
+    lifts.forEach(l => {
+      const w = liftWeeks[l.id] || 1;
+      if (w <= 1) return;
+      const key = `barnone_newweek_${uid}_${l.id}_w${w}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      if (Notification.permission !== "granted") return;
+      const wts = calcWorkingWeights(getEffMax(l.id, w));
+      new Notification(`📅 WEEK ${w} - ${l.name.toUpperCase()}`, {
+        body: `New week, new weights!
+Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
+      });
+    });
+  }, [liftWeeks, hasSetup, uid]);
+
+  // Streak reminder - if no session logged in 3+ days
+  useEffect(() => {
+    if (!hasSetup || !uid || !sessionLedger.length) return;
+    const key = `barnone_streak_${uid}_${todayISO()}`;
+    if (sessionStorage.getItem(key)) return;
+    const lastDate = sessionLedger[0]?.date;
+    if (!lastDate) return;
+    const daysSince = Math.floor((new Date(todayISO()) - new Date(lastDate)) / 86400000);
+    if (daysSince >= 3 && Notification.permission === "granted") {
+      sessionStorage.setItem(key, "1");
+      new Notification("💪 TIME TO GET BACK IN THE GYM", {
+        body: `It's been ${daysSince} days since your last session. Your gains are waiting.`
+      });
+    }
+  }, [hasSetup, uid, sessionLedger]);
+
+  // Weekly summary - fires on Sunday
+  useEffect(() => {
+    if (!hasSetup || !uid) return;
+    const today = new Date();
+    if (today.getDay() !== 0) return; // Sunday only
+    const key = `barnone_summary_${uid}_${todayISO()}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    if (Notification.permission !== "granted") return;
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - 6);
+    const weekSessions = sessionLedger.filter(s => new Date(s.date) >= thisWeekStart);
+    if (!weekSessions.length) return;
+    const totalVol = weekSessions.reduce((sum, s) => sum + (s.volume || 0), 0);
+    new Notification("📊 WEEKLY SUMMARY", {
+      body: `${weekSessions.length} session${weekSessions.length > 1 ? "s" : ""} this week · ${Math.round(totalVol / 1000)}k lbs moved. Keep it up!`
+    });
+  }, [hasSetup, uid]);
+
   function loadUserIntoState(id) {
     const d = loadUD(id);
     setLifts(d?.lifts || DEFAULT_LIFTS);
@@ -263,6 +329,7 @@ export default function App() {
       notes:sessionNotes, volume:vol, estMax:sessionEstMax,
     };
     setSessionLedger(prev=>[entry,...prev]);
+    checkForPR(activeId, sessionEstMax);
     setSessionNotes("");
     setCompletedDays(prev=>{const n=JSON.parse(JSON.stringify(prev));if(!n[week])n[week]={};n[week][activeId]=true;return n;});
     const nw=Math.min(12,activeLiftWeek+1);
