@@ -1093,7 +1093,10 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#555",letterSpacing:1,marginBottom:10}}>PROGRAM HISTORY</div>
                 {programHistory.map((p,i)=>(
                   <div key={i} style={{...card,borderLeft:"3px solid #333"}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#555",marginBottom:6}}>PROGRAM {programHistory.length-i} · {fmtDate(p.startDate)} → {fmtDate(p.endDate)}</div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#555"}}>PROGRAM {programHistory.length-i} · {fmtDate(p.startDate)} → {fmtDate(p.endDate)}</div>
+                      <button onClick={()=>{if(window.confirm("Delete this program from history?"))setProgramHistory(prev=>prev.filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
+                    </div>
                     {(p.lifts||[]).map(l=>{const sm=calcCurrentMax(l.startingMax||0);const fm=p.finalMaxes?.[l.id]||0;return(<div key={l.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555",padding:"2px 0"}}><span style={{color:l.color}}>{l.name}</span><span>{sm} → {fm} lbs{fm>sm?<span style={{color:"#06d6a0"}}> (+{fm-sm})</span>:""}</span></div>);})}
                   </div>
                 ))}
