@@ -95,6 +95,7 @@ async function saveUD(userId, d) {
     body_stats: d.bodyStats,
     program_history: d.programHistory,
     weight_nudge: d.weightNudge,
+    program_started: d.programStarted,
     updated_at: new Date().toISOString()
   }, { onConflict: "user_id" });
 }
@@ -138,6 +139,7 @@ export default function App() {
   const [weightNudge, setWeightNudge] = useState({ weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [confirmStart, setConfirmStart] = useState(false);
+  const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
   const [socialTab, setSocialTab] = useState("friends");
   const [friends, setFriends] = useState([]);
@@ -174,12 +176,13 @@ export default function App() {
   }, []);
 
   const uid = session?.user?.id;
-  const hasSetup = lifts.every(l=>l.startingMax>0) && startDate;
+  const readyToStart = lifts.every(l=>l.startingMax>0) && startDate;
+  const hasSetup = readyToStart && programStarted;
 
   useEffect(() => {
     if (!uid) return;
     const timer = setTimeout(() => {
-      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge });
+      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted });
     }, 1500);
     return () => clearTimeout(timer);
   }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,uid]);
@@ -278,6 +281,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       setBodyStats(d.body_stats || { heightIn:"", entries:[] });
       setProgramHistory(d.program_history || []);
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
+      setProgramStarted(d.program_started || false);
     }
     setView("dashboard");
     loadSocialData(userId);
@@ -547,6 +551,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     setLiftWeeks(Object.fromEntries(nl.map(l=>[l.id,1])));
     setActiveId(nl[0].id);
     setViewingWeek(1);
+    setProgramStarted(false);
     setView("setup");
   }
 
@@ -1052,7 +1057,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 <button onClick={()=>Notification.requestPermission()} className="bn" style={{background:"#f7b731",color:"#000",fontSize:13,padding:"5px 12px"}}>ENABLE</button>
               </div>
             )}
-                {startDate && lifts.every(l=>l.startingMax>0) && (
+                {readyToStart && !hasSetup && (
                   <>
                     {!confirmStart && (
                       <div style={{...card,borderLeft:"3px solid #06d6a0",marginTop:8}}>
@@ -1074,7 +1079,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                           Starting {fmtDate(startDate)} with {lifts.length} lift{lifts.length>1?"s":""}. Your maxes are locked in once you start — you cannot change them mid-program.
                         </div>
                         <div style={{display:"flex",gap:8}}>
-                          <button className="bigbtn" onClick={()=>{setActiveId(lifts[0].id);setViewingWeek(liftWeeks[lifts[0].id]||1);setView("workout");setConfirmStart(false);}} style={{background:"#06d6a0",color:"#000",flex:2,marginBottom:0}}>LET'S GO →</button>
+                          <button className="bigbtn" onClick={()=>{setProgramStarted(true);setActiveId(lifts[0].id);setViewingWeek(liftWeeks[lifts[0].id]||1);setView("workout");setConfirmStart(false);}} style={{background:"#06d6a0",color:"#000",flex:2,marginBottom:0}}>LET'S GO →</button>
                           <button className="bigbtn" onClick={()=>setConfirmStart(false)} style={{background:"none",border:"1px solid #555",color:"#555",flex:1,marginBottom:0}}>BACK</button>
                         </div>
                       </div>
