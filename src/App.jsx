@@ -1149,15 +1149,15 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                     <div>
                       <div style={{color:"#555",fontSize:10,marginBottom:4}}>HEIGHT</div>
                       <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                        <input type="number" value={heightFtEntry||Math.floor(+bodyStats.heightIn/12)||""} placeholder="5" style={{width:44}} onChange={e=>setHeightFtEntry(e.target.value)} />
+                        <input type="number" value={heightFtEntry} placeholder="ft" style={{width:44}} onChange={e=>setHeightFtEntry(e.target.value)} />
                         <span style={{color:"#555",fontSize:11}}>ft</span>
-                        <input type="number" value={heightInEntry||(bodyStats.heightIn?(+bodyStats.heightIn%12):"")||""} placeholder="10" style={{width:44}} onChange={e=>setHeightInEntry(e.target.value)} />
+                        <input type="number" value={heightInEntry} placeholder="in" style={{width:44}} onChange={e=>setHeightInEntry(e.target.value)} />
                         <span style={{color:"#555",fontSize:11}}>in</span>
                       </div>
                     </div>
                     <div>
                       <div style={{color:"#555",fontSize:10,marginBottom:4}}>STARTING WEIGHT (lbs)</div>
-                      <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} style={{width:80,color:"#06d6a0"}} />
+                      <input type="number" value={weightEntry} placeholder="lbs" onChange={e=>setWeightEntry(e.target.value)} style={{width:80,color:"#06d6a0"}} />
                     </div>
 
                   </div>
@@ -1332,18 +1332,30 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 position:restRunning?"sticky":"relative",
                 top:restRunning?56:undefined,
                 zIndex:restRunning?9:undefined,
-                borderLeft:restRunning?"3px solid #f7b731":undefined,
+                borderLeft:restRunning?"3px solid #06d6a0":undefined,
                 transition:"all 0.2s"}}>
-                <div style={{textAlign:"center",minWidth:64}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
+                {/* Timer display */}
+                <div style={{textAlign:"center",minWidth:72}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
                     {restTimer!==null?`${Math.floor(restTimer/60)}:${String(restTimer%60).padStart(2,"0")}`:restDuration+"s"}
                   </div>
-                  <div style={{color:"#555",fontSize:9}}>REST</div>
+                  <div style={{color:"#555",fontSize:9,letterSpacing:1}}>REST</div>
                 </div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                  {[60,90,120,180].map(s=><button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}} style={{background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:6,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>{s}s</button>)}
-                  <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}} style={{background:"#f7b731",border:"none",color:"#000",borderRadius:6,padding:"6px 16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,cursor:"pointer"}}>GO</button>
-                  <button onClick={()=>{setRestTimer(null);setRestRunning(false);}} style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>RST</button>
+                {/* Preset grid */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,flex:1}}>
+                  {[60,90,120,180].map(s=>(
+                    <button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}}
+                      style={{background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:5,padding:"7px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,cursor:"pointer"}}>
+                      {s}s
+                    </button>
+                  ))}
+                </div>
+                {/* GO / RST */}
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}}
+                    style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"10px 16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,cursor:"pointer"}}>GO</button>
+                  <button onClick={()=>{setRestTimer(null);setRestRunning(false);}}
+                    style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,cursor:"pointer"}}>RST</button>
                 </div>
               </div>
 
