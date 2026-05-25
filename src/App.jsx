@@ -1,4 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = "https://tzbyqtcncrgaougrbbdk.supabase.co";
+const SUPABASE_KEY = "sb_publishable_kojIVAb_sIhRYr4lEv2kFQ_7Vpc0KIz";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar } from "recharts";
 
 const COLORS = ["#e85d04","#3a86ff","#8338ec","#06d6a0","#f7b731","#ff006e","#00b4d8","#80b918"];
@@ -21,7 +26,7 @@ const ACCESSORIES_BY_LIFT = {
 };
 const HYPE = ["Time to move some weight!","Let's get after it!","No excuses. Let's go!","Your future self will thank you.","The bar is waiting.","Stronger than last week. Prove it."];
 const DAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const ROOT_KEY = "barnone_v5";
+const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
 function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
 
@@ -69,16 +74,30 @@ function bmiCol(b) { b=+b; return b<18.5?"#3a86ff":b<25?"#06d6a0":b<30?"#f7b731"
 function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}) : ""; }
 function todayISO() { return new Date().toISOString().split("T")[0]; }
 
-async function hashPw(pw) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw+"bn_salt_2025"));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+// Supabase data functions
+async function loadUD(userId) {
+  const { data } = await supabase.from("user_data").select("*").eq("user_id", userId).single();
+  return data;
 }
-const getUsers = () => { try { return JSON.parse(localStorage.getItem(ROOT_KEY+"_users")||"[]"); } catch { return []; } };
-const saveUsers = u => { try { localStorage.setItem(ROOT_KEY+"_users", JSON.stringify(u)); } catch {} };
-const getSession = () => localStorage.getItem(ROOT_KEY+"_session") || null;
-const setSession = id => id ? localStorage.setItem(ROOT_KEY+"_session",id) : localStorage.removeItem(ROOT_KEY+"_session");
-const loadUD = id => { try { const r=localStorage.getItem(ROOT_KEY+"_d_"+id); return r?JSON.parse(r):null; } catch { return null; } };
-const saveUD = (id,d) => { try { localStorage.setItem(ROOT_KEY+"_d_"+id, JSON.stringify(d)); } catch {} };
+async function saveUD(userId, d) {
+  await supabase.from("user_data").upsert({
+    user_id: userId,
+    lifts: d.lifts,
+    start_date: d.startDate,
+    logs: d.logs,
+    completed_days: d.completedDays,
+    acc_list: d.accList,
+    exercise_history: d.exerciseHistory,
+    weight_adjust: d.weightAdjust,
+    lift_weeks: d.liftWeeks,
+    custom_accessories: d.customAccessories,
+    session_ledger: d.sessionLedger,
+    body_stats: d.bodyStats,
+    program_history: d.programHistory,
+    weight_nudge: d.weightNudge,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "user_id" });
+}
 
 export default function App() {
   const [users, setUsers] = useState(getUsers());
@@ -124,8 +143,11 @@ export default function App() {
 
   useEffect(() => {
     if (!uid) return;
-    saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge });
-  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,uid]);
+    const timer = setTimeout(() => {
+      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,uid]);
 
   useEffect(() => {
     if (restRunning && restTimer > 0) {
@@ -204,21 +226,24 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     });
   }, [hasSetup, uid]);
 
-  function loadUserIntoState(id) {
-    const d = loadUD(id);
-    setLifts(d?.lifts || DEFAULT_LIFTS);
-    setStartDate(d?.startDate || "");
-    setActiveId(d?.activeId || DEFAULT_LIFTS[0].id);
-    setLogs(d?.logs || {});
-    setCompletedDays(d?.completedDays || {});
-    setAccList(d?.accList || {});
-    setExerciseHistory(d?.exerciseHistory || {});
-    setWeightAdjust(d?.weightAdjust || {});
-    setLiftWeeks(d?.liftWeeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1])));
-    setCustomAccessories(d?.customAccessories || {});
-    setSessionLedger(d?.sessionLedger || []);
-    setBodyStats(d?.bodyStats || { heightIn:"", entries:[] });
-    setProgramHistory(d?.programHistory || []);
+  async function loadUserIntoState(userId) {
+    const d = await loadUD(userId);
+    if (d) {
+      setLifts(d.lifts || DEFAULT_LIFTS);
+      setStartDate(d.start_date || "");
+      setActiveId((d.lifts || DEFAULT_LIFTS)[0]?.id || DEFAULT_LIFTS[0].id);
+      setLogs(d.logs || {});
+      setCompletedDays(d.completed_days || {});
+      setAccList(d.acc_list || {});
+      setExerciseHistory(d.exercise_history || {});
+      setWeightAdjust(d.weight_adjust || {});
+      setLiftWeeks(d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1])));
+      setCustomAccessories(d.custom_accessories || {});
+      setSessionLedger(d.session_ledger || []);
+      setBodyStats(d.body_stats || { heightIn:"", entries:[] });
+      setProgramHistory(d.program_history || []);
+      setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
+    }
     setView("dashboard");
   }
 
@@ -229,13 +254,13 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     if (!email.includes("@")) { setAuthErr("Enter a valid email."); return; }
     if (password.length < 6) { setAuthErr("Password must be 6+ characters."); return; }
     if (password !== confirm) { setAuthErr("Passwords don't match."); return; }
-    if (users.find(u=>u.email.toLowerCase()===email.toLowerCase())) { setAuthErr("Email already registered."); return; }
-    const hash = await hashPw(password);
-    const id = "u_"+Date.now();
-    const updated = [...users, { id, name:name.trim(), email:email.trim().toLowerCase(), hash }];
-    setUsers(updated); saveUsers(updated);
-    setUid(id); setSession(id);
-    loadUserIntoState(id);
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { name: name.trim() } }
+    });
+    if (error) { setAuthErr(error.message); return; }
+    setCurrentUser(data.user);
     setAuthScreen(null);
     setAuthForm({ name:"", email:"", password:"", confirm:"" });
   }
@@ -255,7 +280,13 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     setAuthForm({ name:"", email:"", password:"", confirm:"" });
   }
 
-  function handleLogout() { setSession(null); setUid(null); setAuthScreen("login"); setShowProfile(false); }
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setSession(null);
+    setCurrentUser(null);
+    setAuthScreen("login");
+    setShowProfile(false);
+  }
 
   function getEffMax(liftId, targetWeek) {
     const lift = lifts.find(l=>l.id===liftId);
@@ -487,7 +518,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       {showProfile && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0f99",zIndex:100,display:"flex",alignItems:"flex-end"}} onClick={()=>setShowProfile(false)}>
           <div style={{background:"#0f0f1a",borderRadius:"16px 16px 0 0",padding:24,width:"100%",maxWidth:500,margin:"0 auto"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,marginBottom:2}}>{currentUser?.name}</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,marginBottom:2}}>{currentUser?.user_metadata?.name || currentUser?.email}</div>
             <div style={{color:"#555",fontSize:11,marginBottom:16}}>{currentUser?.email}</div>
             <div style={{display:"flex",gap:20,marginBottom:20}}>
               <div><div style={{color:"#555",fontSize:10}}>SESSIONS</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26}}>{totalSessions}</div></div>
@@ -497,6 +528,13 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
             <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
             <button onClick={()=>setShowProfile(false)} className="bigbtn" style={{background:"none",border:"1px solid #333",color:"#555"}}>CANCEL</button>
           </div>
+        </div>
+      )}
+
+      {loading && (
+        <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:200,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,letterSpacing:4,color:"#e85d04",lineHeight:1}}>BAR NONE</div>
+          <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#444",letterSpacing:2,marginTop:8}}>LOADING...</div>
         </div>
       )}
 
@@ -523,7 +561,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
           <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,color:"#333",letterSpacing:2}}>THE PROGRAM</div>
         </div>
         <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
-          {currentUser?.name?.split(" ")[0]?.toUpperCase()||"USER"}
+          {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
         </button>
       </div>
 
