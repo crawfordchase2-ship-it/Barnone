@@ -144,6 +144,8 @@ export default function App() {
   const [confirmStart, setConfirmStart] = useState(false);
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
+  const [newReactionCount, setNewReactionCount] = useState(0);
+  const [lastSeenReaction, setLastSeenReaction] = useState("");
   const [socialTab, setSocialTab] = useState("friends");
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
@@ -332,7 +334,14 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     const { data: reactions } = await supabase
       .from("reactions").select("*").eq("to_id", userId)
       .order("created_at", { ascending: false }).limit(20);
-    if (reactions) setMyReactions(reactions);
+    if (reactions) {
+      setMyReactions(reactions);
+      // Count reactions newer than last seen
+      const lastSeen = localStorage.getItem("barnone_last_reaction_" + userId) || "";
+      const newCount = reactions.filter(r => r.created_at > lastSeen).length;
+      setNewReactionCount(newCount);
+      setLastSeenReaction(reactions[0]?.created_at || "");
+    }
   }
 
 
@@ -513,14 +522,18 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
   async function savePublicProfile() {
     const uname = username.toLowerCase().replace(/[^a-z0-9_]/g, "");
-    await supabase.from("public_profiles").upsert({
+    const { error } = await supabase.from("public_profiles").upsert({
       id: uid,
       name: currentUser?.user_metadata?.name || currentUser?.email || "User",
       username: uname,
       is_public: isPublic
     }, { onConflict: "id" });
+    if (error) {
+      alert("Error saving profile: " + error.message);
+      return;
+    }
     setUsername(uname);
-    alert("Profile saved!");
+    alert("Profile saved! Username: @" + uname);
   }
 
   function finishDay() {
@@ -743,7 +756,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
           </div>
           <div style={{display:"flex",borderBottom:"1px solid #1a1a1a"}}>
             {[{id:"friends",label:"FRIENDS"},{id:"requests",label:friendRequests.length > 0 ? "REQUESTS (" + friendRequests.length + ")" : "REQUESTS"},{id:"profile",label:"MY PROFILE"}].map(t => (
-              <button key={t.id} onClick={()=>setSocialTab(t.id)} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
+              <button key={t.id} onClick={()=>{setSocialTab(t.id);if(t.id==="profile"){localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewReactionCount(0);}}} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
                 {t.label}
               </button>
             ))}
@@ -868,17 +881,9 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
         <div>
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
         </div>
-        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <button onClick={()=>setShowSocial(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 10px",fontSize:16,cursor:"pointer",position:"relative"}}>
-            {"👥"}
-            {friendRequests.length > 0 && (
-              <span style={{position:"absolute",top:-4,right:-4,background:"#e85d04",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace"}}>{friendRequests.length}</span>
-            )}
-          </button>
-          <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
-            {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
-          </button>
-        </div>
+        <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
+          {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
+        </button>
       </div>
 
       <div style={{maxWidth:600,margin:"0 auto"}}>
@@ -1514,12 +1519,16 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
           {id:"workout",   label:"LIFT",     color:"#3a86ff", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><circle cx="4" cy="12" r="2"/><circle cx="20" cy="12" r="2"/><rect x="7" y="8" width="2" height="8" rx="1"/><rect x="15" y="8" width="2" height="8" rx="1"/></svg>},
           {id:"progress",  label:"PROGRESS", color:"#8338ec", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>},
           {id:"ledger",    label:"LEDGER",   color:"#06d6a0", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>},
+          {id:"social",    label:"SOCIAL",   color:"#ff006e", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
           {id:"setup",     label:hasSetup?"PROGRAM":"SETUP", color:"#f7b731", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>},
         ].map(t=>(
-          <button key={t.id} onClick={()=>setView(t.id)} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id?t.color:"#444"}}>
+          <button key={t.id} onClick={()=>t.id==="social"?setShowSocial(true):setView(t.id)} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id||( t.id==="social"&&showSocial)?t.color:"#444",position:"relative"}}>
             {t.svg}
             <span style={{fontSize:9,letterSpacing:1,fontFamily:"'DM Mono',monospace"}}>{t.label}</span>
-            <div style={{width:4,height:4,borderRadius:"50%",background:view===t.id?t.color:"transparent"}}></div>
+            <div style={{width:4,height:4,borderRadius:"50%",background:view===t.id||( t.id==="social"&&showSocial)?t.color:"transparent"}}></div>
+            {t.id==="social" && (friendRequests.length + newReactionCount) > 0 && (
+              <span style={{position:"absolute",top:4,right:"15%",background:"#e85d04",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace"}}>{friendRequests.length + newReactionCount}</span>
+            )}
           </button>
         ))}
       </div>
