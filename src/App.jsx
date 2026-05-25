@@ -1086,7 +1086,12 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                     </div>
                     <button onClick={()=>{
                       const totalIn = (+heightFtEntry||0)*12+(+heightInEntry||0);
-                      if(totalIn>0) { setBodyStats(prev=>({...prev,heightIn:String(totalIn)})); setHeightFtEntry(""); setHeightInEntry(""); }
+                      if(totalIn>0) {
+                        const newStats = {...bodyStats,heightIn:String(totalIn)};
+                        setBodyStats(newStats);
+                        setHeightFtEntry(""); setHeightInEntry("");
+                        if(uid) saveUD(uid,{lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats:newStats,programHistory,weightNudge,programStarted});
+                      }
                       if(weightEntry) logWeightAndDismiss();
                     }} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"6px 16px"}}>SAVE</button>
                   </div>
