@@ -145,6 +145,7 @@ export default function App() {
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
   const [newReactionCount, setNewReactionCount] = useState(0);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [lastSeenReaction, setLastSeenReaction] = useState("");
   const [socialTab, setSocialTab] = useState("friends");
   const [friends, setFriends] = useState([]);
@@ -533,6 +534,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       return;
     }
     setUsername(uname);
+    setEditingProfile(false);
     alert("Profile saved! Username: @" + uname);
   }
 
@@ -842,23 +844,45 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
             {socialTab === "profile" && (
               <div>
                 <div style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:14}}>
-                  <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>USERNAME</div>
-                  <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14}}>
-                    <span style={{color:"#555",fontSize:14}}>@</span>
-                    <input type="text" value={username} placeholder="yourname"
-                      onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                      style={{flex:1,background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-                    <div>
-                      <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
-                      <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
-                    </div>
-                    <button onClick={()=>setIsPublic(p => !p)} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid " + (isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer",transition:"all 0.15s"}}>
-                      {isPublic ? "ON" : "OFF"}
-                    </button>
-                  </div>
-                  <button onClick={savePublicProfile} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1,cursor:"pointer"}}>SAVE PROFILE</button>
+                  {username ? (
+                    <>
+                      <div style={{marginBottom:12}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:4}}>USERNAME</div>
+                        <div style={{color:"#f0f0f0",fontSize:16,fontFamily:"'DM Mono',monospace"}}>@{username}</div>
+                        <div style={{color:"#333",fontSize:10,marginTop:4}}>Username is permanent and cannot be changed</div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <div>
+                          <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
+                          <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
+                        </div>
+                        <button onClick={()=>{setIsPublic(p=>!p);savePublicProfile();}} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                          {isPublic ? "ON" : "OFF"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>CHOOSE YOUR USERNAME</div>
+                      <div style={{color:"#444",fontSize:11,marginBottom:10}}>This cannot be changed once set.</div>
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14}}>
+                        <span style={{color:"#555",fontSize:14}}>@</span>
+                        <input type="text" value={username} placeholder="yourname"
+                          onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                          style={{flex:1,background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                        <div>
+                          <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
+                          <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
+                        </div>
+                        <button onClick={()=>setIsPublic(p=>!p)} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                          {isPublic ? "ON" : "OFF"}
+                        </button>
+                      </div>
+                      <button onClick={savePublicProfile} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1,cursor:"pointer"}}>SET USERNAME</button>
+                    </>
+                  )}
                 </div>
                 {myReactions.length > 0 && (
                   <div style={{background:"#0f0f1a",borderRadius:10,padding:14}}>
