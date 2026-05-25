@@ -763,7 +763,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                       <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
                       <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
                     </div>
-                    <button onClick={()=>setIsPublic(p=>!p)} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:`1px solid ${isPublic?"#06d6a0":"#555"}`,color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer",transition:"all 0.15s"}}>
+                    <button onClick={()=>setIsPublic(p=>!p)} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer",transition:"all 0.15s"}}>
                       {isPublic?"ON":"OFF"}
                     </button>
                   </div>
@@ -820,7 +820,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
               <div style={{...card,borderLeft:"3px solid #f7b731",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
                 <div>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#f7b731",letterSpacing:1}}>LOG THIS WEEK'S WEIGHT</div>
-                  <div style={{color:"#555",fontSize:11}}>Last: {latestWeight ? `${latestWeight} lbs` : "never"}</div>
+                  <div style={{color:"#555",fontSize:11}}>Last: {latestWeight ? latestWeight+" lbs" : "never"}</div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <input type="number" value={weightEntry} placeholder="lbs" onFocus={e=>e.target.select()}
@@ -906,7 +906,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
             </div>
 
             {sessionLedger[0] && (
-              <div style={{...card,borderLeft:`3px solid ${sessionLedger[0].liftColor||"#555"}`}}>
+              <div style={{...card,borderLeft:"3px solid "+(sessionLedger[0].liftColor||"#555")}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>LAST SESSION</div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <div style={{color:sessionLedger[0].liftColor,fontFamily:"'Bebas Neue',sans-serif",fontSize:18}}>{sessionLedger[0].liftName}</div>
@@ -968,15 +968,15 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
               const cur=l.startingMax?calcCurrentMax(l.startingMax):null;
               const wkts=cur?calcWorkingWeights(cur):null;
               return (
-                <div key={l.id} style={{...card,borderLeft:`3px solid ${l.color}`}}>
+                <div key={l.id} style={{...card,borderLeft:"3px solid "+l.color}}>
                   <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10}}>
                     <div style={{flex:1}}>
-                      <select value={l.mainLiftOption||"Bench"} onChange={e=>{const v=e.target.value;updateLift(l.id,"mainLiftOption",v);if(v==="Custom")updateLift(l.id,"name","");else updateLift(l.id,"name",v);}} style={{width:"100%",background:"transparent",border:"none",borderBottom:`1px solid ${l.color}66`,color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1,padding:"2px 0",cursor:"pointer",marginBottom:6}}>
+                      <select value={l.mainLiftOption||"Bench"} onChange={e=>{const v=e.target.value;updateLift(l.id,"mainLiftOption",v);if(v==="Custom")updateLift(l.id,"name","");else updateLift(l.id,"name",v);}} style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid "+l.color+"66",color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1,padding:"2px 0",cursor:"pointer",marginBottom:6}}>
                         {MAIN_LIFT_OPTIONS.map(o=><option key={o} value={o} style={{background:"#1a1a2e",fontFamily:"sans-serif",fontSize:14}}>{o}</option>)}
                       </select>
-                      {l.mainLiftOption==="Custom" && <input type="text" value={l.name} placeholder="Type lift name..." onChange={e=>updateLift(l.id,"name",e.target.value)} style={{width:"100%",background:"transparent",border:"none",borderBottom:`1px solid ${l.color}44`,color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,padding:"2px 0",outline:"none",marginBottom:6}} />}
+                      {l.mainLiftOption==="Custom" && <input type="text" value={l.name} placeholder="Type lift name..." onChange={e=>updateLift(l.id,"name",e.target.value)} style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid "+l.color+"44",color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,padding:"2px 0",outline:"none",marginBottom:6}} />}
                       <div style={{display:"flex",gap:6}}>
-                        {["UPPER","LOWER"].map(t=><button key={t} onClick={()=>updateLift(l.id,"isLower",t==="LOWER")} style={{background:(t==="LOWER")===l.isLower?l.color:"#111",color:(t==="LOWER")===l.isLower?"#000":"#555",border:`1px solid ${(t==="LOWER")===l.isLower?l.color:"#333"}`,borderRadius:3,padding:"2px 8px",fontSize:10,cursor:"pointer"}}>{t}</button>)}
+                        {["UPPER","LOWER"].map(t=><button key={t} onClick={()=>updateLift(l.id,"isLower",t==="LOWER")} style={{background:(t==="LOWER")===l.isLower?l.color:"#111",color:(t==="LOWER")===l.isLower?"#000":"#555",border:"1px solid "+((t==="LOWER")===l.isLower?l.color:"#333"),borderRadius:3,padding:"2px 8px",fontSize:10,cursor:"pointer"}}>{t}</button>)}
                       </div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -985,7 +985,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                       {lifts.length>1 && <button onClick={()=>removeLift(l.id)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>}
                     </div>
                   </div>
-                  {cur && <div style={{color:"#555",fontSize:11,marginBottom:8}}>Training at: <span style={{color:l.color}}>{cur} lbs</span>{"  "}<button onClick={()=>setPreviewLift(previewLift===l.id?null:l.id)} style={{background:"none",border:`1px solid ${l.color}`,color:l.color,borderRadius:3,padding:"1px 7px",fontSize:10,cursor:"pointer"}}>{previewLift===l.id?"hide":"preview"}</button></div>}
+                  {cur && <div style={{color:"#555",fontSize:11,marginBottom:8}}>Training at: <span style={{color:l.color}}>{cur} lbs</span>{"  "}<button onClick={()=>setPreviewLift(previewLift===l.id?null:l.id)} style={{background:"none",border:"1px solid "+l.color,color:l.color,borderRadius:3,padding:"1px 7px",fontSize:10,cursor:"pointer"}}>{previewLift===l.id?"hide":"preview"}</button></div>}
                   {previewLift===l.id && wkts && (
                     <div style={{background:"#0a0a0f",borderRadius:6,padding:"10px 12px",marginBottom:10}}>
                       {wkts.map((w,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid #1a1a1a",fontSize:12}}><span style={{color:"#555"}}>Set {i+1}</span><span style={{color:l.color}}>{w} lbs</span><span style={{color:"#444"}}>{i<3?"× 10":"max reps"}</span></div>)}
@@ -993,7 +993,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                   )}
                   <div style={{color:"#555",fontSize:10,marginBottom:5}}>TRAINING DAYS</div>
                   <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>{const sel=(l.trainingDays||[]).includes(d);return <button key={d} onClick={()=>updateLift(l.id,"trainingDays",sel?l.trainingDays.filter(x=>x!==d):[...(l.trainingDays||[]),d])} style={{background:sel?l.color:"#111",color:sel?"#000":"#555",border:`1px solid ${sel?l.color:"#333"}`,borderRadius:4,padding:"3px 8px",fontSize:11,cursor:"pointer",transition:"all 0.15s"}}>{d}</button>;})}
+                    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>{const sel=(l.trainingDays||[]).includes(d);return <button key={d} onClick={()=>updateLift(l.id,"trainingDays",sel?l.trainingDays.filter(x=>x!==d):[...(l.trainingDays||[]),d])} style={{background:sel?l.color:"#111",color:sel?"#000":"#555",border:"1px solid "+(sel?l.color:"#333"),borderRadius:4,padding:"3px 8px",fontSize:11,cursor:"pointer",transition:"all 0.15s"}}>{d}</button>;})}
                   </div>
                 </div>
               );
@@ -1034,7 +1034,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
               ))}
             </div>
             <div style={{padding:"10px 16px",display:"flex",gap:6,flexWrap:"wrap",borderBottom:"1px solid #1a1a1a"}}>
-              {lifts.map(l=>{const done=completedDays?.[liftWeeks[l.id]]?.[l.id];return <button key={l.id} className="bn" onClick={()=>switchLift(l.id)} style={{background:activeId===l.id?l.color:"#1a1a2e",color:activeId===l.id?"#000":l.color,border:`1px solid ${l.color}`,opacity:done&&activeId!==l.id?0.5:1}}>{l.name}{done?" ✓":""}</button>;})}
+              {lifts.map(l=>{const done=completedDays?.[liftWeeks[l.id]]?.[l.id];return <button key={l.id} className="bn" onClick={()=>switchLift(l.id)} style={{background:activeId===l.id?l.color:"#1a1a2e",color:activeId===l.id?"#000":l.color,border:"1px solid "+l.color,opacity:done&&activeId!==l.id?0.5:1}}>{l.name}{done?" ✓":""}</button>;})}
             </div>
             <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid #1a1a1a"}}>
               <button onClick={()=>navigateWeek(-1)} disabled={viewingWeek<=1} style={{background:"#1a1a2e",border:"1px solid #333",color:viewingWeek<=1?"#333":"#aaa",borderRadius:4,width:32,height:32,cursor:viewingWeek<=1?"default":"pointer",fontSize:18}}>‹</button>
@@ -1044,8 +1044,8 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
               <button onClick={()=>navigateWeek(1)} disabled={viewingWeek>=activeLiftWeek} style={{background:"#1a1a2e",border:"1px solid #333",color:viewingWeek>=activeLiftWeek?"#333":"#aaa",borderRadius:4,width:32,height:32,cursor:viewingWeek>=activeLiftWeek?"default":"pointer",fontSize:18}}>›</button>
               {isPastWeek && (
                 <>
-                  <button onClick={()=>{setViewingWeek(activeLiftWeek);setEditingPastWeek(false);}} style={{background:"none",border:`1px solid ${lift.color}`,color:lift.color,borderRadius:4,padding:"4px 10px",fontSize:11,cursor:"pointer"}}>current</button>
-                  <button onClick={()=>setEditingPastWeek(e=>!e)} style={{background:editingPastWeek?"#2e1a1a":"#1a1a2e",border:`1px solid ${editingPastWeek?"#e85d04":"#555"}`,color:editingPastWeek?"#e85d04":"#aaa",borderRadius:4,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>{editingPastWeek?"CANCEL":"EDIT"}</button>
+                  <button onClick={()=>{setViewingWeek(activeLiftWeek);setEditingPastWeek(false);}} style={{background:"none",border:"1px solid "+lift.color,color:lift.color,borderRadius:4,padding:"4px 10px",fontSize:11,cursor:"pointer"}}>current</button>
+                  <button onClick={()=>setEditingPastWeek(e=>!e)} style={{background:editingPastWeek?"#2e1a1a":"#1a1a2e",border:"1px solid "+(editingPastWeek?"#e85d04":"#555"),color:editingPastWeek?"#e85d04":"#aaa",borderRadius:4,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>{editingPastWeek?"CANCEL":"EDIT"}</button>
                 </>
               )}
             </div>
@@ -1056,7 +1056,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 {l: isAssisted ? "EFFECTIVE PULL" : "EST MAX", v: isAssisted ? (latestWeight ? `${latestWeight - effMax} lbs` : "—") : (sessionEstMax||"—"), c: isAssisted ? (latestWeight?"#06d6a0":"#333") : (sessionEstMax?"#06d6a0":"#333")},
                 {l:"NEXT WEEK", v: isAssisted ? (nextMax === 0 ? "UNASSISTED!" : `${nextMax} lbs`) : nextMax, c: willProgress ? "#06d6a0" : "#333"}
               ].map(x=>(
-                  <div key={x.l} style={{...card,flex:1,borderLeft:`3px solid ${x.c}`,marginBottom:0}}>
+                  <div key={x.l} style={{...card,flex:1,borderLeft:"3px solid "+x.c,marginBottom:0}}>
                     <div style={{color:"#555",fontSize:9,marginBottom:2}}>{x.l}</div>
                     <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:x.c}}>{x.v} <span style={{fontSize:9,color:"#555"}}>lbs</span></div>
                   </div>
@@ -1071,7 +1071,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                   <div style={{color:"#555",fontSize:9}}>REST</div>
                 </div>
                 <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                  {[60,90,120,180].map(s=><button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}} style={{background:restDuration===s?"#1a1a2e":"#111",border:`1px solid ${restDuration===s?"#555":"#222"}`,color:restDuration===s?"#aaa":"#444",borderRadius:4,padding:"3px 7px",fontSize:10,cursor:"pointer"}}>{s}s</button>)}
+                  {[60,90,120,180].map(s=><button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}} style={{background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:4,padding:"3px 7px",fontSize:10,cursor:"pointer"}}>{s}s</button>)}
                   <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}} style={{background:"#f7b731",border:"none",color:"#000",borderRadius:4,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>GO</button>
                   <button onClick={()=>{setRestTimer(null);setRestRunning(false);}} style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:4,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>RST</button>
                 </div>
@@ -1090,10 +1090,10 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                         ? <div style={{color:lift.color,fontSize:13}}>{getReps(week,activeId,i)} reps</div>
                         : <div style={{display:"flex",alignItems:"center",gap:0}}>
                             <button onClick={()=>setReps(week,activeId,i,String(Math.max(1,+(getReps(week,activeId,i)||10)-1)))}
-                              style={{background:"#0f0f1a",border:`2px solid ${lift.color}`,color:lift.color,borderRadius:"8px 0 0 8px",width:44,height:44,cursor:"pointer",fontSize:22,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                            <div style={{background:"#1a1a2e",borderTop:`2px solid ${lift.color}`,borderBottom:`2px solid ${lift.color}`,color:lift.color,width:48,height:44,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:24}}>{getReps(week,activeId,i)}</div>
+                              style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"8px 0 0 8px",width:44,height:44,cursor:"pointer",fontSize:22,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                            <div style={{background:"#1a1a2e",borderTop:"2px solid "+lift.color,borderBottom:"2px solid "+lift.color,color:lift.color,width:48,height:44,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:24}}>{getReps(week,activeId,i)}</div>
                             <button onClick={()=>setReps(week,activeId,i,String(+(getReps(week,activeId,i)||10)+1))}
-                              style={{background:"#0f0f1a",border:`2px solid ${lift.color}`,color:lift.color,borderRadius:"0 8px 8px 0",width:44,height:44,cursor:"pointer",fontSize:22,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                              style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"0 8px 8px 0",width:44,height:44,cursor:"pointer",fontSize:22,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
                           </div>
                     }
                   </div>
@@ -1140,8 +1140,8 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                         <span style={{color:"#555",fontSize:11}}>reps</span>
                         {!isReadOnly&&(
                           <div style={{marginLeft:"auto",display:"flex",gap:4}}>
-                            <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:`1px solid ${adj==="down"?"#222":"#06d6a0"}`,color:adj==="up"?"#000":adj==="down"?"#333":"#06d6a0",borderRadius:4,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
-                            <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:`1px solid ${adj==="up"?"#222":"#e85d04"}`,color:adj==="down"?"#000":adj==="up"?"#333":"#e85d04",borderRadius:4,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+                            <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="down"?"#222":"#06d6a0"),color:adj==="up"?"#000":adj==="down"?"#333":"#06d6a0",borderRadius:4,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
+                            <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="up"?"#222":"#e85d04"),color:adj==="down"?"#000":adj==="up"?"#333":"#e85d04",borderRadius:4,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
                           </div>
                         )}
                       </div>
@@ -1160,7 +1160,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
               {isPastWeek&&editingPastWeek&&<button className="bigbtn" onClick={()=>setEditingPastWeek(false)} style={{background:lift.color,color:"#000"}}>SAVE CHANGES</button>}
               {!isPastWeek && (
                 <>
-                  <button className="bigbtn" onClick={finishDay} style={{background:isDayDone?"#0f0f1a":lift.color,color:isDayDone?lift.color:"#000",border:isDayDone?`1px solid ${lift.color}`:"none"}}>
+                  <button className="bigbtn" onClick={finishDay} style={{background:isDayDone?"#0f0f1a":lift.color,color:isDayDone?lift.color:"#000",border:isDayDone?"1px solid "+lift.color:"none"}}>
                     {isDayDone?"✓ DAY COMPLETE":"FINISH DAY"}
                   </button>
                   {willProgress&&!isDayDone&&!isAssisted&&<div style={{textAlign:"center",color:"#06d6a0",fontSize:12}}>🔥 Next week's max: {nextMax} lbs</div>}
@@ -1198,13 +1198,13 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 return data;
               })() : [];
               return (
-                <div key={l.id} style={{...card,borderLeft:`3px solid ${l.color}`}}>
+                <div key={l.id} style={{...card,borderLeft:"3px solid "+l.color}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:l.color,marginBottom:2}}>{l.name}</div>
                   <div style={{color:"#555",fontSize:11,marginBottom:10}}>
                     {isAssistedPullUp(l)
                       ? <>
                           Start: <span style={{color:"#aaa"}}>{l.startingMax} lbs assist</span>{"  →  "}
-                          Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax === 0 ? "UNASSISTED! 🎉" : `${curMax} lbs assist`}</span>
+                          Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax === 0 ? "UNASSISTED! 🎉" : curMax+" lbs assist"}</span>
                           {latestWeight && curMax > 0 && <span style={{color:"#06d6a0"}}> · Pulling {latestWeight - curMax} lbs</span>}
                           {latestWeight && curMax === 0 && <span style={{color:"#f7b731"}}> · Full {latestWeight} lbs!</span>}
                         </>
@@ -1215,7 +1215,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                   <ResponsiveContainer width="100%" height={110}>
                     <LineChart data={maxData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" /><XAxis dataKey="w" tick={{fill:"#555",fontSize:9}} /><YAxis tick={{fill:"#555",fontSize:9}} domain={["auto","auto"]} />
-                      <Tooltip contentStyle={{background:"#1a1a2e",border:`1px solid ${l.color}`,borderRadius:6,fontSize:11}} />
+                      <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} />
                       <ReferenceLine y={startMax} stroke="#333" strokeDasharray="4 4" />
                       <Line type="monotone" dataKey="max" stroke={l.color} strokeWidth={2} dot={{fill:l.color,r:3}} name="Max" connectNulls />
                     </LineChart>
@@ -1227,7 +1227,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                         <LineChart data={effPullData}>
                           <XAxis dataKey="w" tick={{fill:"#555",fontSize:8}} />
                           <YAxis tick={{fill:"#555",fontSize:8}} domain={["auto","auto"]} />
-                          <Tooltip contentStyle={{background:"#1a1a2e",border:`1px solid ${l.color}`,borderRadius:6,fontSize:11}} />
+                          <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} />
                           <Line type="monotone" dataKey="pull" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="Effective Pull" />
                         </LineChart>
                       </ResponsiveContainer>
@@ -1238,7 +1238,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                     <>
                       <div style={{color:"#555",fontSize:10,marginTop:10,marginBottom:4}}>VOLUME (1000s lbs)</div>
                       <ResponsiveContainer width="100%" height={80}>
-                        <BarChart data={volData}><XAxis dataKey="d" tick={{fill:"#555",fontSize:8}} /><YAxis tick={{fill:"#555",fontSize:8}} /><Tooltip contentStyle={{background:"#1a1a2e",border:`1px solid ${l.color}`,borderRadius:6,fontSize:11}} /><Bar dataKey="v" fill={l.color} radius={[3,3,0,0]} name="Vol(k)" /></BarChart>
+                        <BarChart data={volData}><XAxis dataKey="d" tick={{fill:"#555",fontSize:8}} /><YAxis tick={{fill:"#555",fontSize:8}} /><Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} /><Bar dataKey="v" fill={l.color} radius={[3,3,0,0]} name="Vol(k)" /></BarChart>
                       </ResponsiveContainer>
                     </>
                   )}
@@ -1265,7 +1265,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>WORKOUT LEDGER</div>
             {sessionLedger.length===0&&<div style={{color:"#333",fontSize:13,textAlign:"center",padding:40}}>No sessions logged yet</div>}
             {sessionLedger.map((s,i)=>(
-              <div key={i} style={{...card,borderLeft:`3px solid ${s.liftColor||"#555"}`}}>
+              <div key={i} style={{...card,borderLeft:"3px solid "+(s.liftColor||"#555")}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:s.liftColor||"#f0f0f0"}}>{s.liftName}</div>
                   <div style={{color:"#555",fontSize:11}}>{fmtDate(s.date)} · Wk {s.week}</div>
