@@ -623,7 +623,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
         .bigbtn{border:none;cursor:pointer;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;padding:14px;width:100%;transition:all 0.2s;margin-bottom:8px;}
         .ntab{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;color:#444;font-family:'DM Mono',monospace;font-size:9px;transition:all 0.15s;flex:1;}
         .ntab.on{color:#f0f0f0;}
-        .srow{display:grid;grid-template-columns:28px 88px 68px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a1a;}
+        .srow{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #1a1a1a;}
       `}</style>
 
       {authScreen && authScreen!=="profile" && (
@@ -1172,10 +1172,10 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                         ? <div style={{color:lift.color,fontSize:13}}>{getReps(week,activeId,i)} reps</div>
                         : <div style={{display:"flex",alignItems:"center",gap:0}}>
                             <button onClick={()=>setReps(week,activeId,i,String(Math.max(1,+(getReps(week,activeId,i)||10)-1)))}
-                              style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"8px 0 0 8px",width:44,height:44,cursor:"pointer",fontSize:22,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                            <div style={{background:"#1a1a2e",borderTop:"2px solid "+lift.color,borderBottom:"2px solid "+lift.color,color:lift.color,width:48,height:44,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:24}}>{getReps(week,activeId,i)}</div>
+                              style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"8px 0 0 8px",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                            <div style={{background:"#1a1a2e",borderTop:"2px solid "+lift.color,borderBottom:"2px solid "+lift.color,color:lift.color,width:64,height:48,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:28}}>{getReps(week,activeId,i)}</div>
                             <button onClick={()=>setReps(week,activeId,i,String(+(getReps(week,activeId,i)||10)+1))}
-                              style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"0 8px 8px 0",width:44,height:44,cursor:"pointer",fontSize:22,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                              style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"0 8px 8px 0",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
                           </div>
                     }
                   </div>
