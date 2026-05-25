@@ -100,26 +100,29 @@ async function saveUD(userId, d) {
 }
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [authForm, setAuthForm] = useState({ name:"", email:"", password:"", confirm:"" });
   const [authErr, setAuthErr] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  const [lifts, setLifts] = useState(saved?.lifts || DEFAULT_LIFTS);
-  const [startDate, setStartDate] = useState(saved?.startDate || "");
-  const [activeId, setActiveId] = useState(saved?.activeId || DEFAULT_LIFTS[0].id);
+  const [lifts, setLifts] = useState(DEFAULT_LIFTS);
+  const [startDate, setStartDate] = useState("");
+  const [activeId, setActiveId] = useState(DEFAULT_LIFTS[0].id);
   const [view, setView] = useState("dashboard");
-  const [logs, setLogs] = useState(saved?.logs || {});
-  const [completedDays, setCompletedDays] = useState(saved?.completedDays || {});
-  const [accList, setAccList] = useState(saved?.accList || {});
-  const [exerciseHistory, setExerciseHistory] = useState(saved?.exerciseHistory || {});
-  const [weightAdjust, setWeightAdjust] = useState(saved?.weightAdjust || {});
-  const [liftWeeks, setLiftWeeks] = useState(saved?.liftWeeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1])));
-  const [customAccessories, setCustomAccessories] = useState(saved?.customAccessories || {});
-  const [sessionLedger, setSessionLedger] = useState(saved?.sessionLedger || []);
-  const [bodyStats, setBodyStats] = useState(saved?.bodyStats || { heightIn:"", entries:[] });
-  const [programHistory, setProgramHistory] = useState(saved?.programHistory || []);
+  const [logs, setLogs] = useState({});
+  const [completedDays, setCompletedDays] = useState({});
+  const [accList, setAccList] = useState({});
+  const [exerciseHistory, setExerciseHistory] = useState({});
+  const [weightAdjust, setWeightAdjust] = useState({});
+  const [liftWeeks, setLiftWeeks] = useState(Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1])));
+  const [customAccessories, setCustomAccessories] = useState({});
+  const [sessionLedger, setSessionLedger] = useState([]);
+  const [bodyStats, setBodyStats] = useState({ heightIn:"", entries:[] });
+  const [programHistory, setProgramHistory] = useState([]);
   const [viewingWeek, setViewingWeek] = useState(1);
   const [editingPastWeek, setEditingPastWeek] = useState(false);
   const [selectedAcc, setSelectedAcc] = useState({});
@@ -131,9 +134,33 @@ export default function App() {
   const [restDuration, setRestDuration] = useState(90);
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
-  const [weightNudge, setWeightNudge] = useState(saved?.weightNudge || { weekKey:"", skips:0 });
+  const [weightNudge, setWeightNudge] = useState({ weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
   const timerRef = useRef(null);
+
+  // Restore session on load
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        setCurrentUser(session.user);
+        setAuthScreen(null);
+        loadUserIntoState(session.user.id);
+      }
+      setLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        setCurrentUser(session.user);
+        setAuthScreen(null);
+      } else {
+        setAuthScreen("login");
+        setLoading(false);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const uid = session?.user?.id;
   const hasSetup = lifts.every(l=>l.startingMax>0) && startDate;
