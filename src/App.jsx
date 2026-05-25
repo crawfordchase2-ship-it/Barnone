@@ -62,6 +62,7 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ name:"", email:"", password:"", confirm:"" });
   const [authErr, setAuthErr] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const saved = uid ? loadUD(uid) : null;
   const [lifts, setLifts] = useState(saved?.lifts || DEFAULT_LIFTS);
@@ -154,7 +155,8 @@ export default function App() {
     if (!user) { setAuthErr("No account found."); return; }
     const hash = await hashPw(password);
     if (hash !== user.hash) { setAuthErr("Incorrect password."); return; }
-    setUid(user.id); setSession(user.id);
+    setUid(user.id);
+    if (rememberMe) setSession(user.id);
     loadUserIntoState(user.id);
     setAuthScreen(null);
     setAuthForm({ name:"", email:"", password:"", confirm:"" });
@@ -333,6 +335,13 @@ export default function App() {
               <button onClick={()=>setShowPw(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11}}>{showPw?"hide":"show"}</button>
             </div>
             {authScreen==="register" && <input type="password" value={authForm.confirm} placeholder="Confirm password" onChange={e=>setAuthForm(f=>({...f,confirm:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&handleRegister()} style={{...iS,marginBottom:16}} />}
+            {authScreen==="login" && (
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+                <input type="checkbox" id="rememberMe" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)}
+                  style={{width:16,height:16,cursor:"pointer",accentColor:"#e85d04"}} />
+                <label htmlFor="rememberMe" style={{color:"#555",fontSize:12,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>Remember me on this device</label>
+              </div>
+            )}
             {authErr && <div style={{color:"#e85d04",fontSize:12,marginBottom:12,textAlign:"center"}}>{authErr}</div>}
             <button onClick={authScreen==="login"?handleLogin:handleRegister} className="bigbtn" style={{background:"#fff",color:"#000"}}>{authScreen==="login"?"SIGN IN →":"CREATE ACCOUNT →"}</button>
           </div>
@@ -462,15 +471,37 @@ export default function App() {
 
         {view==="setup" && (
           <div style={{padding:16}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>PROGRAM SETUP</div>
-            <div style={{...card,borderLeft:"3px solid #fff"}}>
-              <div style={{color:"#555",fontSize:10,marginBottom:6}}>PROGRAM START DATE</div>
-              <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"transparent",border:"none",color:"#f0f0f0",fontSize:14,outline:"none",width:"100%"}} />
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1}}>YOUR LIFTS</div>
-              <button onClick={addLift} className="bn" style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",fontSize:13,padding:"4px 10px"}}>+ ADD LIFT</button>
-            </div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>{hasSetup?"MY PROGRAM":"PROGRAM SETUP"}</div>
+
+            {hasSetup && (
+              <>
+                <div style={{...card,borderLeft:"3px solid #06d6a0"}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:8}}>PROGRAM ACTIVE</div>
+                  <div style={{color:"#555",fontSize:11,marginBottom:4}}>Started: <span style={{color:"#aaa"}}>{fmtDate(startDate)}</span></div>
+                  {lifts.map(l=>(
+                    <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
+                      <span style={{color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:15}}>{l.name}</span>
+                      <span style={{color:"#555",fontSize:11}}>Week {liftWeeks[l.id]||1} · {l.startingMax} lbs</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginTop:20}}>
+                  <button onClick={()=>{if(window.confirm("⚠️ Starting a new program will archive your current one.\n\nYour workout history, progress and custom exercises will all be saved.\n\nAre you sure?"))startNewProgram();}} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04"}}>START NEW 12-WEEK PROGRAM</button>
+                </div>
+              </>
+            )}
+
+            {!hasSetup && (
+              <>
+                <div style={{...card,borderLeft:"3px solid #fff"}}>
+                  <div style={{color:"#555",fontSize:10,marginBottom:6}}>PROGRAM START DATE</div>
+                  <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"transparent",border:"none",color:"#f0f0f0",fontSize:14,outline:"none",width:"100%"}} />
+                </div>
+
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1}}>YOUR LIFTS</div>
+                  <button onClick={addLift} className="bn" style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",fontSize:13,padding:"4px 10px"}}>+ ADD LIFT</button>
+                </div>
             {lifts.map(l=>{
               const cur=l.startingMax?calcCurrentMax(l.startingMax):null;
               const wkts=cur?calcWorkingWeights(cur):null;
@@ -511,10 +542,9 @@ export default function App() {
                 <button onClick={()=>Notification.requestPermission()} className="bn" style={{background:"#f7b731",color:"#000",fontSize:13,padding:"5px 12px"}}>ENABLE</button>
               </div>
             )}
-            {hasSetup && (
-              <>
-                <button className="bigbtn" onClick={()=>{setActiveId(lifts[0].id);setViewingWeek(liftWeeks[lifts[0].id]||1);setView("workout");}} style={{background:"#fff",color:"#000"}}>START PROGRAM →</button>
-                {sessionLedger.length>0 && <button onClick={()=>{if(window.confirm("Archive current program and start fresh?"))startNewProgram();}} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04"}}>START NEW 12-WEEK PROGRAM</button>}
+                {startDate && lifts.every(l=>l.startingMax>0) && (
+                  <button className="bigbtn" onClick={()=>{setActiveId(lifts[0].id);setViewingWeek(liftWeeks[lifts[0].id]||1);setView("workout");}} style={{background:"#fff",color:"#000",marginTop:8}}>START PROGRAM →</button>
+                )}
               </>
             )}
             {programHistory.length>0 && (
@@ -742,7 +772,7 @@ export default function App() {
       </div>
 
       <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0a0a0f",borderTop:"1px solid #1a1a1a",display:"flex",zIndex:10}}>
-        {[{id:"dashboard",icon:"🏠",label:"HOME"},{id:"workout",icon:"🏋️",label:"LIFT"},{id:"progress",icon:"📈",label:"PROGRESS"},{id:"ledger",icon:"📋",label:"LEDGER"},{id:"setup",icon:"⚙️",label:"SETUP"}].map(t=>(
+        {[{id:"dashboard",icon:"🏠",label:"HOME"},{id:"workout",icon:"🏋️",label:"LIFT"},{id:"progress",icon:"📈",label:"PROGRESS"},{id:"ledger",icon:"📋",label:"LEDGER"},{id:"setup",icon:"⚙️",label:hasSetup?"PROGRAM":"SETUP"}].map(t=>(
           <button key={t.id} className={`ntab ${view===t.id?"on":""}`} onClick={()=>setView(t.id)}>
             <span style={{fontSize:18}}>{t.icon}</span>
             <span>{t.label}</span>
