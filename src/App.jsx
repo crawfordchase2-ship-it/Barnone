@@ -514,7 +514,7 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
       {authScreen && authScreen!=="profile" && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:100,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
-          <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain",marginBottom:36}} />
+          <img src="/logo.png" alt="Bar None" style={{width:"100%",maxWidth:360,objectFit:"contain",marginBottom:36}} />
           <div style={{width:"100%",maxWidth:360}}>
             <div style={{display:"flex",marginBottom:20,background:"#0f0f1a",borderRadius:8,padding:4}}>
               {["login","register"].map(tab=>(
