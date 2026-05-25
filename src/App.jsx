@@ -136,6 +136,16 @@ export default function App() {
   const [weightEntry, setWeightEntry] = useState("");
   const [weightNudge, setWeightNudge] = useState(saved?.weightNudge || { weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
+  const [friends, setFriends] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [reactions, setReactions] = useState([]);
+  const [friendSearch, setFriendSearch] = useState("");
+  const [friendSearchResults, setFriendSearchResults] = useState([]);
+  const [showSocial, setShowSocial] = useState(false);
+  const [socialTab, setSocialTab] = useState("friends"); // friends | requests | profile
+  const [username, setUsername] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
+  const [socialLoading, setSocialLoading] = useState(false);
   const timerRef = useRef(null);
 
   const hasSetup = lifts.every(l=>l.startingMax>0) && startDate;
@@ -245,6 +255,44 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
     }
     setView("dashboard");
+    loadSocialData(userId);
+  }
+
+  async function loadSocialData(userId) {
+    if (!userId) return;
+    // Load public profile
+    const { data: profile } = await supabase.from("public_profiles").select("*").eq("id", userId).single();
+    if (profile) { setUsername(profile.username || ""); setIsPublic(profile.is_public || false); }
+
+    // Load friend requests
+    const { data: requests } = await supabase.from("friend_requests")
+      .select("*, from:from_id(id, name:public_profiles(name)), to:to_id(id, name:public_profiles(name))")
+      .or(`from_id.eq.${userId},to_id.eq.${userId}`);
+    if (requests) {
+      setFriendRequests(requests.filter(r => r.status === "pending" && r.to_id === userId));
+      const accepted = requests.filter(r => r.status === "accepted");
+      // Load friend data
+      const friendIds = accepted.map(r => r.from_id === userId ? r.to_id : r.from_id);
+      if (friendIds.length) {
+        const { data: friendData } = await supabase.from("user_data")
+          .select("user_id, lifts, lift_weeks, session_ledger")
+          .in("user_id", friendIds);
+        const { data: friendProfiles } = await supabase.from("public_profiles")
+          .select("id, name, username")
+          .in("id", friendIds);
+        if (friendData && friendProfiles) {
+          const merged = friendProfiles.map(p => ({
+            ...p,
+            ...friendData.find(d => d.user_id === p.id)
+          }));
+          setFriends(merged);
+        }
+      }
+    }
+    // Load reactions on my sessions
+    const { data: myReactions } = await supabase.from("reactions")
+      .select("*").eq("to_id", userId).order("created_at", { ascending: false }).limit(20);
+    if (myReactions) setReactions(myReactions);
   }
 
   async function handleRegister() {
@@ -380,6 +428,48 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       if(!n[week])n[week]={};if(!n[week][activeId])n[week][activeId]={};
       n[week][activeId][aid]=n[week][activeId][aid]===val?null:val; return n;
     });
+  }
+
+  async function searchFriends(query) {
+    if (!query.trim()) { setFriendSearchResults([]); return; }
+    const { data } = await supabase.from("public_profiles")
+      .select("id, name, username")
+      .or(`name.ilike.%${query}%,username.ilike.%${query}%`)
+      .neq("id", uid)
+      .limit(5);
+    setFriendSearchResults(data || []);
+  }
+
+  async function sendFriendRequest(toId) {
+    await supabase.from("friend_requests").insert({ from_id: uid, to_id: toId, status: "pending" });
+    setFriendSearchResults([]);
+    setFriendSearch("");
+    alert("Friend request sent!");
+  }
+
+  async function acceptFriendRequest(requestId, fromId) {
+    await supabase.from("friend_requests").update({ status: "accepted" }).eq("id", requestId);
+    setFriendRequests(prev => prev.filter(r => r.id !== requestId));
+    loadSocialData(uid);
+  }
+
+  async function declineFriendRequest(requestId) {
+    await supabase.from("friend_requests").update({ status: "declined" }).eq("id", requestId);
+    setFriendRequests(prev => prev.filter(r => r.id !== requestId));
+  }
+
+  async function sendReaction(toId, sessionDate, liftName, emoji) {
+    await supabase.from("reactions").insert({ from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji });
+  }
+
+  async function savePublicProfile() {
+    await supabase.from("public_profiles").upsert({
+      id: uid,
+      name: currentUser?.user_metadata?.name || currentUser?.email,
+      username: username.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+      is_public: isPublic
+    }, { onConflict: "id" });
+    alert("Profile saved!");
   }
 
   function finishDay() {
@@ -555,14 +645,163 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
         </div>
       )}
 
+      {showSocial && (
+        <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:100,display:"flex",flexDirection:"column",overflowY:"auto"}}>
+          <div style={{padding:"14px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#0a0a0f"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2}}>SOCIAL</div>
+            <button onClick={()=>setShowSocial(false)} style={{background:"none",border:"none",color:"#555",fontSize:24,cursor:"pointer"}}>×</button>
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:"flex",borderBottom:"1px solid #1a1a1a"}}>
+            {[{id:"friends",label:"FRIENDS"},{"id":"requests",label:`REQUESTS${friendRequests.length>0?` (${friendRequests.length})`:""`},{id:"profile",label:"MY PROFILE"}].map(t=>(
+              <button key={t.id} onClick={()=>setSocialTab(t.id)} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:1,cursor:"pointer"}}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{padding:16,flex:1}}>
+
+            {/* FRIENDS TAB */}
+            {socialTab==="friends" && (
+              <>
+                <div style={{marginBottom:16}}>
+                  <div style={{color:"#555",fontSize:10,marginBottom:6}}>FIND FRIENDS</div>
+                  <div style={{display:"flex",gap:8}}>
+                    <input type="text" value={friendSearch} placeholder="Search by name or username..."
+                      onChange={e=>{setFriendSearch(e.target.value);searchFriends(e.target.value);}}
+                      style={{flex:1,background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:12}} />
+                  </div>
+                  {friendSearchResults.map(u=>(
+                    <div key={u.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #1a1a1a"}}>
+                      <div>
+                        <div style={{color:"#f0f0f0",fontSize:13}}>{u.name}</div>
+                        {u.username && <div style={{color:"#555",fontSize:11}}>@{u.username}</div>}
+                      </div>
+                      <button onClick={()=>sendFriendRequest(u.id)} style={{background:"#e85d04",border:"none",color:"#000",borderRadius:4,padding:"5px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>ADD</button>
+                    </div>
+                  ))}
+                </div>
+
+                {friends.length===0 && <div style={{color:"#333",fontSize:12,textAlign:"center",padding:30}}>No friends yet — search above to add some!</div>}
+                {friends.map(f=>{
+                  const fLifts = f.lifts || DEFAULT_LIFTS;
+                  const lastSession = (f.session_ledger || [])[0];
+                  return (
+                    <div key={f.id} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                        <div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f0f0f0"}}>{f.name}</div>
+                          {f.username && <div style={{color:"#555",fontSize:11}}>@{f.username}</div>}
+                        </div>
+                        {lastSession && <div style={{color:"#555",fontSize:11}}>{fmtDate(lastSession.date)}</div>}
+                      </div>
+                      {/* Friend maxes */}
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:lastSession?10:0}}>
+                        {fLifts.filter(l=>l.startingMax>0).map(l=>(
+                          <div key={l.id} style={{background:"#1a1a2e",borderRadius:6,padding:"6px 10px",borderLeft:`2px solid ${l.color}`}}>
+                            <div style={{color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:13}}>{l.name}</div>
+                            <div style={{color:"#aaa",fontSize:12}}>{l.startingMax} lbs</div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* React to last session */}
+                      {lastSession && (
+                        <div style={{borderTop:"1px solid #1a1a1a",paddingTop:10}}>
+                          <div style={{color:"#555",fontSize:10,marginBottom:6}}>{lastSession.liftName} · {fmtDate(lastSession.date)}</div>
+                          <div style={{display:"flex",gap:6}}>
+                            {["👊","🔥","💪","⚡","❤️","🙌","😤","💯"].map(emoji=>(
+                              <button key={emoji} onClick={()=>sendReaction(f.id, lastSession.date, lastSession.liftName, emoji)}
+                                style={{background:"#1a1a2e",border:"1px solid #333",borderRadius:6,padding:"4px 8px",fontSize:18,cursor:"pointer",transition:"all 0.15s"}}
+                                onMouseEnter={e=>e.target.style.borderColor="#e85d04"}
+                                onMouseLeave={e=>e.target.style.borderColor="#333"}>
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* REQUESTS TAB */}
+            {socialTab==="requests" && (
+              <>
+                {friendRequests.length===0 && <div style={{color:"#333",fontSize:12,textAlign:"center",padding:30}}>No pending friend requests</div>}
+                {friendRequests.map(r=>(
+                  <div key={r.id} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{color:"#f0f0f0",fontSize:14}}>{r.from?.name?.name || "Someone"}</div>
+                      <div style={{color:"#555",fontSize:11}}>wants to be friends</div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>acceptFriendRequest(r.id, r.from_id)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:4,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>ACCEPT</button>
+                      <button onClick={()=>declineFriendRequest(r.id)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>DECLINE</button>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* MY PROFILE TAB */}
+            {socialTab==="profile" && (
+              <>
+                <div style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:14}}>
+                  <div style={{color:"#555",fontSize:10,marginBottom:6}}>USERNAME</div>
+                  <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14}}>
+                    <span style={{color:"#555",fontSize:14}}>@</span>
+                    <input type="text" value={username} placeholder="yourname"
+                      onChange={e=>setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,""))}
+                      style={{flex:1,background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                    <div>
+                      <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
+                      <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
+                    </div>
+                    <button onClick={()=>setIsPublic(p=>!p)} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:`1px solid ${isPublic?"#06d6a0":"#555"}`,color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer",transition:"all 0.15s"}}>
+                      {isPublic?"ON":"OFF"}
+                    </button>
+                  </div>
+                  <button onClick={savePublicProfile} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1,cursor:"pointer"}}>SAVE PROFILE</button>
+                </div>
+
+                {/* My reactions received */}
+                {reactions.length>0 && (
+                  <div style={{background:"#0f0f1a",borderRadius:10,padding:14}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>REACTIONS RECEIVED</div>
+                    {reactions.slice(0,10).map((r,i)=>(
+                      <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a",fontSize:12}}>
+                        <span style={{color:"#555"}}>{r.lift_name} · {fmtDate(r.session_date)}</span>
+                        <span style={{fontSize:18}}>{r.emoji}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div style={{padding:"12px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#0a0a0f",zIndex:10}}>
         <div>
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:3,color:lift?.color||"#f0f0f0",lineHeight:1}}>BAR NONE</div>
           <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,color:"#333",letterSpacing:2}}>THE PROGRAM</div>
         </div>
-        <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
-          {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
-        </button>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>setShowSocial(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 10px",fontSize:16,cursor:"pointer",position:"relative"}}>
+            👥
+            {friendRequests.length>0 && <span style={{position:"absolute",top:-4,right:-4,background:"#e85d04",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace"}}>{friendRequests.length}</span>}
+          </button>
+          <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
+            {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
+          </button>
+        </div>
       </div>
 
       <div style={{maxWidth:600,margin:"0 auto"}}>
