@@ -281,12 +281,12 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
       setBodyStats(d.body_stats || { heightIn:"", entries:[] });
       setProgramHistory(d.program_history || []);
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
-      // If program_started not saved yet, infer from existing data
-      const inferred = d.program_started || (
-        d.logs && Object.keys(d.logs).length > 0
-      ) || (
-        d.completed_days && Object.keys(d.completed_days).length > 0
-      ) || false;
+      // Infer programStarted from any existing data
+      const inferred = d.program_started ||
+        (d.lifts && d.lifts.some(l => l.startingMax > 0) && d.start_date) ||
+        (d.logs && Object.keys(d.logs).length > 0) ||
+        (d.completed_days && Object.keys(d.completed_days).length > 0) ||
+        false;
       setProgramStarted(inferred);
     }
     setView("dashboard");
