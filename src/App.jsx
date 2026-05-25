@@ -138,6 +138,7 @@ export default function App() {
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
   const [heightInEntry, setHeightInEntry] = useState("");
+  const [showWeightPrompt, setShowWeightPrompt] = useState(false);
   const [weightNudge, setWeightNudge] = useState({ weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [confirmStart, setConfirmStart] = useState(false);
@@ -537,6 +538,8 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     setSessionLedger(prev=>[entry,...prev]);
     checkForPR(activeId, sessionEstMax);
     setSessionNotes("");
+    // Show weight prompt if not logged this week
+    if (!loggedThisWeek) setShowWeightPrompt(true);
     setCompletedDays(prev=>{const n=JSON.parse(JSON.stringify(prev));if(!n[week])n[week]={};n[week][activeId]=true;return n;});
     const nw=Math.min(12,activeLiftWeek+1);
     setLiftWeeks(prev=>({...prev,[activeId]:nw}));
@@ -692,6 +695,24 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
         <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:200,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
           <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#444",letterSpacing:2,marginTop:8}}>LOADING...</div>
+        </div>
+      )}
+
+      {showWeightPrompt && (
+        <div style={{position:"fixed",inset:0,background:"#0a0a0f99",zIndex:200,display:"flex",alignItems:"flex-end"}}>
+          <div style={{background:"#0f0f1a",borderRadius:"16px 16px 0 0",padding:24,width:"100%",maxWidth:500,margin:"0 auto",borderTop:"3px solid #06d6a0"}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#06d6a0",marginBottom:4,letterSpacing:1}}>LOG THIS WEEK'S WEIGHT</div>
+            <div style={{color:"#555",fontSize:12,marginBottom:16}}>Track your progress alongside your lifts.</div>
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:16}}>
+              <input type="number" value={weightEntry} placeholder="185 lbs" autoFocus
+                onChange={e=>setWeightEntry(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter"&&weightEntry){logWeightAndDismiss();setShowWeightPrompt(false);}}}
+                style={{flex:1,background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"10px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,textAlign:"center"}} />
+              <span style={{color:"#555",fontSize:12}}>lbs</span>
+            </div>
+            <button onClick={()=>{if(weightEntry){logWeightAndDismiss();setShowWeightPrompt(false);}}} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG WEIGHT</button>
+            <button onClick={()=>setShowWeightPrompt(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:8,padding:"10px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>skip for now</button>
+          </div>
         </div>
       )}
 
@@ -915,59 +936,58 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
 
             <div style={{...card}}>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
-              <div style={{display:"flex",gap:16,alignItems:"flex-end",flexWrap:"wrap",marginBottom:10}}>
-                {/* HEIGHT */}
-                {bodyStats.heightIn
-                  ? <div>
-                      <div style={{color:"#555",fontSize:10,marginBottom:2}}>HEIGHT</div>
-                      <div style={{color:"#aaa",fontSize:14,fontFamily:"'Bebas Neue',sans-serif"}}>{Math.floor(+bodyStats.heightIn/12)}′ {+bodyStats.heightIn%12}″</div>
-                    </div>
-                  : <div>
-                      <div style={{color:"#555",fontSize:10,marginBottom:4}}>HEIGHT</div>
-                      <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                        <input type="number" value={heightFtEntry} placeholder="5" style={{width:44}} onChange={e=>setHeightFtEntry(e.target.value)} />
-                        <span style={{color:"#555",fontSize:11}}>ft</span>
-                        <input type="number" value={heightInEntry} placeholder="10" style={{width:44}} onChange={e=>setHeightInEntry(e.target.value)} />
-                        <span style={{color:"#555",fontSize:11}}>in</span>
-                      </div>
-                    </div>
-                }
-                {/* WEIGHT */}
-                {loggedThisWeek
-                  ? <div>
-                      <div style={{color:"#555",fontSize:10,marginBottom:2}}>WEIGHT</div>
-                      <div style={{color:"#06d6a0",fontSize:14,fontFamily:"'Bebas Neue',sans-serif"}}>{latestWeight} lbs</div>
-                    </div>
-                  : <div>
-                      <div style={{color:"#555",fontSize:10,marginBottom:4}}>WEIGHT (lbs)</div>
-                      <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} style={{width:72,color:"#06d6a0"}} />
-                    </div>
-                }
-                {/* BMI */}
-                {bmi && <div>
-                  <div style={{color:"#555",fontSize:10,marginBottom:2}}>BMI</div>
-                  <div style={{fontSize:13,color:bmiCol(bmi),fontFamily:"'Bebas Neue',sans-serif"}}>{bmi} <span style={{fontSize:10,color:bmiCol(bmi)}}>{bmiCat(bmi)}</span></div>
-                </div>}
-                {/* LOG button — only shows if something needs logging */}
-                {(!bodyStats.heightIn || !loggedThisWeek) && (
-                  <button onClick={()=>{
-                    if(!bodyStats.heightIn && heightFtEntry) {
-                      const totalIn = (+heightFtEntry||0)*12+(+heightInEntry||0);
-                      if(totalIn>0) { setBodyStats(prev=>({...prev,heightIn:String(totalIn)})); setHeightFtEntry(""); setHeightInEntry(""); }
-                    }
-                    if(!loggedThisWeek && weightEntry) logWeightAndDismiss();
-                  }} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"6px 16px",marginBottom:4}}>LOG</button>
+              <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:bodyStats.entries.length>1?12:0}}>
+                {bodyStats.heightIn && (
+                  <div>
+                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>HEIGHT</div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#aaa"}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
+                  </div>
+                )}
+                {latestWeight && (
+                  <div>
+                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>WEIGHT</div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0"}}>{latestWeight} lbs</div>
+                  </div>
+                )}
+                {bmi && (
+                  <div>
+                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>BMI</div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:bmiCol(bmi)}}>{bmi} <span style={{fontSize:11}}>{bmiCat(bmi)}</span></div>
+                  </div>
+                )}
+                {!bodyStats.heightIn && (
+                  <div style={{color:"#444",fontSize:11}}>Set up height & weight in PROGRAM setup</div>
                 )}
               </div>
-              {bodyStats.entries.length>1 && (
-                <ResponsiveContainer width="100%" height={90}>
-                  <LineChart data={[...bodyStats.entries].reverse().slice(-10).map(e=>({d:fmtDate(e.date),w:e.weightLbs}))}>
-                    <XAxis dataKey="d" tick={{fill:"#555",fontSize:8}} /><YAxis tick={{fill:"#555",fontSize:8}} domain={["auto","auto"]} />
-                    <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid #06d6a0",borderRadius:6,fontSize:11}} />
-                    <Line type="monotone" dataKey="w" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="lbs" />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
+              {bodyStats.entries.length>0 && (()=>{
+                const now = new Date();
+                const weeklyData = [];
+                for (let w = 11; w >= 0; w--) {
+                  const weekEnd = new Date(now);
+                  weekEnd.setDate(now.getDate() - w * 7);
+                  const weekStart = new Date(weekEnd);
+                  weekStart.setDate(weekEnd.getDate() - 6);
+                  const weekEntries = bodyStats.entries.filter(e => {
+                    const d = new Date(e.date);
+                    return d >= weekStart && d <= weekEnd;
+                  });
+                  if (weekEntries.length > 0) {
+                    const avg = weekEntries.reduce((sum, e) => sum + e.weightLbs, 0) / weekEntries.length;
+                    weeklyData.push({ d: "W"+(12-w), w: Math.round(avg*10)/10 });
+                  }
+                }
+                if (weeklyData.length < 2) return null;
+                return (
+                  <ResponsiveContainer width="100%" height={90}>
+                    <LineChart data={weeklyData}>
+                      <XAxis dataKey="d" tick={{fill:"#555",fontSize:8}} />
+                      <YAxis tick={{fill:"#555",fontSize:8}} domain={["auto","auto"]} />
+                      <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid #06d6a0",borderRadius:6,fontSize:11}} />
+                      <Line type="monotone" dataKey="w" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="avg lbs" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
 
             <div style={{...card}}>
@@ -1051,6 +1071,36 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 <div style={{...card,borderLeft:"3px solid #fff"}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:6}}>PROGRAM START DATE</div>
                   <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"transparent",border:"none",color:"#f0f0f0",fontSize:14,outline:"none",width:"100%"}} />
+                </div>
+                <div style={{...card,borderLeft:"3px solid #06d6a0"}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
+                  <div style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap"}}>
+                    <div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:4}}>HEIGHT</div>
+                      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                        <input type="number" value={heightFtEntry||Math.floor(+bodyStats.heightIn/12)||""} placeholder="5" style={{width:44}} onChange={e=>setHeightFtEntry(e.target.value)} />
+                        <span style={{color:"#555",fontSize:11}}>ft</span>
+                        <input type="number" value={heightInEntry||(bodyStats.heightIn?(+bodyStats.heightIn%12):"")||""} placeholder="10" style={{width:44}} onChange={e=>setHeightInEntry(e.target.value)} />
+                        <span style={{color:"#555",fontSize:11}}>in</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:4}}>STARTING WEIGHT (lbs)</div>
+                      <input type="number" value={weightEntry} placeholder="185" onChange={e=>setWeightEntry(e.target.value)} style={{width:80,color:"#06d6a0"}} />
+                    </div>
+                    <button onClick={()=>{
+                      const totalIn = (+heightFtEntry||0)*12+(+heightInEntry||0);
+                      if(totalIn>0) { setBodyStats(prev=>({...prev,heightIn:String(totalIn)})); setHeightFtEntry(""); setHeightInEntry(""); }
+                      if(weightEntry) logWeightAndDismiss();
+                    }} className="bn" style={{background:"#06d6a0",color:"#000",fontSize:14,padding:"6px 16px"}}>SAVE</button>
+                  </div>
+                  {bodyStats.heightIn && latestWeight && (
+                    <div style={{marginTop:10,color:"#555",fontSize:11}}>
+                      Height: <span style={{color:"#aaa"}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</span>
+                      {"  ·  "}Weight: <span style={{color:"#06d6a0"}}>{latestWeight} lbs</span>
+                      {bmi && <>{" · "}BMI: <span style={{color:bmiCol(bmi)}}>{bmi} ({bmiCat(bmi)})</span></>}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -1367,18 +1417,41 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
                 </div>
               );
             })}
-            {bodyStats.entries.length>1 && (
-              <div style={{...card}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:10}}>BODYWEIGHT</div>
-                <ResponsiveContainer width="100%" height={110}>
-                  <LineChart data={[...bodyStats.entries].reverse().slice(-12).map(e=>({d:fmtDate(e.date),w:e.weightLbs}))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" /><XAxis dataKey="d" tick={{fill:"#555",fontSize:9}} /><YAxis tick={{fill:"#555",fontSize:9}} domain={["auto","auto"]} />
-                    <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid #06d6a0",borderRadius:6,fontSize:11}} />
-                    <Line type="monotone" dataKey="w" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="lbs" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            {bodyStats.entries.length>0 && (()=>{
+              // Build 12-week weekly averages
+              const now = new Date();
+              const weeklyData = [];
+              for (let w = 11; w >= 0; w--) {
+                const weekEnd = new Date(now);
+                weekEnd.setDate(now.getDate() - w * 7);
+                const weekStart = new Date(weekEnd);
+                weekStart.setDate(weekEnd.getDate() - 6);
+                const weekEntries = bodyStats.entries.filter(e => {
+                  const d = new Date(e.date);
+                  return d >= weekStart && d <= weekEnd;
+                });
+                if (weekEntries.length > 0) {
+                  const avg = weekEntries.reduce((sum, e) => sum + e.weightLbs, 0) / weekEntries.length;
+                  weeklyData.push({ d: "W" + (12-w), w: Math.round(avg * 10) / 10 });
+                }
+              }
+              if (weeklyData.length < 2) return null;
+              return (
+                <div style={{...card}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:4}}>BODYWEIGHT</div>
+                  <div style={{color:"#555",fontSize:10,marginBottom:10}}>12-WEEK WEEKLY AVERAGE</div>
+                  <ResponsiveContainer width="100%" height={110}>
+                    <LineChart data={weeklyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" />
+                      <XAxis dataKey="d" tick={{fill:"#555",fontSize:9}} />
+                      <YAxis tick={{fill:"#555",fontSize:9}} domain={["auto","auto"]} />
+                      <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid #06d6a0",borderRadius:6,fontSize:11}} />
+                      <Line type="monotone" dataKey="w" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="avg lbs" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              );
+            })()}
           </div>
         )}
 
