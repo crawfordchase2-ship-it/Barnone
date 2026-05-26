@@ -76,6 +76,8 @@
 // v5.67 - SAVE CHANGES on past week edit updates ledger (replace existing or add if missing)
 // v5.68 - C25K running module (run days setup, RUN tab, 12-week plan, log distance/time/pace, home banner)
 // v5.69 - Fixed RUN and SOCIAL header rendering below logo (moved after header in DOM)
+// v5.70 - Streak only counts scheduled training days, rest days dont break it
+// v5.71 - CONTINUE button uses in-app modal instead of window.confirm (fixes iOS issue)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -420,7 +422,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.69";
+  const APP_VERSION = "v5.71";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -448,6 +450,7 @@ export default function App() {
   const [runSecEntry, setRunSecEntry] = useState("");
   const [setupSnapshot, setSetupSnapshot] = useState(null);
   const [shareCard, setShareCard] = useState(null);
+  const [confirmContinue, setConfirmContinue] = useState(null); // stores the program to continue
   const [programId, setProgramId] = useState("");
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
@@ -1081,13 +1084,26 @@ export default function App() {
   const uniqueTrainingDays = [...new Set(lifts.flatMap(l => l.trainingDays || []))].length;
   const totalPossible = uniqueTrainingDays * 12;
   const streak = (() => {
-    // Only count sessions from current program
+    // Only count scheduled training days — rest days don't break streak
     const programSessions = sessionLedger.filter(s => programId && s.programId === programId);
     if(!programSessions.length) return 0;
-    const dates=[...new Set(programSessions.map(s=>s.date))].sort().reverse();
-    let s=0,cur=todayISO();
-    for(const d of dates){const diff=(new Date(cur)-new Date(d))/(86400000);if(diff<=1){s++;cur=d;}else break;}
-    return s;
+    const loggedDates = new Set(programSessions.map(s=>s.date));
+    // Get all unique training days across all lifts
+    const allTrainingDays = [...new Set(lifts.flatMap(l=>l.trainingDays||[]))];
+    // Walk backwards through scheduled days from today
+    let streak = 0;
+    const today = new Date(todayISO());
+    for(let i=0; i<84; i++) { // max 12 weeks back
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const abbr = DAY_ABBR[d.getDay()];
+      const iso = d.toISOString().split("T")[0];
+      if(!allTrainingDays.includes(abbr)) continue; // skip rest days
+      if(loggedDates.has(iso)) { streak++; }
+      else if(iso === todayISO()) { continue; } // today not yet logged — don't break
+      else { break; } // missed a scheduled day — streak over
+    }
+    return streak;
   })();
   const PRs = lifts.map(l=>({...l,startMax:l.startingMax||0,curMax:getEffMax(l.id,liftWeeks[l.id]||1)}));
 
@@ -1227,6 +1243,41 @@ export default function App() {
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d04",letterSpacing:2,marginBottom:8}}>GET BACK IN THE GYM!</div>
             <div style={{color:"#555",fontSize:12,marginBottom:24}}>It's been a few days. Time to lift!</div>
             <button onClick={()=>setStreakAlert(false)} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>I'M BACK 💪</button>
+          </div>
+        </div>
+      )}
+
+      {confirmContinue && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
+            <div style={{fontSize:40,marginBottom:8}}>🔄</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#06d6a0",letterSpacing:2,marginBottom:8}}>CONTINUE PROGRAM?</div>
+            <div style={{color:"#555",fontSize:12,marginBottom:8}}>
+              {fmtDate(confirmContinue.startDate)} program
+            </div>
+            <div style={{background:"#111",borderRadius:8,padding:12,marginBottom:20,fontSize:11,color:"#aaa",textAlign:"left"}}>
+              <div style={{color:"#e85d04",marginBottom:4,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>⚠️ YOUR CURRENT PROGRAM WILL BE ARCHIVED</div>
+              You can always come back to it from the PROGRAM tab.
+            </div>
+            <button onClick={async()=>{
+              const p = confirmContinue;
+              const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
+              setLifts(p.lifts || DEFAULT_LIFTS);
+              setStartDate(p.startDate || "");
+              setLogs(p.logs || {});
+              setLiftWeeks(p.liftWeeks || Object.fromEntries((p.lifts||DEFAULT_LIFTS).map(l=>[l.id,1])));
+              setCompletedDays(p.completedDays || {});
+              setAccList(p.accList || {});
+              setProgramId(p.programId || "");
+              setProgramStarted(true);
+              await saveProgramToHistory(uid, curArchive);
+              if (p.id) await deleteProgramFromHistory(p.id);
+              const ph = await loadProgramHistory(uid);
+              setProgramHistory(ph);
+              setConfirmContinue(null);
+              setView("dashboard");
+            }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>YES, CONTINUE 💪</button>
+            <button onClick={()=>setConfirmContinue(null)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>CANCEL</button>
           </div>
         </div>
       )}
@@ -2220,28 +2271,7 @@ export default function App() {
                         {p.bestStreak > 0 && <span>🔥 {p.bestStreak} day best streak</span>}
                       </div>
                       <div style={{display:"flex",gap:6}}>
-                        <button onClick={async()=>{
-                          if(window.confirm("Continue this program? Your current program will be archived.")) {
-                            // Archive current program first
-                            const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
-                            // Restore selected program
-                            setLifts(p.lifts || DEFAULT_LIFTS);
-                            setStartDate(p.startDate || "");
-                            setLogs(p.logs || {});
-                            setLiftWeeks(p.liftWeeks || Object.fromEntries((p.lifts||DEFAULT_LIFTS).map(l=>[l.id,1])));
-                            setCompletedDays(p.completedDays || {});
-                            setAccList(p.accList || {});
-                            setProgramId(p.programId || "");
-                            setProgramStarted(true);
-                            // Update history: remove this program, add current as archive
-                            // Save current as archive, delete continued program from history
-                            await saveProgramToHistory(uid, curArchive);
-                            if (p.id) await deleteProgramFromHistory(p.id);
-                            const ph = await loadProgramHistory(uid);
-                            setProgramHistory(ph);
-                            setView("dashboard");
-                          }
-                        }} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>CONTINUE</button>
+                        <button onClick={()=>setConfirmContinue(p)} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>CONTINUE</button>
                         <button onClick={()=>setShareCard(p)} style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>SHARE</button>
                       </div>
                     </div>
