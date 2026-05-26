@@ -70,6 +70,7 @@
 // v5.61 - Program history moved to separate Supabase table (keeps user_data lean)
 // v5.62 - Fixed async/await in startNewProgram and CONTINUE button
 // v5.63 - Banner bigger/prominent, completion tracking fixed (7 day window)
+// v5.64 - Completion check uses sessionLedger for old format data (fixes Deadlift banner bug)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -346,7 +347,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.63";
+  const APP_VERSION = "v5.64";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1447,14 +1448,21 @@ export default function App() {
               const isCompletedThisWeek = (l) => {
                 const cd = completedDays?.[liftWeeks[l.id]]?.[l.id];
                 if (!cd) return false;
-                // Old format: true means done (no date)
-                if (cd === true) return true;
-                // New format: {done, date} - completed this week means within last 7 days
+                // New format: {done, date}
                 if (cd?.done && cd?.date) {
                   const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
                   return daysSince < 7;
                 }
-                return !!cd;
+                // Old format: true - check sessionLedger for a session today or this week
+                if (cd === true) {
+                  const recentSession = sessionLedger.find(s => {
+                    if (s.liftId !== l.id) return false;
+                    const daysSince = (new Date(todayISO()) - new Date(s.date)) / 86400000;
+                    return daysSince < 7;
+                  });
+                  return !!recentSession;
+                }
+                return false;
               };
               const todayCompleted = todayScheduled.filter(l => isCompletedThisWeek(l));
               const todayPending = todayScheduled.filter(l => !isCompletedThisWeek(l));
@@ -1466,12 +1474,19 @@ export default function App() {
                     if (!(l.trainingDays||[]).includes(nextDay)) return false;
                     const cd = completedDays?.[liftWeeks[l.id]]?.[l.id];
                     if (!cd) return true;
-                    if (cd === true) return false;
                     if (cd?.done && cd?.date) {
                       const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
                       return daysSince >= 7;
                     }
-                    return false;
+                    if (cd === true) {
+                      const recentSession = sessionLedger.find(s => {
+                        if (s.liftId !== l.id) return false;
+                        const daysSince = (new Date(todayISO()) - new Date(s.date)) / 86400000;
+                        return daysSince < 7;
+                      });
+                      return !recentSession;
+                    }
+                    return true;
                   });
                   if(found) return {lift:found, day:nextDay, daysAway:i};
                 }
