@@ -78,6 +78,7 @@
 // v5.69 - Fixed RUN and SOCIAL header rendering below logo (moved after header in DOM)
 // v5.70 - Streak only counts scheduled training days, rest days dont break it
 // v5.71 - CONTINUE button uses in-app modal instead of window.confirm (fixes iOS issue)
+// v5.72 - CONTINUE works even if new program not started yet (no unnecessary archive)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -422,7 +423,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.71";
+  const APP_VERSION = "v5.72";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1261,7 +1262,12 @@ export default function App() {
             </div>
             <button onClick={async()=>{
               const p = confirmContinue;
-              const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
+              // Only archive current program if it was actually started
+              if (programStarted && programId) {
+                const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
+                await saveProgramToHistory(uid, curArchive);
+              }
+              // Restore old program
               setLifts(p.lifts || DEFAULT_LIFTS);
               setStartDate(p.startDate || "");
               setLogs(p.logs || {});
@@ -1270,7 +1276,6 @@ export default function App() {
               setAccList(p.accList || {});
               setProgramId(p.programId || "");
               setProgramStarted(true);
-              await saveProgramToHistory(uid, curArchive);
               if (p.id) await deleteProgramFromHistory(p.id);
               const ph = await loadProgramHistory(uid);
               setProgramHistory(ph);
