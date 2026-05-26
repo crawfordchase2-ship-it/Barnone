@@ -90,6 +90,7 @@
 // v5.81 - Profile is now fullscreen settings page, kg/lbs toggle, theme/preferences sections
 // v5.82 - Fixed JSX tag mismatch in settings page
 // v5.83 - Fixed profile section tag mismatch (build error) — take 2
+// v5.84 - Fixed theme/unit toggle functions being outside App component (buttons not working)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -266,15 +267,7 @@ function playTimerSound() {
   } catch(e) {}
 }
 // Prime audio context on first user tap (iOS requirement)
-function setThemePref(t) {
-    setTheme(t);
-    localStorage.setItem("barnone_theme", t);
-  }
-  function setWeightUnitPref(u) {
-    setWeightUnit(u);
-    localStorage.setItem("barnone_unit", u);
-  }
-  function primeAudio() {
+function primeAudio() {
   try { getAudioCtx(); } catch(e) {}
 }
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
@@ -442,9 +435,11 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.83";
+  const APP_VERSION = "v5.84";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
+  function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
+  function setWeightUnitPref(u) { setWeightUnit(u); localStorage.setItem("barnone_unit", u); }
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
