@@ -46,6 +46,13 @@
 // v5.37 - Weight chart shows immediately as flat line, fills in as entries logged
 // v5.38 - Weight chart moved to Progress tab only, labels show actual dates (5/26)
 // v5.39 - Auto-tags old sessions with current programId on load (fixes volume bleed)
+// v5.40 - Remember me checkbox now works via Supabase persistSession
+// v5.41 - Manual aux weight entry carries forward to next week
+// v5.42 - Clear Ledger button in PROGRAM tab with confirmation
+// v5.43 - Delete individual ledger entries instead of clearing all
+// v5.44 - Swapped SOCIAL and LEDGER positions in nav bar
+// v5.45 - Weight chart builds left to right with only actual data, no fill-forward
+// v5.46 - All charts roll across last 12 sessions/weeks across programs
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -187,7 +194,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.39";
+  const APP_VERSION = "v5.46";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -485,7 +492,11 @@ export default function App() {
     setAuthErr("");
     const { email, password } = authForm;
     if (!email||!password) { setAuthErr("Email and password required."); return; }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password,
+      options: { persistSession: rememberMe }
+    });
     if (error) { setAuthErr(error.message); return; }
     setCurrentUser(data.user);
     setSession(data.session);
@@ -1631,7 +1642,7 @@ export default function App() {
                         </div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"weight",e.target.value)} />
+                        <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){updateAcc(week,activeId,acc.id,"weight",e.target.value);if(e.target.value)setExerciseHistory(h=>({...h,[acc.name]:e.target.value}));}}} />
                         <span style={{color:"#555",fontSize:11}}>lbs</span>
                         <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value)} />
                         <span style={{color:"#555",fontSize:11}}>reps</span>
@@ -1687,13 +1698,18 @@ export default function App() {
               const startMax=l.startingMax||0;
               const curMax=getEffMax(l.id,liftWeeks[l.id]||1);
               const currentWeek = liftWeeks[l.id] || 1;
-                const maxData=[{w:"Start",max:startMax},...Array.from({length:12},(_,i)=>{
-                  const w = i+1;
-                  // Only show weeks up to current week
-                  if (w > currentWeek) return null;
-                  return {w:"W"+w, max:getEffMax(l.id,w)};
-                }).filter(Boolean)];
-              const volData=sessionLedger.filter(s=>s.liftId===l.id).slice(0,10).reverse().map(s=>({d:fmtDate(s.date),v:Math.round((s.volume||0)/1000)}));
+                // Build max progression from session ledger across all programs
+                const liftSessions = sessionLedger
+                  .filter(s => s.liftId === l.id && s.estMax)
+                  .sort((a,b) => new Date(a.date) - new Date(b.date))
+                  .slice(-12);
+                const maxData = liftSessions.length > 0
+                  ? [{w:"Start", max:startMax}, ...liftSessions.map(s=>({
+                      w: (new Date(s.date).getMonth()+1)+"/"+(new Date(s.date).getDate()),
+                      max: s.estMax
+                    }))]
+                  : [{w:"Start", max:startMax}, {w:"W"+currentWeek, max:getEffMax(l.id,currentWeek)}];
+              const volData=sessionLedger.filter(s=>s.liftId===l.id).slice(-12).reverse().map(s=>({d:(new Date(s.date).getMonth()+1)+'/'+(new Date(s.date).getDate()),v:Math.round((s.volume||0)/1000)}));
               // For assisted pullups, build effective pull strength data
               const effPullData = isAssistedPullUp(l) ? (() => {
                 let assist = l.startingMax || 0;
@@ -1762,7 +1778,6 @@ export default function App() {
               // Build 12-week weekly averages
               const now = new Date();
               const weeklyData = [];
-              let lastKnownW = bodyStats.entries.length > 0 ? bodyStats.entries[bodyStats.entries.length-1].weightLbs : null;
               for (let w = 11; w >= 0; w--) {
                 const weekEnd = new Date(now);
                 weekEnd.setDate(now.getDate() - w * 7);
@@ -1772,13 +1787,10 @@ export default function App() {
                   const d = new Date(e.date);
                   return d >= weekStart && d <= weekEnd;
                 });
-                const label = (weekEnd.getMonth()+1) + "/" + weekEnd.getDate();
                 if (weekEntries.length > 0) {
                   const avg = weekEntries.reduce((sum, e) => sum + e.weightLbs, 0) / weekEntries.length;
-                  lastKnownW = Math.round(avg * 10) / 10;
-                  weeklyData.push({ d: label, w: lastKnownW });
-                } else if (lastKnownW) {
-                  weeklyData.push({ d: label, w: lastKnownW });
+                  const label = (weekEnd.getMonth()+1) + "/" + weekEnd.getDate();
+                  weeklyData.push({ d: label, w: Math.round(avg * 10) / 10 });
                 }
               }
               if (weeklyData.length === 0) return null;
@@ -1809,7 +1821,10 @@ export default function App() {
               <div key={i} style={{...card,borderLeft:"3px solid "+(s.liftColor||"#555")}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:s.liftColor||"#f0f0f0"}}>{s.liftName}</div>
-                  <div style={{color:"#555",fontSize:11}}>{fmtDate(s.date)} · Wk {s.week}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{color:"#555",fontSize:11}}>{fmtDate(s.date)} · Wk {s.week}</div>
+                    <button onClick={()=>{if(window.confirm("Delete this session?"))setSessionLedger(prev=>prev.filter((_,j)=>j!==i));}} style={{background:"none",border:"1px solid #333",color:"#444",borderRadius:4,padding:"2px 6px",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>DEL</button>
+                  </div>
                 </div>
                 <div style={{display:"flex",gap:14,marginBottom:6,flexWrap:"wrap"}}>
                   {s.sets?.map((set,j)=>(
@@ -1863,8 +1878,8 @@ export default function App() {
           {id:"dashboard", label:"HOME", color:"#e85d04", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
           {id:"workout",   label:"LIFT",     color:"#3a86ff", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><circle cx="4" cy="12" r="2"/><circle cx="20" cy="12" r="2"/><rect x="7" y="8" width="2" height="8" rx="1"/><rect x="15" y="8" width="2" height="8" rx="1"/></svg>},
           {id:"progress",  label:"PROGRESS", color:"#8338ec", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>},
-          {id:"ledger",    label:"LEDGER",   color:"#06d6a0", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>},
           {id:"social",    label:"SOCIAL",   color:"#ff006e", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
+          {id:"ledger",    label:"LEDGER",   color:"#06d6a0", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>},
           {id:"setup",     label:hasSetup?"PROGRAM":"SETUP", color:"#f7b731", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>},
         ].map(t=>(
           <button key={t.id} onClick={()=>{setView(t.id);if(t.id==="social"){localStorage.setItem("barnone_social_check_"+uid, todayISO());setNewFriendSessions(0);}}} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id?t.color:"#444",position:"relative"}}>
