@@ -56,6 +56,7 @@
 // v5.47 - Share card on program history cards with SAVE TO PHOTOS
 // v5.48 - Progress chart shows actual week max (not est max), 180 → 190
 // v5.49 - Dashed est max line on progress chart, Y axis in increments of 5
+// v5.50 - Dashed est max line starts at beginning max
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -197,7 +198,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.49";
+  const APP_VERSION = "v5.50";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1774,12 +1775,12 @@ export default function App() {
                   .sort((a,b) => new Date(a.date) - new Date(b.date))
                   .slice(-12);
                 const maxData = liftSessions.length > 0
-                  ? [{w:"Start", max:startMax, est:null}, ...liftSessions.map(s=>({
+                  ? [{w:"Start", max:startMax, est:startMax}, ...liftSessions.map(s=>({
                       w: (new Date(s.date).getMonth()+1)+"/"+(new Date(s.date).getDate()),
                       max: getEffMax(l.id, s.week),
                       est: s.estMax || null
                     }))]
-                  : [{w:"Start", max:startMax, est:null}];
+                  : [{w:"Start", max:startMax, est:startMax}];
                 // Y axis ticks in increments of 5
                 const allVals = maxData.flatMap(d=>[d.max, d.est]).filter(Boolean);
                 const yMin = Math.floor((Math.min(...allVals)-10)/5)*5;
