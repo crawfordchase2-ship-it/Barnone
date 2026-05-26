@@ -80,6 +80,7 @@
 // v5.71 - CONTINUE button uses in-app modal instead of window.confirm (fixes iOS issue)
 // v5.72 - CONTINUE works even if new program not started yet (no unnecessary archive)
 // v5.73 - CONTINUE button try/catch, better fallbacks, sets activeId on restore
+// v5.74 - Safe area inset padding for iOS status bar, viewport-fit=cover
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -424,7 +425,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.73";
+  const APP_VERSION = "v5.74";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1113,11 +1114,12 @@ export default function App() {
   const card = { background:"#0f0f1a", borderRadius:10, padding:"14px 16px", marginBottom:14 };
 
   return (
-    <div style={{minHeight:"100vh",background:"#000000",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:view==="workout"?160:100}}>
+    <div style={{minHeight:"100vh",background:"#000000",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:view==="workout"?160:100,paddingTop:"env(safe-area-inset-top)"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
         html,body,#root{background:#000000!important;min-height:100%;}
+        body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
         input[type=number],input[type=text],input[type=date],input[type=email],input[type=password]{background:#1a1a2e;border:1px solid #333;color:#f0f0f0;border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:13px;}
         input[type=number]{width:64px;text-align:center;-moz-appearance:textfield;}
         input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;}
