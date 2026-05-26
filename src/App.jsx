@@ -30,6 +30,14 @@
 // v5.21 - Returns to home screen after dismissing finish alert
 // v5.22 - Friend requests show sender name and username
 // v5.23 - SOCIAL tab badge shows when friend logs new session
+// v5.24 - Progress chart only shows completed weeks, not projected
+// v5.25 - Chart start point shows true max (what user typed), not working max
+// v5.26 - Fix re-adding after declined request, ADD button shows confirmation
+// v5.27 - Weight entry supports decimals (e.g. 194.4)
+// v5.28 - New lifts get unique colors not already used
+// v5.29 - New program resets to default 4 lifts, carries over matching maxes
+// v5.30 - Starting max input clears on focus, custom lift history preserved
+// v5.31 - BMI replaced with VOLUME, weight card has LOG button + trend arrow
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -511,7 +519,11 @@ export default function App() {
 
   function addLift() {
     const id="lift_"+Date.now();
-    setLifts(prev=>[...prev,{id,name:"",mainLiftOption:"Bench",color:COLORS[prev.length%COLORS.length],startingMax:0,trainingDays:[],isLower:false}]);
+    setLifts(prev=>{
+      const usedColors = prev.map(l=>l.color);
+      const availableColor = COLORS.find(c=>!usedColors.includes(c)) || COLORS[prev.length%COLORS.length];
+      return [...prev,{id,name:"",mainLiftOption:"Bench",color:availableColor,startingMax:0,trainingDays:[],isLower:false}];
+    });
     setLiftWeeks(prev=>({...prev,[id]:1}));
   }
   function removeLift(id) { setLifts(prev=>prev.filter(l=>l.id!==id)); }
@@ -593,12 +605,19 @@ export default function App() {
   }
 
   async function sendFriendRequest(toId) {
+    // Delete any existing declined/pending request first
+    await supabase.from("friend_requests")
+      .delete()
+      .or("and(from_id.eq." + uid + ",to_id.eq." + toId + "),and(from_id.eq." + toId + ",to_id.eq." + uid + ")")
+      .eq("status", "declined");
     const { error } = await supabase.from("friend_requests")
       .insert({ from_id: uid, to_id: toId, status: "pending" });
     if (!error) {
       setFriendSearchResults([]);
       setFriendSearch("");
-      alert("Friend request sent!");
+      alert("Friend request sent to " + (friendSearchResults.find(u=>u.id===toId)?.name || "user") + "!");
+    } else {
+      alert("Already sent — waiting for them to accept.");
     }
   }
 
@@ -675,8 +694,14 @@ export default function App() {
     const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
     const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak};
     setProgramHistory(prev=>[archive,...prev]);
-    // Carry over final maxes as new starting maxes + keep exercise history
-    const nl = lifts.map(l=>({...l, startingMax:finalMaxes[l.id]||0, trainingDays:[]}));
+    // Reset to default 4 lifts but carry over final maxes where lift names match
+    const nl = DEFAULT_LIFTS.map(l => {
+      // Find matching lift from previous program by mainLiftOption or name
+      const prevLift = lifts.find(pl => pl.mainLiftOption === l.mainLiftOption || pl.name === l.name);
+      const prevMax = prevLift ? finalMaxes[prevLift.id] || 0 : 0;
+      return {...l, startingMax: prevMax, trainingDays: []};
+    });
+    // Note: when user adds custom lifts after reset, exerciseHistory still has their last weights
     setLifts(nl);
     setStartDate("");
     setLogs({});
@@ -733,13 +758,21 @@ export default function App() {
 
   }
 
-  const latestWeight = bodyStats.entries[0]?.weightLbs;
+  const latestWeight = bodyStats.entries[0]?.weightLbs ? +bodyStats.entries[0].weightLbs : null;
   const bmi = calcBMI(latestWeight, +bodyStats.heightIn);
   const totalSessions = sessionLedger.filter(s => {
     // Only count sessions from current program using programId
     return programId ? s.programId === programId : (startDate && s.date >= startDate);
   }).length;
   const allTimeSessions = sessionLedger.length;
+  const programVolume = sessionLedger
+    .filter(s => programId ? s.programId === programId : (startDate && s.date >= startDate))
+    .reduce((sum, s) => sum + (s.volume || 0), 0);
+  const programVolumeDisplay = programVolume >= 1000000 
+    ? (programVolume/1000000).toFixed(1) + "M" 
+    : programVolume >= 1000 
+    ? Math.round(programVolume/1000) + "k" 
+    : programVolume;
   // Total possible sessions = unique training days per week × 12
   const uniqueTrainingDays = [...new Set(lifts.flatMap(l => l.trainingDays || []))].length;
   const totalPossible = uniqueTrainingDays * 12;
@@ -1151,7 +1184,7 @@ export default function App() {
                   <div style={{color:"#555",fontSize:11}}>Last: {latestWeight ? latestWeight+" lbs" : "never"}</div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <input type="number" value={weightEntry} placeholder="lbs" onFocus={e=>e.target.select()}
+                  <input type="number" value={weightEntry} placeholder="lbs" step="0.1" onFocus={e=>e.target.select()}
                     onChange={e=>setWeightEntry(e.target.value)}
                     onKeyDown={e=>e.key==="Enter"&&logWeightAndDismiss()}
                     style={{width:64,color:"#f7b731",borderColor:"#f7b731"}} />
@@ -1166,7 +1199,7 @@ export default function App() {
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f7b731",letterSpacing:1,marginBottom:4}}>YOUR BODY IS CHANGING</div>
                 <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>You're putting in the work — track the results. Log this week's weight to see how your body is responding to the program.</div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <input type="number" value={weightEntry} placeholder="lbs" onFocus={e=>e.target.select()}
+                  <input type="number" value={weightEntry} placeholder="lbs" step="0.1" onFocus={e=>e.target.select()}
                     onChange={e=>setWeightEntry(e.target.value)}
                     onKeyDown={e=>e.key==="Enter"&&logWeightAndDismiss()}
                     style={{flex:1,color:"#f7b731",borderColor:"#f7b731"}} />
@@ -1177,7 +1210,7 @@ export default function App() {
             )}
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
-              {[{l:"SESSIONS",v:totalPossible > 0 ? totalSessions + " of " + totalPossible : totalSessions,c:"#f0f0f0"},{l:"STREAK",v:streak+"🔥",c:"#f7b731"},{l:"BMI",v:bmi?String(bmi):"—",c:bmi?bmiCol(bmi):"#555"}].map(s=>(
+              {[{l:"SESSIONS",v:totalPossible > 0 ? totalSessions + " of " + totalPossible : totalSessions,c:"#f0f0f0"},{l:"STREAK",v:streak+"🔥",c:"#f7b731"},{l:"VOLUME",v:programVolume > 0 ? programVolumeDisplay + " lbs" : "—",c:"#3a86ff"}].map(s=>(
                 <div key={s.l} style={{...card,textAlign:"center",marginBottom:0}}>
                   <div style={{color:"#555",fontSize:9,marginBottom:4}}>{s.l}</div>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:s.c}}>{s.v}</div>
@@ -1358,7 +1391,7 @@ export default function App() {
                     </div>
                     <div>
                       <div style={{color:"#555",fontSize:10,marginBottom:4}}>STARTING WEIGHT (lbs)</div>
-                      <input type="number" value={weightEntry} placeholder="lbs" onChange={e=>setWeightEntry(e.target.value)} style={{width:80,color:"#06d6a0"}} />
+                      <input type="number" value={weightEntry} placeholder="lbs" step="0.1" onChange={e=>setWeightEntry(e.target.value)} style={{width:80,color:"#06d6a0"}} />
                     </div>
 
                   </div>
@@ -1391,7 +1424,7 @@ export default function App() {
                       </div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <input type="number" value={l.startingMax||""} placeholder="0" style={{width:80,fontSize:18,fontFamily:"'Bebas Neue',sans-serif",borderColor:l.color,color:l.color,textAlign:"center"}} onChange={e=>updateLift(l.id,"startingMax",+e.target.value||0)} />
+                      <input type="number" value={l.startingMax||""} placeholder="0" style={{width:80,fontSize:18,fontFamily:"'Bebas Neue',sans-serif",borderColor:l.color,color:l.color,textAlign:"center"}} onFocus={e=>{e.target.select();}} onChange={e=>updateLift(l.id,"startingMax",+e.target.value||0)} />
                       <span style={{color:"#555",fontSize:11}}>{l.mainLiftOption==="Assisted Pull Up"?"lbs assist":"lbs"}</span>
                       {lifts.length>1 && <button onClick={()=>removeLift(l.id)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>}
                     </div>
@@ -1648,9 +1681,15 @@ export default function App() {
           <div style={{padding:16}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>PROGRESS</div>
             {lifts.map(l=>{
-              const startMax=calcCurrentMax(l.startingMax||0);
+              const startMax=l.startingMax||0;
               const curMax=getEffMax(l.id,liftWeeks[l.id]||1);
-              const maxData=[{w:"Start",max:startMax},...Array.from({length:12},(_,i)=>({w:`W${i+1}`,max:getEffMax(l.id,i+1)}))];
+              const currentWeek = liftWeeks[l.id] || 1;
+                const maxData=[{w:"Start",max:startMax},...Array.from({length:12},(_,i)=>{
+                  const w = i+1;
+                  // Only show weeks up to current week
+                  if (w > currentWeek) return null;
+                  return {w:"W"+w, max:getEffMax(l.id,w)};
+                }).filter(Boolean)];
               const volData=sessionLedger.filter(s=>s.liftId===l.id).slice(0,10).reverse().map(s=>({d:fmtDate(s.date),v:Math.round((s.volume||0)/1000)}));
               // For assisted pullups, build effective pull strength data
               const effPullData = isAssistedPullUp(l) ? (() => {
