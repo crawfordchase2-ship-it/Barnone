@@ -71,6 +71,8 @@
 // v5.62 - Fixed async/await in startNewProgram and CONTINUE button
 // v5.63 - Banner bigger/prominent, completion tracking fixed (7 day window)
 // v5.64 - Completion check uses sessionLedger for old format data (fixes Deadlift banner bug)
+// v5.65 - Fixed root cause: liftWeeks advances after finish so check current-1 week too
+// v5.66 - Migrates old completedDays true entries to {done,date} on load — no sessionLedger dependency
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -347,7 +349,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.64";
+  const APP_VERSION = "v5.66";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -525,7 +527,18 @@ export default function App() {
         setActiveId(todayLift?.id || d.activeId || loadedLifts[0]?.id || DEFAULT_LIFTS[0].id);
       }
       setLogs(d.logs || {});
-      setCompletedDays(d.completed_days || {});
+      // Migrate old completedDays format (true) to {done, date}
+      const rawCD = d.completed_days || {};
+      const today = new Date().toISOString().split("T")[0];
+      const migratedCD = JSON.parse(JSON.stringify(rawCD));
+      Object.keys(migratedCD).forEach(week => {
+        Object.keys(migratedCD[week]).forEach(liftId => {
+          if (migratedCD[week][liftId] === true) {
+            migratedCD[week][liftId] = {done: true, date: today};
+          }
+        });
+      });
+      setCompletedDays(migratedCD);
       setAccList(d.acc_list || {});
       setExerciseHistory(d.exercise_history || {});
       setWeightAdjust(d.weight_adjust || {});
@@ -1446,21 +1459,14 @@ export default function App() {
               // Find lifts scheduled today that haven't been completed yet
               const todayScheduled = lifts.filter(l => (l.trainingDays||[]).includes(todayAbbr));
               const isCompletedThisWeek = (l) => {
-                const cd = completedDays?.[liftWeeks[l.id]]?.[l.id];
+                // liftWeeks advances after finish so check current AND previous week
+                const currentWeek = liftWeeks[l.id] || 1;
+                const cd = completedDays?.[currentWeek]?.[l.id] || completedDays?.[currentWeek-1]?.[l.id];
                 if (!cd) return false;
-                // New format: {done, date}
+                // After migration all entries have {done, date}
                 if (cd?.done && cd?.date) {
                   const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
                   return daysSince < 7;
-                }
-                // Old format: true - check sessionLedger for a session today or this week
-                if (cd === true) {
-                  const recentSession = sessionLedger.find(s => {
-                    if (s.liftId !== l.id) return false;
-                    const daysSince = (new Date(todayISO()) - new Date(s.date)) / 86400000;
-                    return daysSince < 7;
-                  });
-                  return !!recentSession;
                 }
                 return false;
               };
@@ -1472,19 +1478,12 @@ export default function App() {
                   const nextDay = DAY_ABBR[(new Date().getDay()+i)%7];
                   const found = lifts.find(l => {
                     if (!(l.trainingDays||[]).includes(nextDay)) return false;
-                    const cd = completedDays?.[liftWeeks[l.id]]?.[l.id];
+                    const cw = liftWeeks[l.id] || 1;
+                    const cd = completedDays?.[cw]?.[l.id] || completedDays?.[cw-1]?.[l.id];
                     if (!cd) return true;
                     if (cd?.done && cd?.date) {
                       const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
                       return daysSince >= 7;
-                    }
-                    if (cd === true) {
-                      const recentSession = sessionLedger.find(s => {
-                        if (s.liftId !== l.id) return false;
-                        const daysSince = (new Date(todayISO()) - new Date(s.date)) / 86400000;
-                        return daysSince < 7;
-                      });
-                      return !recentSession;
                     }
                     return true;
                   });
