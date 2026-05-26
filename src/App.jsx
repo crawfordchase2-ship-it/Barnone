@@ -89,7 +89,7 @@
 // v5.80 - Profile modal scrollable so theme toggle is reachable
 // v5.81 - Profile is now fullscreen settings page, kg/lbs toggle, theme/preferences sections
 // v5.82 - Fixed JSX tag mismatch in settings page
-// v5.83 - Fixed profile section tag mismatch (build error)
+// v5.83 - Fixed profile section tag mismatch (build error) — take 2
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -1847,24 +1847,28 @@ export default function App() {
                         <div style={{color:"#f0f0f0",fontSize:16,fontFamily:"'DM Mono',monospace"}}>@{username}</div>
                         <div style={{color:"#333",fontSize:10,marginTop:4}}>Username is permanent and cannot be changed</div>
                       </div>
-
-                      <div style={{borderTop:"1px solid var(--border)",paddingTop:16,marginTop:4,marginBottom:12}}>
-                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,marginBottom:12}}>PREFERENCES</div>
-
-                        <div style={{marginBottom:14}}>
-                          <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>WEIGHT UNIT</div>
-                          <div style={{display:"flex",gap:8}}>
-                            {["lbs","kg"].map(u=>(
-                              <button key={u} onClick={()=>setWeightUnitPref(u)}
-                                style={{flex:1,background:weightUnit===u?"#1a1a2e":"#111",border:"1px solid "+(weightUnit===u?"#e85d04":"#333"),color:weightUnit===u?"#e85d04":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
-                                {u.toUpperCase()}
-                              </button>
-                            ))}
-                          </div>
+                      <div style={{marginBottom:14}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>PUBLIC PROFILE</div>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                          <div style={{color:"#aaa",fontSize:12}}>Friends can find and see your progress</div>
+                          <button onClick={()=>{const newVal=!isPublic;setIsPublic(newVal);if(username){supabase.from("public_profiles").update({is_public:newVal}).eq("id",uid);}}} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                            {isPublic?"ON":"OFF"}
+                          </button>
                         </div>
-
-                        <div style={{marginBottom:14}}>
-                          <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>THEME</div>
+                      </div>
+                      <div style={{borderTop:"1px solid var(--border)",paddingTop:16,marginBottom:14}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>WEIGHT UNIT</div>
+                        <div style={{display:"flex",gap:8}}>
+                          {["lbs","kg"].map(u=>(
+                            <button key={u} onClick={()=>setWeightUnitPref(u)}
+                              style={{flex:1,background:weightUnit===u?"#1a1a2e":"#111",border:"1px solid "+(weightUnit===u?"#e85d04":"#333"),color:weightUnit===u?"#e85d04":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
+                              {u.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{marginBottom:14}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>THEME</div>
                         <div style={{display:"flex",gap:8}}>
                           {[{id:"dark",label:"DARK"},{id:"midnight",label:"MIDNIGHT"},{id:"light",label:"LIGHT"}].map(t=>(
                             <button key={t.id} onClick={()=>setThemePref(t.id)}
@@ -1872,19 +1876,6 @@ export default function App() {
                               {t.label}
                             </button>
                           ))}
-                        </div>
-                      </div>
-
-                      <div style={{borderTop:"1px solid var(--border)",paddingTop:16,marginTop:4,marginBottom:12}}>
-                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,marginBottom:12}}>PROFILE</div>
-                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                          <div>
-                            <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
-                            <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
-                          </div>
-                          <button onClick={()=>{const newVal=!isPublic;setIsPublic(newVal);if(username){supabase.from("public_profiles").update({is_public:newVal}).eq("id",uid);}}} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
-                            {isPublic ? "ON" : "OFF"}
-                          </button>
                         </div>
                       </div>
                     </>
