@@ -38,6 +38,9 @@
 // v5.29 - New program resets to default 4 lifts, carries over matching maxes
 // v5.30 - Starting max input clears on focus, custom lift history preserved
 // v5.31 - BMI replaced with VOLUME, weight card has LOG button + trend arrow
+// v5.32 - BMI fully removed from body stats display
+// v5.33 - LOG button replaces BMI card, VOLUME in stats row, opens to setup if needed
+// v5.34 - Cancel & Restore button in setup if lift accidentally deleted
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -193,6 +196,7 @@ export default function App() {
   const [weightNudge, setWeightNudge] = useState({ weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [confirmStart, setConfirmStart] = useState(false);
+  const [setupSnapshot, setSetupSnapshot] = useState(null);
   const [programId, setProgramId] = useState("");
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
@@ -367,8 +371,14 @@ export default function App() {
         false;
       setProgramStarted(inferred);
     }
-    setView("dashboard");
     setDataLoaded(true);
+    // Open to setup if program not started
+    if (!d.program_started) {
+      setView("setup");
+    } else {
+      setView("dashboard");
+    }
+    // Save snapshot for cancel
     loadSocialData(userId);
   }
 
@@ -526,7 +536,7 @@ export default function App() {
     });
     setLiftWeeks(prev=>({...prev,[id]:1}));
   }
-  function removeLift(id) { setLifts(prev=>prev.filter(l=>l.id!==id)); }
+  function removeLift(id) { setSetupSnapshot(prev => prev || {lifts:[...lifts], startDate}); setLifts(prev=>prev.filter(l=>l.id!==id)); }
   function updateLift(id,field,val) { setLifts(prev=>prev.map(l=>l.id===id?{...l,[field]:val}:l)); }
   function switchLift(id) { setActiveId(id); setViewingWeek(liftWeeks[id]||1); setEditingPastWeek(false); }
   function navigateWeek(dir) {
@@ -849,7 +859,7 @@ export default function App() {
             <div style={{display:"flex",gap:20,marginBottom:20}}>
               <div><div style={{color:"#555",fontSize:10}}>SESSIONS</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26}}>{totalSessions}</div></div>
               <div><div style={{color:"#555",fontSize:10}}>STREAK</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#f7b731"}}>{streak} 🔥</div></div>
-              {bmi && <div><div style={{color:"#555",fontSize:10}}>BMI</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:bmiCol(bmi)}}>{bmi}</div></div>}
+              
             </div>
             <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
             <button onClick={()=>setShowProfile(false)} className="bigbtn" style={{background:"none",border:"1px solid #333",color:"#555"}}>CANCEL</button>
@@ -1248,16 +1258,15 @@ export default function App() {
                     {!latestWeight && (
                       <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>WEIGHT</div>
-                        <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:4,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>LOG</button>
+                        <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,cursor:"pointer",letterSpacing:1,marginTop:6,width:"100%"}}>LOG WEIGHT</button>
                       </div>
                     )}
-                    {bmi && (
-                      <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
-                        <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>BMI</div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:bmiCol(bmi),lineHeight:1}}>{bmi}</div>
-                        <div style={{fontSize:9,color:bmiCol(bmi),marginTop:2}}>{bmiCat(bmi)}</div>
-                      </div>
-                    )}
+
+                    <div style={{background:"#111",borderRadius:8,padding:"12px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}>
+                      <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>WEIGHT</div>
+                      <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1,width:"100%"}}>LOG</button>
+                      {loggedThisWeek && <div style={{color:"#555",fontSize:9,marginTop:4}}>logged ✓</div>}
+                    </div>
                     {!bodyStats.heightIn && !latestWeight && (
                       <div style={{color:"#444",fontSize:11,gridColumn:"1/-1"}}>Set up height & weight in PROGRAM setup</div>
                     )}
@@ -1355,7 +1364,7 @@ export default function App() {
                 </div>
                 <div style={{marginTop:20}}>
                   {!confirmStart && (
-                  <button onClick={()=>setConfirmStart(true)} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04"}}>START NEW 12-WEEK PROGRAM</button>
+                  <button onClick={()=>{setSetupSnapshot({lifts:[...lifts],startDate});setConfirmStart(true);}} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04"}}>START NEW 12-WEEK PROGRAM</button>
                 )}
                 {confirmStart && (
                   <div style={{background:"#0f0f1a",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #e85d04"}}>
@@ -1457,6 +1466,16 @@ export default function App() {
                     {!heightFtEntry && !bodyStats.heightIn && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Enter your height</div>}
                     {!weightEntry && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Enter your starting weight</div>}
                   </div>
+                )}
+                {/* Cancel button — only show if we came from an active program */}
+                {hasSetup === false && setupSnapshot && (
+                  <button onClick={()=>{
+                    setLifts(setupSnapshot.lifts);
+                    setStartDate(setupSnapshot.startDate);
+                    setSetupSnapshot(null);
+                    setConfirmStart(false);
+                    setView("setup");
+                  }} className="bigbtn" style={{background:"none",border:"1px solid #555",color:"#555",marginBottom:8}}>← CANCEL & RESTORE</button>
                 )}
                 {readyToStart && !hasSetup && (
                   <>
