@@ -584,7 +584,6 @@ export default function App() {
     setSessionLedger(prev=>[entry,...prev]);
     checkForPR(activeId, sessionEstMax);
     // Post-workout completion in-app alert
-    const vol = calcVolume(activeId, week);
     setFinishAlert({
       liftName: lift?.name || "",
       week,
