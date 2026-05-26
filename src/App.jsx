@@ -53,6 +53,7 @@
 // v5.44 - Swapped SOCIAL and LEDGER positions in nav bar
 // v5.45 - Weight chart builds left to right with only actual data, no fill-forward
 // v5.46 - All charts roll across last 12 sessions/weeks across programs
+// v5.47 - Share card on program history cards with SAVE TO PHOTOS
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -194,7 +195,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.46";
+  const APP_VERSION = "v5.47";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -209,6 +210,7 @@ export default function App() {
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [confirmStart, setConfirmStart] = useState(false);
   const [setupSnapshot, setSetupSnapshot] = useState(null);
+  const [shareCard, setShareCard] = useState(null);
   const [programId, setProgramId] = useState("");
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
@@ -725,7 +727,7 @@ export default function App() {
   function startNewProgram() {
     // Save final maxes before archiving
     const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
-    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak};
+    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume};
     setProgramHistory(prev=>[archive,...prev]);
     // Reset to default 4 lifts but carry over final maxes where lift names match
     const nl = DEFAULT_LIFTS.map(l => {
@@ -955,6 +957,71 @@ export default function App() {
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d04",letterSpacing:2,marginBottom:8}}>GET BACK IN THE GYM!</div>
             <div style={{color:"#555",fontSize:12,marginBottom:24}}>It's been a few days. Time to lift!</div>
             <button onClick={()=>setStreakAlert(false)} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>I'M BACK 💪</button>
+          </div>
+        </div>
+      )}
+
+      {shareCard && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:300,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,overflowY:"auto"}}>
+          <div id="shareCardEl" style={{background:"#0a0a0f",borderRadius:16,padding:24,width:"100%",maxWidth:360,border:"1px solid #1a1a1a"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1px solid #1a1a1a"}}>
+              <div style={{width:44,height:44,background:"#1a1a2e",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>⊕</div>
+              <div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,fontWeight:900,letterSpacing:2,color:"#f0f0f0"}}>BAR NONE</div>
+                <div style={{fontSize:9,color:"#555",letterSpacing:2}}>THE PROGRAM</div>
+              </div>
+              <div style={{marginLeft:"auto",textAlign:"right"}}>
+                <div style={{fontSize:10,color:"#555"}}>12 WEEKS</div>
+                <div style={{fontSize:11,color:"#aaa"}}>{fmtDate(shareCard.startDate)} → {fmtDate(shareCard.endDate)}</div>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#555",letterSpacing:1,marginBottom:10}}>LIFT PROGRESS</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+              {(shareCard.lifts||[]).map(l=>{
+                const sm = l.startingMax||0;
+                const fm = shareCard.finalMaxes?.[l.id]||sm;
+                const gain = fm - sm;
+                return (
+                  <div key={l.id} style={{background:"#1a1a2e",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:l.color||"#f0f0f0",letterSpacing:1}}>{l.name}</div>
+                      <div style={{fontSize:11,color:"#555"}}>{sm} → {fm} lbs</div>
+                    </div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:gain>0?"#06d6a0":"#555"}}>{gain>0?"+"+gain:gain}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
+              <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#555",marginBottom:4}}>SESSIONS</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:"#f0f0f0"}}>{shareCard.sessionsCompleted||"—"}</div>
+              </div>
+              <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#555",marginBottom:4}}>STREAK</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:"#f7b731"}}>{shareCard.bestStreak||"—"}🔥</div>
+              </div>
+              <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#555",marginBottom:4}}>VOLUME</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:"#3a86ff"}}>
+                  {shareCard.totalVolume >= 1000000 ? (shareCard.totalVolume/1000000).toFixed(1)+"M" : shareCard.totalVolume >= 1000 ? Math.round(shareCard.totalVolume/1000)+"k" : shareCard.totalVolume||"—"}
+                </div>
+              </div>
+            </div>
+            <div style={{textAlign:"center",color:"#333",fontSize:10,letterSpacing:2}}>barnone-six.vercel.app</div>
+          </div>
+          <div style={{width:"100%",maxWidth:360,marginTop:12,display:"flex",gap:10}}>
+            <button onClick={()=>setShareCard(null)} style={{flex:1,background:"none",border:"1px solid #333",color:"#555",borderRadius:8,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>CLOSE</button>
+            <button onClick={()=>{
+              import("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js").then(()=>{
+                window.html2canvas(document.getElementById("shareCardEl"),{backgroundColor:"#0a0a0f",scale:3,useCORS:true}).then(canvas=>{
+                  const link=document.createElement("a");
+                  link.download="barnone-"+fmtDate(shareCard.startDate)+".png";
+                  link.href=canvas.toDataURL("image/png");
+                  link.click();
+                });
+              });
+            }} style={{flex:2,background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1}}>SAVE TO PHOTOS</button>
           </div>
         </div>
       )}
@@ -1529,12 +1596,13 @@ export default function App() {
                       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#555"}}>PROGRAM {programHistory.length-i} · {fmtDate(p.startDate)} → {fmtDate(p.endDate)}</div>
                       <button onClick={()=>{if(window.confirm("Delete this program from history?"))setProgramHistory(prev=>prev.filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
                     </div>
-                    {p.sessionsCompleted !== undefined && (
-                      <div style={{display:"flex",gap:16,fontSize:11,color:"#555",marginBottom:6}}>
-                        <span>{p.sessionsCompleted} of {p.totalPossible || "?"} sessions</span>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <div style={{display:"flex",gap:16,fontSize:11,color:"#555"}}>
+                        {p.sessionsCompleted !== undefined && <span>{p.sessionsCompleted} of {p.totalPossible || "?"} sessions</span>}
                         {p.bestStreak > 0 && <span>🔥 {p.bestStreak} day best streak</span>}
                       </div>
-                    )}
+                      <button onClick={()=>setShareCard(p)} style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>SHARE</button>
+                    </div>
                     {(p.lifts||[]).map(l=>{const sm=calcCurrentMax(l.startingMax||0);const fm=p.finalMaxes?.[l.id]||0;return(<div key={l.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555",padding:"2px 0"}}><span style={{color:l.color}}>{l.name}</span><span>{sm} → {fm} lbs{fm>sm?<span style={{color:"#06d6a0"}}> (+{fm-sm})</span>:""}</span></div>);})}
                   </div>
                 ))}
