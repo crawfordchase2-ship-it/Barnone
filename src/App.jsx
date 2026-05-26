@@ -57,6 +57,14 @@
 // v5.48 - Progress chart shows actual week max (not est max), 180 → 190
 // v5.49 - Dashed est max line on progress chart, Y axis in increments of 5
 // v5.50 - Dashed est max line starts at beginning max
+// v5.51 - Legend added to progress chart (PROGRAM MAX / EST MAX)
+// v5.52 - CONTINUE button on archived programs restores full state
+// v5.53 - Program history shows true starting max not working max
+// v5.54 - Lower body progression: +15 when diff>=20, +10 when diff>=10
+// v5.55 - App auto-navigates to todays scheduled lift on open
+// v5.56 - START WORKOUT button, persists in-progress workout across app restarts
+// v5.57 - Pump up message on lift days, rest day shows next scheduled lift + days away
+// v5.58 - Timer beep sound on rest end, comprehensive accessory list grouped by lift
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -76,17 +84,86 @@ const DEFAULT_LIFTS = [
   { id:"lift_4", name:"Squat",          mainLiftOption:"Squat",          color:"#06d6a0", startingMax:0, trainingDays:[], isLower:true  },
 ];
 const ACCESSORIES_BY_LIFT = {
-  "Bench":           ["Incline Bench","Decline Bench","Cable Flys High/Low","Dips","Skull Crushers","Cable Tricep Ext.","Push Ups","Dumbbell Flys","Close Grip Bench","Sven Press","Tate Press","JM Press","Chest Supported Row","Face Pulls"],
-  "Deadlift":        ["Pullups","Weighted Pullups","Lat Pull-Down","Seated T-bar Row","Str. Arm Lat Pulldown","Dumbbell Row","Barbell Row","Dumbbell Curls","Barbell Curls","Hammer Curls","Preacher Curls","Rack Pulls","Romanian Deadlift","Good Mornings","Shrugs","Ab Roller","Farmers Walk"],
-  "Military Press":  ["Arnold Press","Front Raises","Lateral Raises","Reverse Fly","Rear Delt Swing","Cable Front Raise","Rear Delt Cable Pull","45 Deg Y Raise","Upright Row","Snatch","Face Pulls","Cable Lateral Raise","Dumbbell Shoulder Press","Plate Raises"],
-  "Squat":           ["Smith Lunges","Stiff Leg Deadlift","Leg Extension","Prone Leg Curl","Calf Raises","Hip Abductor","Hip Adductor","Hip Thrust","Bulgarian Split Squat","Cable Kickbacks","Leg Press","Step Ups","Box Jumps","Goblet Squat","Wall Sit"],
-  "Weighted Pull Up":["Lat Pull-Down","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-bar Row","Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Face Pulls","Band Pull Apart"],
-  "Hip Thrust":      ["Glute Bridge","Cable Kickback","Donkey Kicks","Bulgarian Split Squat","Calf Raises","Hip Abductor","Hip Adductor","Leg Press","Romanian Deadlift","Step Ups","Sumo Squat","Reverse Hyper"],
-  "Assisted Pull Up":["Lat Pull-Down","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-bar Row","Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Face Pulls","Band Pull Apart","Dead Hang","Scapular Pull Up"],
+  "Bench": [
+    // Primary Bench accessories
+    "Incline Bench","Decline Bench","Close Grip Bench","Floor Press","Paused Bench",
+    // Chest
+    "Dumbbell Flys","Cable Flys High","Cable Flys Low","Pec Deck","Dumbbell Press","Push Ups","Dips",
+    // Triceps
+    "Skull Crushers","Cable Tricep Ext.","Overhead Tricep Ext.","Tricep Pushdown","JM Press","Tate Press","Sven Press","Diamond Push Ups","Dumbbell Kickbacks",
+    // Upper back/shoulders (for balance)
+    "Face Pulls","Chest Supported Row","Band Pull Apart","Rear Delt Fly","Rear Delt Cable Pull",
+  ],
+  "Deadlift": [
+    // Primary Deadlift accessories
+    "Rack Pulls","Romanian Deadlift","Stiff Leg Deadlift","Good Mornings","Deficit Deadlift","Pause Deadlift",
+    // Back
+    "Pullups","Weighted Pullups","Lat Pull-Down","Seated T-bar Row","Str. Arm Lat Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row",
+    // Biceps
+    "Barbell Curls","Dumbbell Curls","Hammer Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls","Spider Curls","Concentration Curls",
+    // Core/grip
+    "Shrugs","Farmers Walk","Ab Roller","Planks","Hanging Leg Raises","Dead Hang","Reverse Hyper",
+  ],
+  "Military Press": [
+    // Primary shoulder accessories
+    "Arnold Press","Dumbbell Shoulder Press","Push Press","Behind The Neck Press","Z Press","Seated Barbell Press",
+    // Lateral/front
+    "Lateral Raises","Front Raises","Cable Lateral Raise","Cable Front Raise","Plate Raises","45 Deg Y Raise",
+    // Rear delt
+    "Rear Delt Fly","Reverse Fly","Rear Delt Swing","Rear Delt Cable Pull","Face Pulls","Band Pull Apart",
+    // Traps/upper back
+    "Upright Row","Shrugs","Snatch","High Pull","Cable Upright Row",
+    // Triceps
+    "Skull Crushers","Cable Tricep Ext.","Overhead Tricep Ext.","Tricep Pushdown","Dips",
+  ],
+  "Squat": [
+    // Primary squat accessories
+    "Front Squat","Box Squat","Pause Squat","Safety Bar Squat","Goblet Squat","Bulgarian Split Squat","Hack Squat",
+    // Quad/hamstring
+    "Leg Press","Leg Extension","Prone Leg Curl","Seated Leg Curl","Nordic Curl","Stiff Leg Deadlift","Romanian Deadlift","Step Ups","Lunges","Walking Lunges","Smith Lunges","Box Jumps",
+    // Glutes/hips
+    "Hip Thrust","Glute Bridge","Cable Kickbacks","Donkey Kicks","Hip Abductor","Hip Adductor","Sumo Squat","Reverse Hyper",
+    // Calves/core
+    "Calf Raises","Seated Calf Raises","Wall Sit","Planks","Ab Roller","Hanging Leg Raises",
+  ],
+  "Weighted Pull Up": [
+    "Lat Pull-Down","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-bar Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row",
+    "Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls",
+    "Face Pulls","Band Pull Apart","Rear Delt Fly","Dead Hang","Scapular Pull Up","Shrugs","Farmers Walk",
+  ],
+  "Hip Thrust": [
+    "Glute Bridge","Cable Kickback","Donkey Kicks","Bulgarian Split Squat","Sumo Squat","Reverse Hyper",
+    "Calf Raises","Hip Abductor","Hip Adductor","Leg Press","Romanian Deadlift","Step Ups","Lunges","Nordic Curl",
+    "Planks","Ab Roller","Hanging Leg Raises","Side Planks",
+  ],
+  "Assisted Pull Up": [
+    "Lat Pull-Down","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-bar Row",
+    "Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Cable Curls",
+    "Face Pulls","Band Pull Apart","Dead Hang","Scapular Pull Up","Negative Pull Ups","Inverted Row",
+  ],
   "Custom":          ["Incline Bench","Pullups","Lat Pull-Down","Dumbbell Row","Dumbbell Curls","Arnold Press","Front Raises","Lateral Raises","Face Pulls","Romanian Deadlift","Leg Extension","Calf Raises","Hip Thrust","Leg Press","Ab Roller","Farmers Walk","Shrugs"],
 };
 const HYPE = ["Time to move some weight!","Let's get after it!","No excuses. Let's go!","Your future self will thank you.","The bar is waiting.","Stronger than last week. Prove it."];
 const DAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function playTimerSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Three short beeps
+    [0, 0.2, 0.4].forEach(delay => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.15);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.15);
+    });
+  } catch(e) {}
+}
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
 function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
@@ -125,7 +202,7 @@ function calcEstMax(w, r) {
 function calcNextMax(cur, em, isLower) {
   if (!em) return cur;
   const d = em - cur;
-  return isLower ? (d>=20?cur+20:d>=10?cur+10:cur) : (d>=20?cur+10:d>=10?cur+5:cur);
+  return isLower ? (d>=20?cur+15:d>=10?cur+10:cur) : (d>=20?cur+10:d>=10?cur+5:cur);
 }
 function calcBMI(wlbs, hin) {
   if (!wlbs || !hin) return null;
@@ -159,6 +236,8 @@ async function saveUD(userId, d) {
     weight_nudge: d.weightNudge,
     program_started: d.programStarted,
     program_id: d.programId,
+    workout_in_progress: d.workoutInProgress,
+    in_progress_lift_id: d.inProgressLiftId,
     updated_at: new Date().toISOString()
   }, { onConflict: "user_id" });
 }
@@ -198,7 +277,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.50";
+  const APP_VERSION = "v5.58";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -212,6 +291,8 @@ export default function App() {
   const [weightNudge, setWeightNudge] = useState({ weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [confirmStart, setConfirmStart] = useState(false);
+  const [workoutInProgress, setWorkoutInProgress] = useState(false);
+  const [inProgressLiftId, setInProgressLiftId] = useState(null);
   const [setupSnapshot, setSetupSnapshot] = useState(null);
   const [shareCard, setShareCard] = useState(null);
   const [programId, setProgramId] = useState("");
@@ -274,7 +355,7 @@ export default function App() {
   useEffect(() => {
     if (!uid || !dataLoaded) return;
     const timer = setTimeout(() => {
-      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted, programId });
+      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted, programId, workoutInProgress, inProgressLiftId });
     }, 800);
     return () => clearTimeout(timer);
   }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,programStarted,uid,dataLoaded]);
@@ -284,6 +365,7 @@ export default function App() {
       timerRef.current = setTimeout(() => setRestTimer(t => t-1), 1000);
     } else if (restTimer === 0 && restRunning) {
       setRestRunning(false);
+      playTimerSound();
       setRestAlert(true);
     }
     return () => clearTimeout(timerRef.current);
@@ -364,7 +446,15 @@ export default function App() {
     if (d) {
       setLifts(d.lifts || DEFAULT_LIFTS);
       setStartDate(d.start_date || "");
-      setActiveId((d.lifts || DEFAULT_LIFTS)[0]?.id || DEFAULT_LIFTS[0].id);
+      // If workout in progress, restore that lift; else auto-select today's
+      const loadedLifts = d.lifts || DEFAULT_LIFTS;
+      if (d.workout_in_progress && d.in_progress_lift_id) {
+        setActiveId(d.in_progress_lift_id);
+      } else {
+        const todayAbbr = DAY_ABBR[new Date().getDay()];
+        const todayLift = loadedLifts.find(l => (l.trainingDays||[]).includes(todayAbbr));
+        setActiveId(todayLift?.id || d.activeId || loadedLifts[0]?.id || DEFAULT_LIFTS[0].id);
+      }
       setLogs(d.logs || {});
       setCompletedDays(d.completed_days || {});
       setAccList(d.acc_list || {});
@@ -380,6 +470,8 @@ export default function App() {
       setProgramHistory(d.program_history || []);
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
       setProgramId(d.program_id || "");
+      setWorkoutInProgress(d.workout_in_progress || false);
+      setInProgressLiftId(d.in_progress_lift_id || null);
       // Infer programStarted from any existing data
       const inferred = d.program_started ||
         (d.lifts && d.lifts.some(l => l.startingMax > 0) && d.start_date) ||
@@ -710,6 +802,8 @@ export default function App() {
     };
     setSessionLedger(prev=>[entry,...prev]);
     checkForPR(activeId, sessionEstMax);
+    setWorkoutInProgress(false);
+    setInProgressLiftId(null);
     // Post-workout completion in-app alert
     setFinishAlert({
       liftName: lift?.name || "",
@@ -730,7 +824,7 @@ export default function App() {
   function startNewProgram() {
     // Save final maxes before archiving
     const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
-    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume};
+    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume, logs, liftWeeks, completedDays, programId, accList};
     setProgramHistory(prev=>[archive,...prev]);
     // Reset to default 4 lifts but carry over final maxes where lift names match
     const nl = DEFAULT_LIFTS.map(l => {
@@ -1604,9 +1698,32 @@ export default function App() {
                         {p.sessionsCompleted !== undefined && <span>{p.sessionsCompleted} of {p.totalPossible || "?"} sessions</span>}
                         {p.bestStreak > 0 && <span>🔥 {p.bestStreak} day best streak</span>}
                       </div>
-                      <button onClick={()=>setShareCard(p)} style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>SHARE</button>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={()=>{
+                          if(window.confirm("Continue this program? Your current program will be archived.")) {
+                            // Archive current program first
+                            const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
+                            // Restore selected program
+                            setLifts(p.lifts || DEFAULT_LIFTS);
+                            setStartDate(p.startDate || "");
+                            setLogs(p.logs || {});
+                            setLiftWeeks(p.liftWeeks || Object.fromEntries((p.lifts||DEFAULT_LIFTS).map(l=>[l.id,1])));
+                            setCompletedDays(p.completedDays || {});
+                            setAccList(p.accList || {});
+                            setProgramId(p.programId || "");
+                            setProgramStarted(true);
+                            // Update history: remove this program, add current as archive
+                            setProgramHistory(prev => {
+                              const without = prev.filter((_,idx) => idx !== programHistory.indexOf(p));
+                              return [curArchive, ...without];
+                            });
+                            setView("dashboard");
+                          }
+                        }} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>CONTINUE</button>
+                        <button onClick={()=>setShareCard(p)} style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>SHARE</button>
+                      </div>
                     </div>
-                    {(p.lifts||[]).map(l=>{const sm=calcCurrentMax(l.startingMax||0);const fm=p.finalMaxes?.[l.id]||0;return(<div key={l.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555",padding:"2px 0"}}><span style={{color:l.color}}>{l.name}</span><span>{sm} → {fm} lbs{fm>sm?<span style={{color:"#06d6a0"}}> (+{fm-sm})</span>:""}</span></div>);})}
+                    {(p.lifts||[]).map(l=>{const sm=l.startingMax||0;const fm=p.finalMaxes?.[l.id]||0;return(<div key={l.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555",padding:"2px 0"}}><span style={{color:l.color}}>{l.name}</span><span>{sm} → {fm} lbs{fm>sm?<span style={{color:"#06d6a0"}}> (+{fm-sm})</span>:""}</span></div>);})}
                   </div>
                 ))}
               </div>
@@ -1614,6 +1731,51 @@ export default function App() {
           </div>
         )}
 
+        {view==="workout" && !workoutInProgress && (()=>{
+          const todayAbbr = DAY_ABBR[new Date().getDay()];
+          const scheduledLifts = lifts.filter(l=>(l.trainingDays||[]).includes(todayAbbr));
+          const isScheduledToday = scheduledLifts.length > 0;
+          const pumpUps = ["Time to get after it! 💪","No excuses. Just reps. 🔥","Your future self will thank you.","Champions train. Everyone else wishes. 🏆","Make today count. 💯","Pain is temporary. PRs are forever. 🎯","You didn't come this far to only come this far.","Beast mode: ON. 🦁"];
+          const pumpMsg = pumpUps[new Date().getDay() % pumpUps.length];
+          // Find next scheduled lift
+          const nextLift = !isScheduledToday ? (()=>{
+            for(let i=1; i<=7; i++){
+              const nextDay = DAY_ABBR[(new Date().getDay()+i)%7];
+              const found = lifts.find(l=>(l.trainingDays||[]).includes(nextDay));
+              if(found) return {lift:found, day:nextDay, daysAway:i};
+            }
+            return null;
+          })() : null;
+          return (
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+              {isScheduledToday ? (
+                <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid "+(lift?.color||"#e85d04")}}>
+                  <div style={{fontSize:40,marginBottom:8}}>🏋️</div>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:lift?.color||"#e85d04",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
+                  <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:12}}>WEEK {liftWeeks[activeId]||1}</div>
+                  <div style={{color:"#aaa",fontSize:13,marginBottom:24,fontStyle:"italic"}}>"{pumpMsg}"</div>
+                  <button onClick={()=>{setWorkoutInProgress(true);setInProgressLiftId(activeId);}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
+                  <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
+                </div>
+              ) : (
+                <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #333"}}>
+                  <div style={{fontSize:40,marginBottom:8}}>😴</div>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#555",letterSpacing:2,marginBottom:8}}>REST DAY</div>
+                  <div style={{color:"#444",fontSize:12,marginBottom:20}}>No lifts scheduled today. Recovery is part of the program.</div>
+                  {nextLift && (
+                    <div style={{background:"#111",borderRadius:10,padding:"14px",marginBottom:20}}>
+                      <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>NEXT UP</div>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:nextLift.lift.color,letterSpacing:1,marginBottom:2}}>{nextLift.lift.name.toUpperCase()}</div>
+                      <div style={{color:"#555",fontSize:11}}>{nextLift.daysAway === 1 ? "Tomorrow" : "In "+nextLift.daysAway+" days"} · {nextLift.day} · Week {liftWeeks[nextLift.lift.id]||1}</div>
+                    </div>
+                  )}
+                  <button onClick={()=>{setWorkoutInProgress(true);setInProgressLiftId(activeId);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
+                  <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#444",borderRadius:10,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
         {view==="workout" && (
           <>
             <div style={{padding:"8px 16px",display:"flex",gap:8,borderBottom:"1px solid #1a1a1a",flexWrap:"wrap"}}>
@@ -1818,7 +1980,19 @@ export default function App() {
                       : <>Start: <span style={{color:"#aaa"}}>{startMax} lbs</span>{"  →  "}Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax} lbs</span>{curMax>startMax&&<span style={{color:"#06d6a0"}}> (+{curMax-startMax})</span>}</>
                     }
                   </div>
-                  <div style={{color:"#555",fontSize:10,marginBottom:4}}>MAX PROGRESSION</div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <div style={{color:"#555",fontSize:10}}>MAX PROGRESSION</div>
+                    <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <div style={{width:16,height:2,background:l.color,borderRadius:1}}></div>
+                        <span style={{color:"#555",fontSize:9}}>PROGRAM MAX</span>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <div style={{width:16,height:0,borderTop:"2px dashed "+l.color,borderRadius:1}}></div>
+                        <span style={{color:"#555",fontSize:9}}>EST MAX</span>
+                      </div>
+                    </div>
+                  </div>
                   <ResponsiveContainer width="100%" height={110}>
                     <LineChart data={maxData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" />
