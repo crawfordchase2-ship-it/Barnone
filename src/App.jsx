@@ -86,6 +86,8 @@
 // v5.77 - Dark/Midnight/Light theme toggle in profile, persists via localStorage
 // v5.78 - Font changed to Orbitron (headings) + Courier New (body)
 // v5.79 - Font changed to Roboto Condensed (headings) + Roboto (body)
+// v5.80 - Profile modal scrollable so theme toggle is reachable
+// v5.81 - Profile is now fullscreen settings page, kg/lbs toggle, theme/preferences sections
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -266,6 +268,10 @@ function setThemePref(t) {
     setTheme(t);
     localStorage.setItem("barnone_theme", t);
   }
+  function setWeightUnitPref(u) {
+    setWeightUnit(u);
+    localStorage.setItem("barnone_unit", u);
+  }
   function primeAudio() {
   try { getAudioCtx(); } catch(e) {}
 }
@@ -434,8 +440,9 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.79";
+  const APP_VERSION = "v5.81";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
+  const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1180,14 +1187,20 @@ export default function App() {
       )}
 
       {showProfile && (
-        <div style={{position:"fixed",inset:0,background:"#0a0a0f99",zIndex:100,display:"flex",alignItems:"flex-end"}} onClick={()=>setShowProfile(false)}>
-          <div style={{background:"#0f0f1a",borderRadius:"16px 16px 0 0",padding:24,width:"100%",maxWidth:500,margin:"0 auto"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,marginBottom:2}}>{currentUser?.user_metadata?.name || currentUser?.email}</div>
+        <div style={{position:"fixed",inset:0,background:"var(--bg-secondary)",zIndex:100,display:"flex",flexDirection:"column"}} onClick={()=>setShowProfile(false)}>
+          <div style={{background:"var(--bg-secondary)",width:"100%",flex:1,overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"12px 24px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg-secondary)",zIndex:1}}>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:1}}>SETTINGS</div>
+              <button onClick={()=>setShowProfile(false)} style={{background:"none",border:"none",color:"#555",fontSize:24,cursor:"pointer",padding:"0 4px"}}>×</button>
+            </div>
+            <div style={{padding:"0 24px"}}>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,marginBottom:2,marginTop:16}}>{currentUser?.user_metadata?.name || currentUser?.email}</div>
             <div style={{color:"#555",fontSize:11,marginBottom:16}}>{currentUser?.email}</div>
             <div style={{display:"flex",gap:20,marginBottom:20}}>
               <div><div style={{color:"#555",fontSize:10}}>SESSIONS</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26}}>{totalSessions}</div></div>
               <div><div style={{color:"#555",fontSize:10}}>STREAK</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#f7b731"}}>{streak} 🔥</div></div>
               
+            </div>
             </div>
             <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
             <button onClick={()=>setShowProfile(false)} className="bigbtn" style={{background:"none",border:"1px solid #333",color:"#555"}}>CANCEL</button>
@@ -1833,8 +1846,24 @@ export default function App() {
                         <div style={{color:"#f0f0f0",fontSize:16,fontFamily:"'DM Mono',monospace"}}>@{username}</div>
                         <div style={{color:"#333",fontSize:10,marginTop:4}}>Username is permanent and cannot be changed</div>
                       </div>
-                      <div style={{marginBottom:12}}>
-                        <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>THEME</div>
+
+                      <div style={{borderTop:"1px solid var(--border)",paddingTop:16,marginTop:4,marginBottom:12}}>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,marginBottom:12}}>PREFERENCES</div>
+
+                        <div style={{marginBottom:14}}>
+                          <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>WEIGHT UNIT</div>
+                          <div style={{display:"flex",gap:8}}>
+                            {["lbs","kg"].map(u=>(
+                              <button key={u} onClick={()=>setWeightUnitPref(u)}
+                                style={{flex:1,background:weightUnit===u?"#1a1a2e":"#111",border:"1px solid "+(weightUnit===u?"#e85d04":"#333"),color:weightUnit===u?"#e85d04":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
+                                {u.toUpperCase()}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{marginBottom:14}}>
+                          <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>THEME</div>
                         <div style={{display:"flex",gap:8}}>
                           {[{id:"dark",label:"DARK"},{id:"midnight",label:"MIDNIGHT"},{id:"light",label:"LIGHT"}].map(t=>(
                             <button key={t.id} onClick={()=>setThemePref(t.id)}
@@ -1844,6 +1873,9 @@ export default function App() {
                           ))}
                         </div>
                       </div>
+
+                      <div style={{borderTop:"1px solid var(--border)",paddingTop:16,marginTop:4,marginBottom:12}}>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,marginBottom:12}}>PROFILE</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                         <div>
                           <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
