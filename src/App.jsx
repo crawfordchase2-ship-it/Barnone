@@ -18,6 +18,7 @@
 // v5.9 - Save debounce fix, timer countdown fix
 // v5.10 - New week alert fix (completedDays keyed by week not date)
 // v5.11 - Full check verified, version header added
+// v5.12 - Timer sticky fix (top:0, no cutoff behind header)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -1457,10 +1458,12 @@ export default function App() {
                 ))}
               </div>
 
-              <div style={{...card,display:"flex",alignItems:"center",gap:12,marginBottom:14,
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,
+                background:"#0f0f1a",
                 borderLeft:restRunning?"3px solid #06d6a0":"1px solid #222",
-                position:"sticky",top:64,zIndex:8,
-                background:"#0a0a0f"}}>
+                position:"sticky",top:0,zIndex:8,
+                borderRadius:10,
+                padding:"14px 16px"}}>
                 {/* Timer display */}
                 <div style={{textAlign:"center",minWidth:72}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
