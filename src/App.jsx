@@ -67,6 +67,7 @@
 // v5.58 - Timer beep sound on rest end, comprehensive accessory list grouped by lift
 // v5.59 - Smart home banner (time to lift/rest day/next up), date-aware completion tracking
 // v5.60 - Timer sound fixed for iOS (resumes AudioContext, primed on GO tap)
+// v5.61 - Program history moved to separate Supabase table (keeps user_data lean)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -236,6 +237,55 @@ async function loadUD(userId) {
   const { data } = await supabase.from("user_data").select("*").eq("user_id", userId).single();
   return data;
 }
+async function saveProgramToHistory(userId, archive) {
+  const { error } = await supabase.from("program_history").insert({
+    user_id: userId,
+    start_date: archive.startDate || "",
+    end_date: archive.endDate || "",
+    program_id: archive.programId || "",
+    lifts: archive.lifts || [],
+    final_maxes: archive.finalMaxes || {},
+    sessions_completed: archive.sessionsCompleted || 0,
+    total_possible: archive.totalPossible || 0,
+    best_streak: archive.bestStreak || 0,
+    total_volume: archive.totalVolume || 0,
+    logs: archive.logs || {},
+    lift_weeks: archive.liftWeeks || {},
+    completed_days: archive.completedDays || {},
+    acc_list: archive.accList || {},
+  });
+  if (error) console.error("Error saving program history:", error);
+}
+
+async function loadProgramHistory(userId) {
+  const { data, error } = await supabase
+    .from("program_history")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) { console.error("Error loading program history:", error); return []; }
+  return (data || []).map(p => ({
+    id: p.id,
+    startDate: p.start_date,
+    endDate: p.end_date,
+    programId: p.program_id,
+    lifts: p.lifts,
+    finalMaxes: p.final_maxes,
+    sessionsCompleted: p.sessions_completed,
+    totalPossible: p.total_possible,
+    bestStreak: p.best_streak,
+    totalVolume: p.total_volume,
+    logs: p.logs,
+    liftWeeks: p.lift_weeks,
+    completedDays: p.completed_days,
+    accList: p.acc_list,
+  }));
+}
+
+async function deleteProgramFromHistory(id) {
+  await supabase.from("program_history").delete().eq("id", id);
+}
+
 async function saveUD(userId, d) {
   await supabase.from("user_data").upsert({
     user_id: userId,
@@ -250,7 +300,6 @@ async function saveUD(userId, d) {
     custom_accessories: d.customAccessories,
     session_ledger: d.sessionLedger,
     body_stats: d.bodyStats,
-    program_history: d.programHistory,
     weight_nudge: d.weightNudge,
     program_started: d.programStarted,
     program_id: d.programId,
@@ -295,7 +344,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.60";
+  const APP_VERSION = "v5.61";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -373,10 +422,10 @@ export default function App() {
   useEffect(() => {
     if (!uid || !dataLoaded) return;
     const timer = setTimeout(() => {
-      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted, programId, workoutInProgress, inProgressLiftId });
+      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, weightNudge, programStarted, programId, workoutInProgress, inProgressLiftId });
     }, 800);
     return () => clearTimeout(timer);
-  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,programStarted,uid,dataLoaded]);
+  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,weightNudge,programStarted,uid,dataLoaded]);
 
   useEffect(() => {
     if (restRunning && restTimer > 0) {
@@ -484,7 +533,9 @@ export default function App() {
       // Make sure entries is always an array
       if (!Array.isArray(loadedStats.entries)) loadedStats.entries = [];
       setBodyStats(loadedStats);
-      setProgramHistory(d.program_history || []);
+      // Program history loaded separately from program_history table
+      const ph = await loadProgramHistory(userId);
+      setProgramHistory(ph);
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
       setProgramId(d.program_id || "");
       setWorkoutInProgress(d.workout_in_progress || false);
@@ -842,7 +893,11 @@ export default function App() {
     // Save final maxes before archiving
     const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
     const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume, logs, liftWeeks, completedDays, programId, accList};
-    setProgramHistory(prev=>[archive,...prev]);
+    // Save to program_history table
+    await saveProgramToHistory(uid, archive);
+    // Reload history
+    const ph = await loadProgramHistory(uid);
+    setProgramHistory(ph);
     // Reset to default 4 lifts but carry over final maxes where lift names match
     const nl = DEFAULT_LIFTS.map(l => {
       // Find matching lift from previous program by mainLiftOption or name
@@ -1773,7 +1828,7 @@ export default function App() {
                   <div key={i} style={{...card,borderLeft:"3px solid #333"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#555"}}>PROGRAM {programHistory.length-i} · {fmtDate(p.startDate)} → {fmtDate(p.endDate)}</div>
-                      <button onClick={()=>{if(window.confirm("Delete this program from history?"))setProgramHistory(prev=>prev.filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
+                      <button onClick={async()=>{if(window.confirm("Delete this program from history?")){{await deleteProgramFromHistory(p.id);const ph=await loadProgramHistory(uid);setProgramHistory(ph);}}}} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                       <div style={{display:"flex",gap:16,fontSize:11,color:"#555"}}>
@@ -1795,10 +1850,11 @@ export default function App() {
                             setProgramId(p.programId || "");
                             setProgramStarted(true);
                             // Update history: remove this program, add current as archive
-                            setProgramHistory(prev => {
-                              const without = prev.filter((_,idx) => idx !== programHistory.indexOf(p));
-                              return [curArchive, ...without];
-                            });
+                            // Save current as archive, delete continued program from history
+                            await saveProgramToHistory(uid, curArchive);
+                            if (p.id) await deleteProgramFromHistory(p.id);
+                            const ph = await loadProgramHistory(uid);
+                            setProgramHistory(ph);
                             setView("dashboard");
                           }
                         }} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>CONTINUE</button>
