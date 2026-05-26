@@ -88,6 +88,7 @@
 // v5.79 - Font changed to Roboto Condensed (headings) + Roboto (body)
 // v5.80 - Profile modal scrollable so theme toggle is reachable
 // v5.81 - Profile is now fullscreen settings page, kg/lbs toggle, theme/preferences sections
+// v5.82 - Fixed JSX tag mismatch in settings page
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -440,7 +441,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.81";
+  const APP_VERSION = "v5.82";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   const [showProfile, setShowProfile] = useState(false);
@@ -1201,7 +1202,6 @@ export default function App() {
               <div><div style={{color:"#555",fontSize:10}}>STREAK</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#f7b731"}}>{streak} 🔥</div></div>
               
             </div>
-            </div>
             <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
             <button onClick={()=>setShowProfile(false)} className="bigbtn" style={{background:"none",border:"1px solid #333",color:"#555"}}>CANCEL</button>
             <div style={{textAlign:"center",color:"#333",fontSize:10,marginTop:12,letterSpacing:1}}>BAR NONE — THE PROGRAM {APP_VERSION}</div>
@@ -1876,7 +1876,7 @@ export default function App() {
 
                       <div style={{borderTop:"1px solid var(--border)",paddingTop:16,marginTop:4,marginBottom:12}}>
                         <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,marginBottom:12}}>PROFILE</div>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                         <div>
                           <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
                           <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
