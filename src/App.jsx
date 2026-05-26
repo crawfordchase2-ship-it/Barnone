@@ -1196,16 +1196,68 @@ export default function App() {
               <button onClick={()=>setShowProfile(false)} style={{background:"none",border:"none",color:"#555",fontSize:24,cursor:"pointer",padding:"0 4px"}}>×</button>
             </div>
             <div style={{padding:"0 24px"}}>
-            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,marginBottom:2,marginTop:16}}>{currentUser?.user_metadata?.name || currentUser?.email}</div>
-            <div style={{color:"#555",fontSize:11,marginBottom:16}}>{currentUser?.email}</div>
-            <div style={{display:"flex",gap:20,marginBottom:20}}>
-              <div><div style={{color:"#555",fontSize:10}}>SESSIONS</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26}}>{totalSessions}</div></div>
-              <div><div style={{color:"#555",fontSize:10}}>STREAK</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#f7b731"}}>{streak} 🔥</div></div>
-              
-            </div>
-            <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
-            <button onClick={()=>setShowProfile(false)} className="bigbtn" style={{background:"none",border:"1px solid #333",color:"#555"}}>CANCEL</button>
-            <div style={{textAlign:"center",color:"#333",fontSize:10,marginTop:12,letterSpacing:1}}>BAR NONE — THE PROGRAM {APP_VERSION}</div>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,marginBottom:2,marginTop:16}}>{currentUser?.user_metadata?.name || currentUser?.email}</div>
+              <div style={{color:"#555",fontSize:11,marginBottom:16}}>{currentUser?.email}</div>
+              <div style={{display:"flex",gap:20,marginBottom:20}}>
+                <div><div style={{color:"#555",fontSize:10}}>SESSIONS</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26}}>{totalSessions}</div></div>
+                <div><div style={{color:"#555",fontSize:10}}>STREAK</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#f7b731"}}>{streak} 🔥</div></div>
+              </div>
+
+              <div style={{borderBottom:"1px solid var(--border)",marginBottom:16,paddingBottom:4}}>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#555",letterSpacing:1,marginBottom:12}}>PREFERENCES</div>
+                <div style={{marginBottom:14}}>
+                  <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>WEIGHT UNIT</div>
+                  <div style={{display:"flex",gap:8}}>
+                    {["lbs","kg"].map(u=>(
+                      <button key={u} onClick={()=>setWeightUnitPref(u)}
+                        style={{flex:1,background:weightUnit===u?"#1a1a2e":"#111",border:"1px solid "+(weightUnit===u?"#e85d04":"#333"),color:weightUnit===u?"#e85d04":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
+                        {u.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>THEME</div>
+                  <div style={{display:"flex",gap:8}}>
+                    {[{id:"dark",label:"DARK"},{id:"midnight",label:"MIDNIGHT"},{id:"light",label:"LIGHT"}].map(t=>(
+                      <button key={t.id} onClick={()=>setThemePref(t.id)}
+                        style={{flex:1,background:theme===t.id?"#1a1a2e":"#111",border:"1px solid "+(theme===t.id?"#3a86ff":"#333"),color:theme===t.id?"#3a86ff":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,letterSpacing:1,cursor:"pointer"}}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{borderBottom:"1px solid var(--border)",marginBottom:16,paddingBottom:16}}>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#555",letterSpacing:1,marginBottom:12}}>PROFILE</div>
+                {displayName !== undefined && (
+                  <div style={{marginBottom:12}}>
+                    <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>DISPLAY NAME</div>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <div style={{color:"#f0f0f0",fontSize:15,flex:1}}>{displayName || currentUser?.user_metadata?.name || currentUser?.email}</div>
+                      <button onClick={()=>setEditingName(true)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"2px 8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:11,cursor:"pointer"}}>EDIT</button>
+                    </div>
+                  </div>
+                )}
+                {username && (
+                  <div style={{marginBottom:12}}>
+                    <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>USERNAME</div>
+                    <div style={{color:"#f0f0f0",fontSize:15}}>@{username}</div>
+                  </div>
+                )}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{color:"#aaa",fontSize:12}}>Public profile</div>
+                  <button onClick={()=>{const v=!isPublic;setIsPublic(v);if(username)supabase.from("public_profiles").update({is_public:v}).eq("id",uid);}}
+                    style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                    {isPublic?"ON":"OFF"}
+                  </button>
+                </div>
+              </div>
+
+              <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
+              <button onClick={()=>setShowProfile(false)} className="bigbtn" style={{background:"none",border:"1px solid #333",color:"#555",marginBottom:16}}>CANCEL</button>
+              <div style={{textAlign:"center",color:"#333",fontSize:10,marginBottom:16,letterSpacing:1}}>BAR NONE — THE PROGRAM {APP_VERSION}</div>
             </div>
           </div>
         </div>
