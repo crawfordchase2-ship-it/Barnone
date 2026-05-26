@@ -66,6 +66,7 @@
 // v5.57 - Pump up message on lift days, rest day shows next scheduled lift + days away
 // v5.58 - Timer beep sound on rest end, comprehensive accessory list grouped by lift
 // v5.59 - Smart home banner (time to lift/rest day/next up), date-aware completion tracking
+// v5.60 - Timer sound fixed for iOS (resumes AudioContext, primed on GO tap)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -147,23 +148,39 @@ const ACCESSORIES_BY_LIFT = {
 const HYPE = ["Time to move some weight!","Let's get after it!","No excuses. Let's go!","Your future self will thank you.","The bar is waiting.","Stronger than last week. Prove it."];
 const DAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
 function playTimerSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Three short beeps
-    [0, 0.2, 0.4].forEach(delay => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      osc.type = "sine";
-      gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.15);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 0.15);
-    });
+    const ctx = getAudioCtx();
+    // Resume context if suspended (iOS requires this)
+    const play = () => {
+      [0, 0.25, 0.5].forEach(delay => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.5, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.2);
+      });
+    };
+    if (ctx.state === "suspended") {
+      ctx.resume().then(play);
+    } else {
+      play();
+    }
   } catch(e) {}
+}
+// Prime audio context on first user tap (iOS requirement)
+function primeAudio() {
+  try { getAudioCtx(); } catch(e) {}
 }
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
@@ -278,7 +295,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.59";
+  const APP_VERSION = "v5.60";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -2185,7 +2202,7 @@ export default function App() {
             ))}
           </div>
           {/* GO / RST */}
-          <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}}
+          <button onClick={()=>{primeAudio();setRestTimer(restDuration);setRestRunning(true);}}
             style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,cursor:"pointer"}}>GO</button>
           <button onClick={()=>{setRestTimer(null);setRestRunning(false);}}
             style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>RST</button>
