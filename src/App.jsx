@@ -141,6 +141,11 @@ export default function App() {
   const [heightFtEntry, setHeightFtEntry] = useState("");
   const [heightInEntry, setHeightInEntry] = useState("");
   const [showWeightPrompt, setShowWeightPrompt] = useState(false);
+  const [finishAlert, setFinishAlert] = useState(null);
+  const [prAlert, setPrAlert] = useState(null);
+  const [restAlert, setRestAlert] = useState(false);
+  const [newWeekAlert, setNewWeekAlert] = useState(null);
+  const [streakAlert, setStreakAlert] = useState(false);
   const [weightNudge, setWeightNudge] = useState({ weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [confirmStart, setConfirmStart] = useState(false);
@@ -209,8 +214,7 @@ export default function App() {
       timerRef.current = setTimeout(() => setRestTimer(t => t-1), 1000);
     } else if (restTimer === 0 && restRunning) {
       setRestRunning(false);
-      if ("Notification" in window && Notification.permission === "granted")
-        new Notification("Rest Over!", { body: "Time for your next set!" });
+      setRestAlert(true);
     }
     return () => clearTimeout(timerRef.current);
   }, [restRunning, restTimer]);
@@ -228,21 +232,20 @@ export default function App() {
     }
   }
 
-  // New week notification
+  // New week notification - only on scheduled training day
   useEffect(() => {
     if (!hasSetup || !uid) return;
+    const todayAbbr = DAY_ABBR[new Date().getDay()];
     lifts.forEach(l => {
       const w = liftWeeks[l.id] || 1;
       if (w <= 1) return;
-      const key = `barnone_newweek_${uid}_${l.id}_w${w}`;
+      // Only notify on a day this lift is scheduled
+      if (!(l.trainingDays||[]).includes(todayAbbr)) return;
+      const key = `barnone_newweek_${uid}_${l.id}_w${w}_${todayISO()}`;
       if (sessionStorage.getItem(key)) return;
       sessionStorage.setItem(key, "1");
-      if (Notification.permission !== "granted") return;
-      const wts = calcWorkingWeights(getEffMax(l.id, w));
-      new Notification(`📅 WEEK ${w} - ${l.name.toUpperCase()}`, {
-        body: `New week, new weights!
-Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
-      });
+      const wts = calcWorkingWeights(getWorkingMax(l.id, w));
+      setNewWeekAlert({ liftName: l.name, week: w, weights: wts, color: l.color });
     });
   }, [liftWeeks, hasSetup, uid]);
 
@@ -581,6 +584,15 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
     };
     setSessionLedger(prev=>[entry,...prev]);
     checkForPR(activeId, sessionEstMax);
+    // Post-workout completion in-app alert
+    const vol = calcVolume(activeId, week);
+    setFinishAlert({
+      liftName: lift?.name || "",
+      week,
+      vol,
+      estMax: sessionEstMax,
+      color: lift?.color || "#e85d04"
+    });
     setSessionNotes("");
     // Show weight prompt if not logged this week
     if (!loggedThisWeek) setShowWeightPrompt(true);
@@ -738,6 +750,91 @@ Sets: ${wts[0]} / ${wts[1]} / ${wts[2]} / ${wts[3]} lbs`
         <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:200,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
           <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#444",letterSpacing:2,marginTop:8}}>LOADING...</div>
+        </div>
+      )}
+
+      {restAlert && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid #f7b731"}}>
+            <div style={{fontSize:48,marginBottom:8}}>⏱️</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#f7b731",letterSpacing:2,marginBottom:8}}>REST OVER!</div>
+            <div style={{color:"#555",fontSize:12,marginBottom:24}}>Time for your next set</div>
+            <button onClick={()=>setRestAlert(false)} style={{width:"100%",background:"#f7b731",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S GO</button>
+          </div>
+        </div>
+      )}
+
+      {prAlert && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid "+prAlert.color}}>
+            <div style={{fontSize:48,marginBottom:8}}>🏆</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:prAlert.color,letterSpacing:2,marginBottom:4}}>NEW PR!</div>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>{prAlert.liftName.toUpperCase()}</div>
+            <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:24}}>
+              <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
+                <div style={{color:"#555",fontSize:10,marginBottom:4}}>BEFORE</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#555"}}>{prAlert.prevMax} lbs</div>
+              </div>
+              <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
+                <div style={{color:"#555",fontSize:10,marginBottom:4}}>NEW MAX</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#06d6a0"}}>{prAlert.estMax} lbs</div>
+              </div>
+            </div>
+            <button onClick={()=>setPrAlert(null)} style={{width:"100%",background:prAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S GO 🔥</button>
+          </div>
+        </div>
+      )}
+
+      {newWeekAlert && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid "+newWeekAlert.color}}>
+            <div style={{fontSize:48,marginBottom:8}}>📅</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:newWeekAlert.color,letterSpacing:2,marginBottom:4}}>WEEK {newWeekAlert.week}!</div>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>{newWeekAlert.liftName.toUpperCase()} — NEW WEIGHTS</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:24}}>
+              {newWeekAlert.weights.map((w,i)=>(
+                <div key={i} style={{background:"#1a1a2e",borderRadius:8,padding:"10px"}}>
+                  <div style={{color:"#555",fontSize:10,marginBottom:2}}>SET {i+1}</div>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f0f0f0"}}>{w} lbs</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>setNewWeekAlert(null)} style={{width:"100%",background:newWeekAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S LIFT!</button>
+          </div>
+        </div>
+      )}
+
+      {streakAlert && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid #e85d04"}}>
+            <div style={{fontSize:48,marginBottom:8}}>🔥</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d04",letterSpacing:2,marginBottom:8}}>GET BACK IN THE GYM!</div>
+            <div style={{color:"#555",fontSize:12,marginBottom:24}}>It's been a few days. Time to lift!</div>
+            <button onClick={()=>setStreakAlert(false)} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>I'M BACK 💪</button>
+          </div>
+        </div>
+      )}
+
+      {finishAlert && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid "+finishAlert.color}}>
+            <div style={{fontSize:48,marginBottom:8}}>💪</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:finishAlert.color,letterSpacing:2,marginBottom:4}}>{finishAlert.liftName.toUpperCase()} DONE!</div>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>WEEK {finishAlert.week} COMPLETE</div>
+            <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:24}}>
+              <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
+                <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>VOLUME</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#f0f0f0"}}>{finishAlert.vol.toLocaleString()}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
+              </div>
+              {finishAlert.estMax && (
+                <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
+                  <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>EST MAX</div>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#06d6a0"}}>{finishAlert.estMax}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
+                </div>
+              )}
+            </div>
+            <button onClick={()=>setFinishAlert(null)} style={{width:"100%",background:finishAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,cursor:"pointer"}}>LETS GO 🔥</button>
+          </div>
         </div>
       )}
 
