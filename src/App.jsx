@@ -44,6 +44,8 @@
 // v5.35 - Weight trend bigger, color coded with diff, LOG card separate, no duplicate cards
 // v5.36 - Volume/sessions/streak use programId only, no date fallback bleeding old data
 // v5.37 - Weight chart shows immediately as flat line, fills in as entries logged
+// v5.38 - Weight chart moved to Progress tab only, labels show actual dates (5/26)
+// v5.39 - Auto-tags old sessions with current programId on load (fixes volume bleed)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -185,7 +187,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.37";
+  const APP_VERSION = "v5.39";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -373,6 +375,13 @@ export default function App() {
         (d.completed_days && Object.keys(d.completed_days).length > 0) ||
         false;
       setProgramStarted(inferred);
+    }
+    // Tag any old sessions missing programId with current programId
+    const pid = d.program_id || "";
+    if (pid && d.session_ledger && d.session_ledger.some(s => !s.programId)) {
+      const tagged = d.session_ledger.map(s => s.programId ? s : {...s, programId: pid});
+      await supabase.from("user_data").update({session_ledger: tagged}).eq("user_id", userId);
+      d.session_ledger = tagged;
     }
     setDataLoaded(true);
     // Open to setup if program not started
@@ -1276,39 +1285,7 @@ export default function App() {
                   </div>
                 );
               })()}
-              {(()=>{
-                const now = new Date();
-                const weeklyData = [];
-                let lastKnown = bodyStats.entries.length > 0 ? bodyStats.entries[bodyStats.entries.length-1].weightLbs : null;
-                for (let w = 11; w >= 0; w--) {
-                  const weekEnd = new Date(now);
-                  weekEnd.setDate(now.getDate() - w * 7);
-                  const weekStart = new Date(weekEnd);
-                  weekStart.setDate(weekEnd.getDate() - 6);
-                  const weekEntries = bodyStats.entries.filter(e => {
-                    const d = new Date(e.date);
-                    return d >= weekStart && d <= weekEnd;
-                  });
-                  if (weekEntries.length > 0) {
-                    const avg = weekEntries.reduce((sum, e) => sum + e.weightLbs, 0) / weekEntries.length;
-                    lastKnown = Math.round(avg*10)/10;
-                    weeklyData.push({ d: "W"+(12-w), w: lastKnown });
-                  } else if (lastKnown) {
-                    weeklyData.push({ d: "W"+(12-w), w: lastKnown });
-                  }
-                }
-                if (weeklyData.length === 0) return null;
-                return (
-                  <ResponsiveContainer width="100%" height={90}>
-                    <LineChart data={weeklyData}>
-                      <XAxis dataKey="d" tick={{fill:"#555",fontSize:8}} />
-                      <YAxis tick={{fill:"#555",fontSize:8}} domain={["auto","auto"]} />
-                      <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid #06d6a0",borderRadius:6,fontSize:11}} />
-                      <Line type="monotone" dataKey="w" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="avg lbs" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                );
-              })()}
+
             </div>
 
             <div style={{...card}}>
@@ -1785,6 +1762,7 @@ export default function App() {
               // Build 12-week weekly averages
               const now = new Date();
               const weeklyData = [];
+              let lastKnownW = bodyStats.entries.length > 0 ? bodyStats.entries[bodyStats.entries.length-1].weightLbs : null;
               for (let w = 11; w >= 0; w--) {
                 const weekEnd = new Date(now);
                 weekEnd.setDate(now.getDate() - w * 7);
@@ -1794,9 +1772,13 @@ export default function App() {
                   const d = new Date(e.date);
                   return d >= weekStart && d <= weekEnd;
                 });
+                const label = (weekEnd.getMonth()+1) + "/" + weekEnd.getDate();
                 if (weekEntries.length > 0) {
                   const avg = weekEntries.reduce((sum, e) => sum + e.weightLbs, 0) / weekEntries.length;
-                  weeklyData.push({ d: "W" + (12-w), w: Math.round(avg * 10) / 10 });
+                  lastKnownW = Math.round(avg * 10) / 10;
+                  weeklyData.push({ d: label, w: lastKnownW });
+                } else if (lastKnownW) {
+                  weeklyData.push({ d: label, w: lastKnownW });
                 }
               }
               if (weeklyData.length === 0) return null;
