@@ -81,6 +81,7 @@
 // v5.72 - CONTINUE works even if new program not started yet (no unnecessary archive)
 // v5.73 - CONTINUE button try/catch, better fallbacks, sets activeId on restore
 // v5.74 - Safe area inset padding for iOS status bar, viewport-fit=cover
+// v5.75 - Fixed stray } rendering as text (lines 1797, 2408 ternary braces)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -425,7 +426,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.74";
+  const APP_VERSION = "v5.75";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1794,6 +1795,7 @@ export default function App() {
                               <div style={{color:"#f0f0f0",fontSize:15}}>{displayName || currentUser?.user_metadata?.name || currentUser?.email}</div>
                               <button onClick={()=>setEditingName(true)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"2px 8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,cursor:"pointer"}}>EDIT</button>
                             </div>
+                        }
                       </div>
                       <div style={{marginBottom:12}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:4}}>USERNAME</div>
@@ -2404,6 +2406,7 @@ export default function App() {
                             <button onClick={()=>setReps(week,activeId,i,String(+(getReps(week,activeId,i)||10)+1))}
                               style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"0 8px 8px 0",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
                           </div>
+                    }
                   </div>
                 ))}
               </div>
