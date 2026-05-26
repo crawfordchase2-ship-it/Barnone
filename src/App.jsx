@@ -42,6 +42,8 @@
 // v5.33 - LOG button replaces BMI card, VOLUME in stats row, opens to setup if needed
 // v5.34 - Cancel & Restore button in setup if lift accidentally deleted
 // v5.35 - Weight trend bigger, color coded with diff, LOG card separate, no duplicate cards
+// v5.36 - Volume/sessions/streak use programId only, no date fallback bleeding old data
+// v5.37 - Weight chart shows immediately as flat line, fills in as entries logged
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -183,7 +185,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.20";
+  const APP_VERSION = "v5.37";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -772,12 +774,11 @@ export default function App() {
   const latestWeight = bodyStats.entries[0]?.weightLbs ? +bodyStats.entries[0].weightLbs : null;
   const bmi = calcBMI(latestWeight, +bodyStats.heightIn);
   const totalSessions = sessionLedger.filter(s => {
-    // Only count sessions from current program using programId
-    return programId ? s.programId === programId : (startDate && s.date >= startDate);
+    return programId && s.programId === programId;
   }).length;
   const allTimeSessions = sessionLedger.length;
   const programVolume = sessionLedger
-    .filter(s => programId ? s.programId === programId : (startDate && s.date >= startDate))
+    .filter(s => programId && s.programId === programId)
     .reduce((sum, s) => sum + (s.volume || 0), 0);
   const programVolumeDisplay = programVolume >= 1000000 
     ? (programVolume/1000000).toFixed(1) + "M" 
@@ -789,7 +790,7 @@ export default function App() {
   const totalPossible = uniqueTrainingDays * 12;
   const streak = (() => {
     // Only count sessions from current program
-    const programSessions = sessionLedger.filter(s => programId ? s.programId === programId : (startDate && s.date >= startDate));
+    const programSessions = sessionLedger.filter(s => programId && s.programId === programId);
     if(!programSessions.length) return 0;
     const dates=[...new Set(programSessions.map(s=>s.date))].sort().reverse();
     let s=0,cur=todayISO();
@@ -1275,9 +1276,10 @@ export default function App() {
                   </div>
                 );
               })()}
-              {bodyStats.entries.length>0 && (()=>{
+              {(()=>{
                 const now = new Date();
                 const weeklyData = [];
+                let lastKnown = bodyStats.entries.length > 0 ? bodyStats.entries[bodyStats.entries.length-1].weightLbs : null;
                 for (let w = 11; w >= 0; w--) {
                   const weekEnd = new Date(now);
                   weekEnd.setDate(now.getDate() - w * 7);
@@ -1289,10 +1291,13 @@ export default function App() {
                   });
                   if (weekEntries.length > 0) {
                     const avg = weekEntries.reduce((sum, e) => sum + e.weightLbs, 0) / weekEntries.length;
-                    weeklyData.push({ d: "W"+(12-w), w: Math.round(avg*10)/10 });
+                    lastKnown = Math.round(avg*10)/10;
+                    weeklyData.push({ d: "W"+(12-w), w: lastKnown });
+                  } else if (lastKnown) {
+                    weeklyData.push({ d: "W"+(12-w), w: lastKnown });
                   }
                 }
-                if (weeklyData.length < 2) return null;
+                if (weeklyData.length === 0) return null;
                 return (
                   <ResponsiveContainer width="100%" height={90}>
                     <LineChart data={weeklyData}>
@@ -1794,7 +1799,7 @@ export default function App() {
                   weeklyData.push({ d: "W" + (12-w), w: Math.round(avg * 10) / 10 });
                 }
               }
-              if (weeklyData.length < 2) return null;
+              if (weeklyData.length === 0) return null;
               return (
                 <div style={{...card}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:4}}>BODYWEIGHT</div>
