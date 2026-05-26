@@ -41,6 +41,7 @@
 // v5.32 - BMI fully removed from body stats display
 // v5.33 - LOG button replaces BMI card, VOLUME in stats row, opens to setup if needed
 // v5.34 - Cancel & Restore button in setup if lift accidentally deleted
+// v5.35 - Weight trend bigger, color coded with diff, LOG card separate, no duplicate cards
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -1242,30 +1243,31 @@ export default function App() {
                         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#aaa",lineHeight:1}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
                       </div>
                     )}
-                    {latestWeight && (
-                      <div style={{background:"#111",borderRadius:8,padding:"12px",position:"relative"}}>
-                        <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>WEIGHT</div>
-                        <div style={{display:"flex",alignItems:"baseline",gap:4}}>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#06d6a0",lineHeight:1}}>{latestWeight}</div>
-                          {trend && <span style={{fontSize:18,color:trendCol,lineHeight:1}}>{trend}</span>}
-                        </div>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
-                          <div style={{fontSize:9,color:"#555"}}>lbs</div>
-                          <button onClick={()=>setShowWeightPrompt(true)} style={{background:"none",border:"none",color:"#06d6a0",fontSize:10,cursor:"pointer",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>LOG</button>
-                        </div>
-                      </div>
-                    )}
-                    {!latestWeight && (
-                      <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
-                        <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>WEIGHT</div>
-                        <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,cursor:"pointer",letterSpacing:1,marginTop:6,width:"100%"}}>LOG WEIGHT</button>
-                      </div>
-                    )}
-
+                    {/* Weight card with trend */}
+                    <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
+                      <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>WEIGHT</div>
+                      {latestWeight ? (
+                        <>
+                          <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#06d6a0",lineHeight:1}}>{latestWeight}</div>
+                            <div style={{fontSize:10,color:"#555"}}>lbs</div>
+                          </div>
+                          {trend && (
+                            <div style={{display:"flex",alignItems:"center",gap:4,marginTop:6,background:trendCol+"33",borderRadius:6,padding:"3px 8px",width:"fit-content"}}>
+                              <span style={{fontSize:20,color:trendCol,lineHeight:1,fontWeight:"bold"}}>{trend}</span>
+                              <span style={{fontSize:10,color:trendCol,fontFamily:"'DM Mono',monospace"}}>{prevWeight?Math.abs(+latestWeight-+prevWeight).toFixed(1)+" lbs":""}</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{color:"#444",fontSize:11,marginTop:4}}>not logged</div>
+                      )}
+                    </div>
+                    {/* LOG card */}
                     <div style={{background:"#111",borderRadius:8,padding:"12px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}>
-                      <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>WEIGHT</div>
-                      <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1,width:"100%"}}>LOG</button>
-                      {loggedThisWeek && <div style={{color:"#555",fontSize:9,marginTop:4}}>logged ✓</div>}
+                      <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>LOG</div>
+                      <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1,width:"100%"}}>LOG WEIGHT</button>
+                      {loggedThisWeek && <div style={{color:"#06d6a0",fontSize:9,marginTop:4}}>✓ logged this week</div>}
                     </div>
                     {!bodyStats.heightIn && !latestWeight && (
                       <div style={{color:"#444",fontSize:11,gridColumn:"1/-1"}}>Set up height & weight in PROGRAM setup</div>
