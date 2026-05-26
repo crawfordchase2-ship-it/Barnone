@@ -65,6 +65,7 @@
 // v5.56 - START WORKOUT button, persists in-progress workout across app restarts
 // v5.57 - Pump up message on lift days, rest day shows next scheduled lift + days away
 // v5.58 - Timer beep sound on rest end, comprehensive accessory list grouped by lift
+// v5.59 - Smart home banner (time to lift/rest day/next up), date-aware completion tracking
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -277,7 +278,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.58";
+  const APP_VERSION = "v5.59";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -394,9 +395,8 @@ export default function App() {
       // Don't notify if this lift was completed in the previous week (just finished)
       // completedDays is keyed by week number, w is already advanced to next week
       const justCompleted = completedDays?.[w-1]?.[l.id];
-      // Also check if session was logged today for this lift
       const loggedToday = sessionLedger.some(s => s.date === todayISO() && s.liftId === l.id);
-      if (justCompleted && loggedToday) return;
+      if ((justCompleted === true || justCompleted?.done) && loggedToday) return;
       const key = "barnone_newweek_" + uid + "_" + l.id + "_w" + w + "_" + todayISO();
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, "1");
@@ -815,7 +815,7 @@ export default function App() {
     setSessionNotes("");
     // Show weight prompt if not logged this week
     if (!loggedThisWeek) setShowWeightPrompt(true); // Always prompt if not logged this week
-    setCompletedDays(prev=>{const n=JSON.parse(JSON.stringify(prev));if(!n[week])n[week]={};n[week][activeId]=true;return n;});
+    setCompletedDays(prev=>{const n=JSON.parse(JSON.stringify(prev));if(!n[week])n[week]={};n[week][activeId]={done:true,date:todayISO()};return n;});
     const nw=Math.min(12,activeLiftWeek+1);
     setLiftWeeks(prev=>({...prev,[activeId]:nw}));
     setViewingWeek(nw);
@@ -1366,6 +1366,71 @@ export default function App() {
         {view==="dashboard" && (
           <div style={{padding:16}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>DASHBOARD</div>
+            {hasSetup && dataLoaded && (()=>{
+              const todayAbbr = DAY_ABBR[new Date().getDay()];
+              // Find lifts scheduled today that haven't been completed yet
+              const todayScheduled = lifts.filter(l => (l.trainingDays||[]).includes(todayAbbr));
+              const isCompletedThisWeek = (l) => {
+                const cd = completedDays?.[liftWeeks[l.id]]?.[l.id];
+                if (!cd) return false;
+                // Handle both old (true) and new ({done,date}) format
+                if (cd === true) return true;
+                if (cd?.done) {
+                  // Check if completed within last 7 days
+                  const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
+                  return daysSince < 7;
+                }
+                return false;
+              };
+              const todayCompleted = todayScheduled.filter(l => isCompletedThisWeek(l));
+              const todayPending = todayScheduled.filter(l => !isCompletedThisWeek(l));
+              // Find next upcoming lift
+              const getNextLift = () => {
+                for(let i=1; i<=7; i++){
+                  const nextDay = DAY_ABBR[(new Date().getDay()+i)%7];
+                  const found = lifts.find(l=>(l.trainingDays||[]).includes(nextDay) && !completedDays?.[liftWeeks[l.id]]?.[l.id]);
+                  if(found) return {lift:found, day:nextDay, daysAway:i};
+                }
+                return null;
+              };
+              const nextLift = getNextLift();
+              // Determine banner message
+              let bannerColor, bannerIcon, bannerTitle, bannerSub;
+              if (todayPending.length > 0) {
+                // Time to lift today
+                const l = todayPending[0];
+                bannerColor = l.color || "#e85d04";
+                bannerIcon = "💪";
+                bannerTitle = "TIME TO LIFT";
+                bannerSub = l.name.toUpperCase() + " — WEEK " + (liftWeeks[l.id]||1);
+              } else if (todayCompleted.length > 0 && todayPending.length === 0) {
+                // All done today
+                bannerColor = "#06d6a0";
+                bannerIcon = "✅";
+                bannerTitle = "GREAT WORK TODAY!";
+                bannerSub = nextLift 
+                  ? "NEXT: " + nextLift.lift.name.toUpperCase() + " WK " + (liftWeeks[nextLift.lift.id]||1) + (nextLift.daysAway===1?" · TOMORROW":" · IN "+nextLift.daysAway+" DAYS")
+                  : "ALL CAUGHT UP 🎉";
+              } else {
+                // Rest day
+                bannerColor = "#555";
+                bannerIcon = "😴";
+                bannerTitle = "REST DAY";
+                bannerSub = nextLift
+                  ? "NEXT: " + nextLift.lift.name.toUpperCase() + " WK " + (liftWeeks[nextLift.lift.id]||1) + (nextLift.daysAway===1?" · TOMORROW":" · IN "+nextLift.daysAway+" DAYS")
+                  : "ENJOY THE RECOVERY";
+              }
+              return (
+                <div onClick={()=>todayPending.length>0&&setView("workout")} style={{background:"#0f0f1a",borderRadius:10,padding:"14px 16px",marginBottom:16,borderLeft:"4px solid "+bannerColor,display:"flex",alignItems:"center",gap:14,cursor:todayPending.length>0?"pointer":"default"}}>
+                  <div style={{fontSize:28}}>{bannerIcon}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
+                    <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#555",marginTop:3}}>{bannerSub}</div>
+                  </div>
+                  {todayPending.length>0 && <div style={{color:bannerColor,fontSize:20}}>›</div>}
+                </div>
+              );
+            })()}
             {!hasSetup && dataLoaded && (
               <div style={{...card,borderLeft:"3px solid #f7b731"}}>
                 <div style={{color:"#f7b731",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,marginBottom:4}}>SETUP REQUIRED</div>
