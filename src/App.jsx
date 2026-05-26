@@ -225,10 +225,8 @@ export default function App() {
     const lift = lifts.find(l => l.id === liftId);
     if (!lift) return;
     const prevMax = getEffMax(liftId, liftWeeks[liftId] || 1);
-    if (estMax > prevMax && Notification.permission === "granted") {
-      new Notification(`🏆 NEW PR - ${lift.name.toUpperCase()}!`, {
-        body: `Est. max: ${estMax} lbs — up from ${prevMax} lbs. Beast mode activated.`
-      });
+    if (estMax > prevMax) {
+      setPrAlert({ liftName: lift.name, estMax, prevMax, color: lift.color });
     }
   }
 
@@ -257,11 +255,9 @@ export default function App() {
     const lastDate = sessionLedger[0]?.date;
     if (!lastDate) return;
     const daysSince = Math.floor((new Date(todayISO()) - new Date(lastDate)) / 86400000);
-    if (daysSince >= 3 && Notification.permission === "granted") {
+    if (daysSince >= 3) {
       sessionStorage.setItem(key, "1");
-      new Notification("💪 TIME TO GET BACK IN THE GYM", {
-        body: `It's been ${daysSince} days since your last session. Your gains are waiting.`
-      });
+      setStreakAlert(true);
     }
   }, [hasSetup, uid, sessionLedger]);
 
@@ -273,14 +269,17 @@ export default function App() {
     const key = `barnone_summary_${uid}_${todayISO()}`;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
-    if (Notification.permission !== "granted") return;
     const thisWeekStart = new Date(today);
     thisWeekStart.setDate(today.getDate() - 6);
     const weekSessions = sessionLedger.filter(s => new Date(s.date) >= thisWeekStart);
     if (!weekSessions.length) return;
     const totalVol = weekSessions.reduce((sum, s) => sum + (s.volume || 0), 0);
-    new Notification("📊 WEEKLY SUMMARY", {
-      body: `${weekSessions.length} session${weekSessions.length > 1 ? "s" : ""} this week · ${Math.round(totalVol / 1000)}k lbs moved. Keep it up!`
+    setFinishAlert({
+      liftName: "WEEKLY SUMMARY",
+      week: null,
+      vol: totalVol,
+      estMax: null,
+      color: "#8338ec"
     });
   }, [hasSetup, uid]);
 
