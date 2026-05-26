@@ -26,6 +26,7 @@
 // v5.17 - LOG button on dashboard weight card, always prompt after workout
 // v5.18 - Sessions shows X of Y (this program), archived with program history
 // v5.19 - Streak counts current program only, best streak archived in history
+// v5.20 - programId fixes sessions/streak bleeding across programs
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -127,6 +128,7 @@ async function saveUD(userId, d) {
     program_history: d.programHistory,
     weight_nudge: d.weightNudge,
     program_started: d.programStarted,
+    program_id: d.programId,
     updated_at: new Date().toISOString()
   }, { onConflict: "user_id" });
 }
@@ -179,6 +181,7 @@ export default function App() {
   const [weightNudge, setWeightNudge] = useState({ weekKey:"", skips:0 });
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [confirmStart, setConfirmStart] = useState(false);
+  const [programId, setProgramId] = useState("");
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
   const [newReactionCount, setNewReactionCount] = useState(0);
@@ -237,7 +240,7 @@ export default function App() {
   useEffect(() => {
     if (!uid || !dataLoaded) return;
     const timer = setTimeout(() => {
-      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted });
+      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted, programId });
     }, 800);
     return () => clearTimeout(timer);
   }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,programStarted,uid,dataLoaded]);
@@ -342,6 +345,7 @@ export default function App() {
       setBodyStats(loadedStats);
       setProgramHistory(d.program_history || []);
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
+      setProgramId(d.program_id || "");
       // Infer programStarted from any existing data
       const inferred = d.program_started ||
         (d.lifts && d.lifts.some(l => l.startingMax > 0) && d.start_date) ||
@@ -615,7 +619,7 @@ export default function App() {
     });
     const vol = calcVolume(activeId, week);
     const entry = {
-      date:todayISO(), liftId:activeId, liftName:lift?.name, liftColor:lift?.color,
+      date:todayISO(), liftId:activeId, liftName:lift?.name, liftColor:lift?.color, programId,
       week, sets:weights.map((w,i)=>({weight:w,reps:i<3?10:+set4Reps||10})),
       accessories:getAccList(week,activeId).map(a=>({name:a.name,weight:a.weight,reps:a.reps})),
       notes:sessionNotes, volume:vol, estMax:sessionEstMax,
@@ -656,6 +660,7 @@ export default function App() {
     setActiveId(nl[0].id);
     setViewingWeek(1);
     setProgramStarted(false);
+    setProgramId("");
     setView("setup");
   }
 
@@ -704,8 +709,8 @@ export default function App() {
   const latestWeight = bodyStats.entries[0]?.weightLbs;
   const bmi = calcBMI(latestWeight, +bodyStats.heightIn);
   const totalSessions = sessionLedger.filter(s => {
-    // Only count sessions from current program start date
-    return startDate && s.date >= startDate;
+    // Only count sessions from current program using programId
+    return programId ? s.programId === programId : (startDate && s.date >= startDate);
   }).length;
   const allTimeSessions = sessionLedger.length;
   // Total possible sessions = unique training days per week × 12
@@ -713,7 +718,7 @@ export default function App() {
   const totalPossible = uniqueTrainingDays * 12;
   const streak = (() => {
     // Only count sessions from current program
-    const programSessions = sessionLedger.filter(s => startDate && s.date >= startDate);
+    const programSessions = sessionLedger.filter(s => programId ? s.programId === programId : (startDate && s.date >= startDate));
     if(!programSessions.length) return 0;
     const dates=[...new Set(programSessions.map(s=>s.date))].sort().reverse();
     let s=0,cur=todayISO();
@@ -1425,6 +1430,7 @@ export default function App() {
   setBodyStats(newStats);
   setHeightFtEntry(""); setHeightInEntry(""); setWeightEntry("");
   setProgramStarted(true);
+  setProgramId(uid + "_" + Date.now());
   setActiveId(lifts[0].id);
   setViewingWeek(liftWeeks[lifts[0].id]||1);
   setView("workout");
