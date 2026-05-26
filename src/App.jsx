@@ -75,6 +75,7 @@
 // v5.66 - Migrates old completedDays true entries to {done,date} on load — no sessionLedger dependency
 // v5.67 - SAVE CHANGES on past week edit updates ledger (replace existing or add if missing)
 // v5.68 - C25K running module (run days setup, RUN tab, 12-week plan, log distance/time/pace, home banner)
+// v5.69 - Fixed RUN and SOCIAL header rendering below logo (moved after header in DOM)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -419,7 +420,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.68";
+  const APP_VERSION = "v5.69";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1355,6 +1356,18 @@ export default function App() {
 
 }
 
+
+      <div style={{padding:"12px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#0a0a0f",zIndex:10}}>
+        <div>
+          <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
+        </div>
+        <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
+          {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
+        </button>
+      </div>
+
+      <div style={{maxWidth:600,margin:"0 auto"}}>
+
       {view==="run" && (
         <div style={{padding:16,paddingBottom:100}}>
           {runDays.length < 2 ? (
@@ -1769,17 +1782,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      <div style={{padding:"12px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#0a0a0f",zIndex:10}}>
-        <div>
-          <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
-        </div>
-        <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
-          {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
-        </button>
-      </div>
-
-      <div style={{maxWidth:600,margin:"0 auto"}}>
 
         {view==="dashboard" && (
           <div style={{padding:16}}>
