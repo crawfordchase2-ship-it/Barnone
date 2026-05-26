@@ -73,6 +73,7 @@
 // v5.64 - Completion check uses sessionLedger for old format data (fixes Deadlift banner bug)
 // v5.65 - Fixed root cause: liftWeeks advances after finish so check current-1 week too
 // v5.66 - Migrates old completedDays true entries to {done,date} on load — no sessionLedger dependency
+// v5.67 - SAVE CHANGES on past week edit updates ledger (replace existing or add if missing)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -349,7 +350,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.66";
+  const APP_VERSION = "v5.67";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -2072,7 +2073,28 @@ export default function App() {
                 </div>
               )}
 
-              {isPastWeek&&editingPastWeek&&<button className="bigbtn" onClick={()=>setEditingPastWeek(false)} style={{background:lift.color,color:"#000"}}>SAVE CHANGES</button>}
+              {isPastWeek&&editingPastWeek&&<button className="bigbtn" onClick={()=>{
+                // Recalculate volume and estMax from edited logs
+                const editedSets = logs?.[week]?.[activeId] || {};
+                const wts = calcWorkingWeights(getWorkingMax(activeId, week));
+                const editedReps = +( editedSets[3]?.reps || 10 );
+                const editedVol = wts[0]*10 + wts[1]*10 + wts[2]*10 + wts[3]*editedReps;
+                const editedEstMax = calcEstMax(wts[3], editedReps);
+                // Find existing ledger entry for this lift+week and replace, or add if missing
+                setSessionLedger(prev => {
+                  const existingIdx = prev.findIndex(s => s.liftId === activeId && s.week === week);
+                  const updatedEntry = existingIdx >= 0
+                    ? {...prev[existingIdx], volume: editedVol, estMax: editedEstMax}
+                    : {date: todayISO(), liftId: activeId, liftName: lift?.name, liftColor: lift?.color, programId, week, sets: wts.map((w,i)=>({weight:w, reps:i<3?10:editedReps})), volume: editedVol, estMax: editedEstMax};
+                  if (existingIdx >= 0) {
+                    const updated = [...prev];
+                    updated[existingIdx] = updatedEntry;
+                    return updated;
+                  }
+                  return [...prev, updatedEntry];
+                });
+                setEditingPastWeek(false);
+              }} style={{background:lift.color,color:"#000"}}>SAVE CHANGES</button>}
               {!isPastWeek && (
                 <>
                   <button className="bigbtn" onClick={finishDay} style={{background:isDayDone?"#0f0f1a":lift.color,color:isDayDone?lift.color:"#000",border:isDayDone?"1px solid "+lift.color:"none"}}>
