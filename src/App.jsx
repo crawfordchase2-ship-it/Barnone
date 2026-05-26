@@ -69,6 +69,7 @@
 // v5.60 - Timer sound fixed for iOS (resumes AudioContext, primed on GO tap)
 // v5.61 - Program history moved to separate Supabase table (keeps user_data lean)
 // v5.62 - Fixed async/await in startNewProgram and CONTINUE button
+// v5.63 - Banner bigger/prominent, completion tracking fixed (7 day window)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -345,7 +346,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.62";
+  const APP_VERSION = "v5.63";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1446,14 +1447,14 @@ export default function App() {
               const isCompletedThisWeek = (l) => {
                 const cd = completedDays?.[liftWeeks[l.id]]?.[l.id];
                 if (!cd) return false;
-                // Handle both old (true) and new ({done,date}) format
+                // Old format: true means done (no date)
                 if (cd === true) return true;
-                if (cd?.done) {
-                  // Check if completed within last 7 days
+                // New format: {done, date} - completed this week means within last 7 days
+                if (cd?.done && cd?.date) {
                   const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
                   return daysSince < 7;
                 }
-                return false;
+                return !!cd;
               };
               const todayCompleted = todayScheduled.filter(l => isCompletedThisWeek(l));
               const todayPending = todayScheduled.filter(l => !isCompletedThisWeek(l));
@@ -1461,7 +1462,17 @@ export default function App() {
               const getNextLift = () => {
                 for(let i=1; i<=7; i++){
                   const nextDay = DAY_ABBR[(new Date().getDay()+i)%7];
-                  const found = lifts.find(l=>(l.trainingDays||[]).includes(nextDay) && !completedDays?.[liftWeeks[l.id]]?.[l.id]);
+                  const found = lifts.find(l => {
+                    if (!(l.trainingDays||[]).includes(nextDay)) return false;
+                    const cd = completedDays?.[liftWeeks[l.id]]?.[l.id];
+                    if (!cd) return true;
+                    if (cd === true) return false;
+                    if (cd?.done && cd?.date) {
+                      const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
+                      return daysSince >= 7;
+                    }
+                    return false;
+                  });
                   if(found) return {lift:found, day:nextDay, daysAway:i};
                 }
                 return null;
@@ -1494,13 +1505,13 @@ export default function App() {
                   : "ENJOY THE RECOVERY";
               }
               return (
-                <div onClick={()=>todayPending.length>0&&setView("workout")} style={{background:"#0f0f1a",borderRadius:10,padding:"14px 16px",marginBottom:16,borderLeft:"4px solid "+bannerColor,display:"flex",alignItems:"center",gap:14,cursor:todayPending.length>0?"pointer":"default"}}>
-                  <div style={{fontSize:28}}>{bannerIcon}</div>
+                <div onClick={()=>todayPending.length>0&&setView("workout")} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:todayPending.length>0?"pointer":"default"}}>
+                  <div style={{fontSize:38}}>{bannerIcon}</div>
                   <div style={{flex:1}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
-                    <div style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#555",marginTop:3}}>{bannerSub}</div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
+                    <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#888",marginTop:6}}>{bannerSub}</div>
                   </div>
-                  {todayPending.length>0 && <div style={{color:bannerColor,fontSize:20}}>›</div>}
+                  {todayPending.length>0 && <div style={{color:bannerColor,fontSize:28,fontWeight:"bold"}}>›</div>}
                 </div>
               );
             })()}
