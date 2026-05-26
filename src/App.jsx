@@ -24,6 +24,8 @@
 // v5.15 - Body stats bigger text, 3-col grid layout, fills card properly
 // v5.16 - Body stats font size 28, weight trend arrow (↑↓→)
 // v5.17 - LOG button on dashboard weight card, always prompt after workout
+// v5.18 - Sessions shows X of Y (this program), archived with program history
+// v5.19 - Streak counts current program only, best streak archived in history
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -640,7 +642,7 @@ export default function App() {
   function startNewProgram() {
     // Save final maxes before archiving
     const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
-    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes};
+    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak};
     setProgramHistory(prev=>[archive,...prev]);
     // Carry over final maxes as new starting maxes + keep exercise history
     const nl = lifts.map(l=>({...l, startingMax:finalMaxes[l.id]||0, trainingDays:[]}));
@@ -701,10 +703,19 @@ export default function App() {
 
   const latestWeight = bodyStats.entries[0]?.weightLbs;
   const bmi = calcBMI(latestWeight, +bodyStats.heightIn);
-  const totalSessions = sessionLedger.length;
+  const totalSessions = sessionLedger.filter(s => {
+    // Only count sessions from current program start date
+    return startDate && s.date >= startDate;
+  }).length;
+  const allTimeSessions = sessionLedger.length;
+  // Total possible sessions = unique training days per week × 12
+  const uniqueTrainingDays = [...new Set(lifts.flatMap(l => l.trainingDays || []))].length;
+  const totalPossible = uniqueTrainingDays * 12;
   const streak = (() => {
-    if(!sessionLedger.length)return 0;
-    const dates=[...new Set(sessionLedger.map(s=>s.date))].sort().reverse();
+    // Only count sessions from current program
+    const programSessions = sessionLedger.filter(s => startDate && s.date >= startDate);
+    if(!programSessions.length) return 0;
+    const dates=[...new Set(programSessions.map(s=>s.date))].sort().reverse();
     let s=0,cur=todayISO();
     for(const d of dates){const diff=(new Date(cur)-new Date(d))/(86400000);if(diff<=1){s++;cur=d;}else break;}
     return s;
@@ -1132,7 +1143,7 @@ export default function App() {
             )}
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
-              {[{l:"SESSIONS",v:totalSessions,c:"#f0f0f0"},{l:"STREAK",v:streak+"🔥",c:"#f7b731"},{l:"BMI",v:bmi?String(bmi):"—",c:bmi?bmiCol(bmi):"#555"}].map(s=>(
+              {[{l:"SESSIONS",v:totalPossible > 0 ? totalSessions + " of " + totalPossible : totalSessions,c:"#f0f0f0"},{l:"STREAK",v:streak+"🔥",c:"#f7b731"},{l:"BMI",v:bmi?String(bmi):"—",c:bmi?bmiCol(bmi):"#555"}].map(s=>(
                 <div key={s.l} style={{...card,textAlign:"center",marginBottom:0}}>
                   <div style={{color:"#555",fontSize:9,marginBottom:4}}>{s.l}</div>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:s.c}}>{s.v}</div>
@@ -1436,6 +1447,12 @@ export default function App() {
                       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#555"}}>PROGRAM {programHistory.length-i} · {fmtDate(p.startDate)} → {fmtDate(p.endDate)}</div>
                       <button onClick={()=>{if(window.confirm("Delete this program from history?"))setProgramHistory(prev=>prev.filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
                     </div>
+                    {p.sessionsCompleted !== undefined && (
+                      <div style={{display:"flex",gap:16,fontSize:11,color:"#555",marginBottom:6}}>
+                        <span>{p.sessionsCompleted} of {p.totalPossible || "?"} sessions</span>
+                        {p.bestStreak > 0 && <span>🔥 {p.bestStreak} day best streak</span>}
+                      </div>
+                    )}
                     {(p.lifts||[]).map(l=>{const sm=calcCurrentMax(l.startingMax||0);const fm=p.finalMaxes?.[l.id]||0;return(<div key={l.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555",padding:"2px 0"}}><span style={{color:l.color}}>{l.name}</span><span>{sm} → {fm} lbs{fm>sm?<span style={{color:"#06d6a0"}}> (+{fm-sm})</span>:""}</span></div>);})}
                   </div>
                 ))}
