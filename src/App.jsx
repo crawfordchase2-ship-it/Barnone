@@ -54,6 +54,8 @@
 // v5.45 - Weight chart builds left to right with only actual data, no fill-forward
 // v5.46 - All charts roll across last 12 sessions/weeks across programs
 // v5.47 - Share card on program history cards with SAVE TO PHOTOS
+// v5.48 - Progress chart shows actual week max (not est max), 180 → 190
+// v5.49 - Dashed est max line on progress chart, Y axis in increments of 5
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -195,7 +197,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.47";
+  const APP_VERSION = "v5.49";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1766,17 +1768,24 @@ export default function App() {
               const startMax=l.startingMax||0;
               const curMax=getEffMax(l.id,liftWeeks[l.id]||1);
               const currentWeek = liftWeeks[l.id] || 1;
-                // Build max progression from session ledger across all programs
+                // Build max progression - actual max + est max dashed line
                 const liftSessions = sessionLedger
-                  .filter(s => s.liftId === l.id && s.estMax)
+                  .filter(s => s.liftId === l.id)
                   .sort((a,b) => new Date(a.date) - new Date(b.date))
                   .slice(-12);
                 const maxData = liftSessions.length > 0
-                  ? [{w:"Start", max:startMax}, ...liftSessions.map(s=>({
+                  ? [{w:"Start", max:startMax, est:null}, ...liftSessions.map(s=>({
                       w: (new Date(s.date).getMonth()+1)+"/"+(new Date(s.date).getDate()),
-                      max: s.estMax
+                      max: getEffMax(l.id, s.week),
+                      est: s.estMax || null
                     }))]
-                  : [{w:"Start", max:startMax}, {w:"W"+currentWeek, max:getEffMax(l.id,currentWeek)}];
+                  : [{w:"Start", max:startMax, est:null}];
+                // Y axis ticks in increments of 5
+                const allVals = maxData.flatMap(d=>[d.max, d.est]).filter(Boolean);
+                const yMin = Math.floor((Math.min(...allVals)-10)/5)*5;
+                const yMax = Math.ceil((Math.max(...allVals)+10)/5)*5;
+                const yTicks = [];
+                for(let t=yMin; t<=yMax; t+=5) yTicks.push(t);
               const volData=sessionLedger.filter(s=>s.liftId===l.id).slice(-12).reverse().map(s=>({d:(new Date(s.date).getMonth()+1)+'/'+(new Date(s.date).getDate()),v:Math.round((s.volume||0)/1000)}));
               // For assisted pullups, build effective pull strength data
               const effPullData = isAssistedPullUp(l) ? (() => {
@@ -1811,10 +1820,12 @@ export default function App() {
                   <div style={{color:"#555",fontSize:10,marginBottom:4}}>MAX PROGRESSION</div>
                   <ResponsiveContainer width="100%" height={110}>
                     <LineChart data={maxData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" /><XAxis dataKey="w" tick={{fill:"#555",fontSize:9}} /><YAxis tick={{fill:"#555",fontSize:9}} domain={["auto","auto"]} />
-                      <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} />
-                      <ReferenceLine y={startMax} stroke="#333" strokeDasharray="4 4" />
-                      <Line type="monotone" dataKey="max" stroke={l.color} strokeWidth={2} dot={{fill:l.color,r:3}} name="Max" connectNulls />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" />
+                      <XAxis dataKey="w" tick={{fill:"#555",fontSize:9}} />
+                      <YAxis tick={{fill:"#555",fontSize:9}} domain={[yMin,yMax]} ticks={yTicks} />
+                      <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} formatter={(v,n)=>[v+" lbs",n==="max"?"Program Max":"Est Max"]} />
+                      <Line type="monotone" dataKey="max" stroke={l.color} strokeWidth={2} dot={{fill:l.color,r:3}} name="max" connectNulls />
+                      <Line type="monotone" dataKey="est" stroke={l.color} strokeWidth={1.5} strokeDasharray="5 3" dot={{fill:l.color,r:2}} name="est" connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                   {isAssistedPullUp(l) && effPullData.length>1 && (
