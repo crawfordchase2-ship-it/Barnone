@@ -82,6 +82,10 @@
 // v5.73 - CONTINUE button try/catch, better fallbacks, sets activeId on restore
 // v5.74 - Safe area inset padding for iOS status bar, viewport-fit=cover
 // v5.75 - Fixed stray } rendering as text (lines 1797, 2408 ternary braces)
+// v5.76 - Ledger delete shows proper warning about chart impact
+// v5.77 - Dark/Midnight/Light theme toggle in profile, persists via localStorage
+// v5.78 - Font changed to Orbitron (headings) + Courier New (body)
+// v5.79 - Font changed to Roboto Condensed (headings) + Roboto (body)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -258,7 +262,11 @@ function playTimerSound() {
   } catch(e) {}
 }
 // Prime audio context on first user tap (iOS requirement)
-function primeAudio() {
+function setThemePref(t) {
+    setTheme(t);
+    localStorage.setItem("barnone_theme", t);
+  }
+  function primeAudio() {
   try { getAudioCtx(); } catch(e) {}
 }
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
@@ -426,7 +434,8 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.75";
+  const APP_VERSION = "v5.79";
+  const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -454,7 +463,8 @@ export default function App() {
   const [runSecEntry, setRunSecEntry] = useState("");
   const [setupSnapshot, setSetupSnapshot] = useState(null);
   const [shareCard, setShareCard] = useState(null);
-  const [confirmContinue, setConfirmContinue] = useState(null); // stores the program to continue
+  const [confirmContinue, setConfirmContinue] = useState(null);
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState(null); // stores the program to continue
   const [programId, setProgramId] = useState("");
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
@@ -1111,16 +1121,19 @@ export default function App() {
   })();
   const PRs = lifts.map(l=>({...l,startMax:l.startingMax||0,curMax:getEffMax(l.id,liftWeeks[l.id]||1)}));
 
-  const iS = { background:"#0f0f1a",border:"1px solid #333",color:"#f0f0f0",borderRadius:8,padding:"12px 16px",fontFamily:"'DM Mono',monospace",fontSize:14,outline:"none",display:"block",width:"100%" };
-  const card = { background:"#0f0f1a", borderRadius:10, padding:"14px 16px", marginBottom:14 };
+  const iS = { background:"var(--bg-input)",border:"1px solid var(--border-input)",color:"var(--text-primary)",borderRadius:8,padding:"12px 16px",fontFamily:"'DM Mono',monospace",fontSize:14,outline:"none",display:"block",width:"100%" };
+  const card = { background:"var(--bg-card)", borderRadius:10, padding:"14px 16px", marginBottom:14 };
 
   return (
-    <div style={{minHeight:"100vh",background:"#000000",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:view==="workout"?160:100,paddingTop:"env(safe-area-inset-top)"}}>
+    <div className={"theme-"+theme} style={{minHeight:"100vh",background:"var(--bg-primary)",color:"var(--text-primary)",fontFamily:"'Roboto',sans-serif",fontSize:14,paddingBottom:view==="workout"?160:100,paddingTop:"env(safe-area-inset-top)"}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Roboto:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        html,body,#root{background:#000000!important;min-height:100%;}
+        html,body,#root{min-height:100%;}
         body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+        .theme-dark{--bg-primary:#000000;--bg-secondary:#0a0a0f;--bg-card:#0f0f1a;--bg-input:#1a1a2e;--text-primary:#f0f0f0;--text-muted:#555;--border:#1a1a1a;--border-input:#333;}
+        .theme-midnight{--bg-primary:#0d1117;--bg-secondary:#0d1117;--bg-card:#161b22;--bg-input:#1c2128;--text-primary:#e6edf3;--text-muted:#484f58;--border:#21262d;--border-input:#30363d;}
+        .theme-light{--bg-primary:#f5f0e8;--bg-secondary:#f5f0e8;--bg-card:#ede8de;--bg-input:#e0d8cc;--text-primary:#1a1a1a;--text-muted:#888;--border:#ccc;--border-input:#bbb;}
         input[type=number],input[type=text],input[type=date],input[type=email],input[type=password]{background:#1a1a2e;border:1px solid #333;color:#f0f0f0;border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:13px;}
         input[type=number]{width:64px;text-align:center;-moz-appearance:textfield;}
         input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;}
@@ -1128,8 +1141,8 @@ export default function App() {
         input[readonly]{background:#111;border-color:#1a1a1a;color:#444;cursor:default;}
         select{background:#1a1a2e;border:1px solid #333;color:#f0f0f0;border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:12px;}
         textarea{background:#1a1a2e;border:1px solid #333;color:#f0f0f0;border-radius:6px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:12px;resize:none;width:100%;}
-        .bn{border:none;cursor:pointer;border-radius:6px;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;padding:8px 14px;transition:all 0.15s;}
-        .bigbtn{border:none;cursor:pointer;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;padding:14px;width:100%;transition:all 0.2s;margin-bottom:8px;}
+        .bn{border:none;cursor:pointer;border-radius:6px;font-family:'Roboto Condensed',sans-serif;font-size:17px;letter-spacing:1px;padding:8px 14px;transition:all 0.15s;}
+        .bigbtn{border:none;cursor:pointer;border-radius:8px;font-family:'Roboto Condensed',sans-serif;font-size:20px;letter-spacing:2px;padding:14px;width:100%;transition:all 0.2s;margin-bottom:8px;}
         .ntab{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;color:#444;font-family:'DM Mono',monospace;font-size:9px;transition:all 0.15s;flex:1;}
         .ntab.on{color:#f0f0f0;}
         .srow{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #1a1a1a;}
@@ -1141,7 +1154,7 @@ export default function App() {
           <div style={{width:"100%",maxWidth:360}}>
             <div style={{display:"flex",marginBottom:20,background:"#0f0f1a",borderRadius:8,padding:4}}>
               {["login","register"].map(tab=>(
-                <button key={tab} onClick={()=>{setAuthScreen(tab);setAuthErr("");}} style={{flex:1,background:authScreen===tab?"#1a1a2e":"none",border:authScreen===tab?"1px solid #333":"none",color:authScreen===tab?"#f0f0f0":"#555",borderRadius:6,padding:"8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
+                <button key={tab} onClick={()=>{setAuthScreen(tab);setAuthErr("");}} style={{flex:1,background:authScreen===tab?"#1a1a2e":"none",border:authScreen===tab?"1px solid #333":"none",color:authScreen===tab?"#f0f0f0":"#555",borderRadius:6,padding:"8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
                   {tab==="login"?"SIGN IN":"CREATE ACCOUNT"}
                 </button>
               ))}
@@ -1169,11 +1182,11 @@ export default function App() {
       {showProfile && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0f99",zIndex:100,display:"flex",alignItems:"flex-end"}} onClick={()=>setShowProfile(false)}>
           <div style={{background:"#0f0f1a",borderRadius:"16px 16px 0 0",padding:24,width:"100%",maxWidth:500,margin:"0 auto"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,marginBottom:2}}>{currentUser?.user_metadata?.name || currentUser?.email}</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,marginBottom:2}}>{currentUser?.user_metadata?.name || currentUser?.email}</div>
             <div style={{color:"#555",fontSize:11,marginBottom:16}}>{currentUser?.email}</div>
             <div style={{display:"flex",gap:20,marginBottom:20}}>
-              <div><div style={{color:"#555",fontSize:10}}>SESSIONS</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26}}>{totalSessions}</div></div>
-              <div><div style={{color:"#555",fontSize:10}}>STREAK</div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#f7b731"}}>{streak} 🔥</div></div>
+              <div><div style={{color:"#555",fontSize:10}}>SESSIONS</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26}}>{totalSessions}</div></div>
+              <div><div style={{color:"#555",fontSize:10}}>STREAK</div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#f7b731"}}>{streak} 🔥</div></div>
               
             </div>
             <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
@@ -1194,9 +1207,9 @@ export default function App() {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid #f7b731"}}>
             <div style={{fontSize:48,marginBottom:8}}>⏱️</div>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#f7b731",letterSpacing:2,marginBottom:8}}>REST OVER!</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#f7b731",letterSpacing:2,marginBottom:8}}>REST OVER!</div>
             <div style={{color:"#555",fontSize:12,marginBottom:24}}>Time for your next set</div>
-            <button onClick={()=>setRestAlert(false)} style={{width:"100%",background:"#f7b731",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S GO</button>
+            <button onClick={()=>setRestAlert(false)} style={{width:"100%",background:"#f7b731",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S GO</button>
           </div>
         </div>
       )}
@@ -1205,19 +1218,19 @@ export default function App() {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid "+prAlert.color}}>
             <div style={{fontSize:48,marginBottom:8}}>🏆</div>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:prAlert.color,letterSpacing:2,marginBottom:4}}>NEW PR!</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:prAlert.color,letterSpacing:2,marginBottom:4}}>NEW PR!</div>
             <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>{prAlert.liftName.toUpperCase()}</div>
             <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:24}}>
               <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
                 <div style={{color:"#555",fontSize:10,marginBottom:4}}>BEFORE</div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#555"}}>{prAlert.prevMax} lbs</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#555"}}>{prAlert.prevMax} lbs</div>
               </div>
               <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
                 <div style={{color:"#555",fontSize:10,marginBottom:4}}>NEW MAX</div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#06d6a0"}}>{prAlert.estMax} lbs</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#06d6a0"}}>{prAlert.estMax} lbs</div>
               </div>
             </div>
-            <button onClick={()=>setPrAlert(null)} style={{width:"100%",background:prAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S GO 🔥</button>
+            <button onClick={()=>setPrAlert(null)} style={{width:"100%",background:prAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S GO 🔥</button>
           </div>
         </div>
       )}
@@ -1226,17 +1239,17 @@ export default function App() {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid "+newWeekAlert.color}}>
             <div style={{fontSize:48,marginBottom:8}}>📅</div>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:newWeekAlert.color,letterSpacing:2,marginBottom:4}}>WEEK {newWeekAlert.week}!</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:newWeekAlert.color,letterSpacing:2,marginBottom:4}}>WEEK {newWeekAlert.week}!</div>
             <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>{newWeekAlert.liftName.toUpperCase()} — NEW WEIGHTS</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:24}}>
               {newWeekAlert.weights.map((w,i)=>(
                 <div key={i} style={{background:"#1a1a2e",borderRadius:8,padding:"10px"}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:2}}>SET {i+1}</div>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f0f0f0"}}>{w} lbs</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f0f0f0"}}>{w} lbs</div>
                 </div>
               ))}
             </div>
-            <button onClick={()=>setNewWeekAlert(null)} style={{width:"100%",background:newWeekAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S LIFT!</button>
+            <button onClick={()=>setNewWeekAlert(null)} style={{width:"100%",background:newWeekAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>LET'S LIFT!</button>
           </div>
         </div>
       )}
@@ -1245,9 +1258,27 @@ export default function App() {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid #e85d04"}}>
             <div style={{fontSize:48,marginBottom:8}}>🔥</div>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#e85d04",letterSpacing:2,marginBottom:8}}>GET BACK IN THE GYM!</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#e85d04",letterSpacing:2,marginBottom:8}}>GET BACK IN THE GYM!</div>
             <div style={{color:"#555",fontSize:12,marginBottom:24}}>It's been a few days. Time to lift!</div>
-            <button onClick={()=>setStreakAlert(false)} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>I'M BACK 💪</button>
+            <button onClick={()=>setStreakAlert(false)} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer"}}>I'M BACK 💪</button>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteSession !== null && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid #e85d04"}}>
+            <div style={{fontSize:40,marginBottom:8}}>⚠️</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,color:"#e85d04",letterSpacing:2,marginBottom:12}}>DELETE SESSION?</div>
+            <div style={{background:"#111",borderRadius:8,padding:12,marginBottom:20,fontSize:11,color:"#aaa",textAlign:"left"}}>
+              <div style={{color:"#e85d04",marginBottom:6,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>THIS WILL AFFECT YOUR CHARTS</div>
+              Deleting this session removes it from your progress charts and volume history. This cannot be undone.
+            </div>
+            <button onClick={()=>{
+              setSessionLedger(prev=>prev.filter((_,j)=>j!==confirmDeleteSession));
+              setConfirmDeleteSession(null);
+            }} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:2,cursor:"pointer",marginBottom:10}}>YES, DELETE</button>
+            <button onClick={()=>setConfirmDeleteSession(null)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>CANCEL</button>
           </div>
         </div>
       )}
@@ -1256,12 +1287,12 @@ export default function App() {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
             <div style={{fontSize:40,marginBottom:8}}>🔄</div>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#06d6a0",letterSpacing:2,marginBottom:8}}>CONTINUE PROGRAM?</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#06d6a0",letterSpacing:2,marginBottom:8}}>CONTINUE PROGRAM?</div>
             <div style={{color:"#555",fontSize:12,marginBottom:8}}>
               {fmtDate(confirmContinue.startDate)} program
             </div>
             <div style={{background:"#111",borderRadius:8,padding:12,marginBottom:20,fontSize:11,color:"#aaa",textAlign:"left"}}>
-              <div style={{color:"#e85d04",marginBottom:4,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>⚠️ YOUR CURRENT PROGRAM WILL BE ARCHIVED</div>
+              <div style={{color:"#e85d04",marginBottom:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>⚠️ YOUR CURRENT PROGRAM WILL BE ARCHIVED</div>
               You can always come back to it from the PROGRAM tab.
             </div>
             <button onClick={async()=>{
@@ -1294,8 +1325,8 @@ export default function App() {
                 console.error("Continue error:", e);
                 setConfirmContinue(null);
               }
-            }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>YES, CONTINUE 💪</button>
-            <button onClick={()=>setConfirmContinue(null)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>CANCEL</button>
+            }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>YES, CONTINUE 💪</button>
+            <button onClick={()=>setConfirmContinue(null)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>CANCEL</button>
           </div>
         </div>
       )}
@@ -1306,7 +1337,7 @@ export default function App() {
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1px solid #1a1a1a"}}>
               <div style={{width:44,height:44,background:"#1a1a2e",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>⊕</div>
               <div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,fontWeight:900,letterSpacing:2,color:"#f0f0f0"}}>BAR NONE</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,fontWeight:900,letterSpacing:2,color:"#f0f0f0"}}>BAR NONE</div>
                 <div style={{fontSize:9,color:"#555",letterSpacing:2}}>THE PROGRAM</div>
               </div>
               <div style={{marginLeft:"auto",textAlign:"right"}}>
@@ -1323,10 +1354,10 @@ export default function App() {
                 return (
                   <div key={l.id} style={{background:"#1a1a2e",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
-                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:l.color||"#f0f0f0",letterSpacing:1}}>{l.name}</div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:l.color||"#f0f0f0",letterSpacing:1}}>{l.name}</div>
                       <div style={{fontSize:11,color:"#555"}}>{sm} → {fm} lbs</div>
                     </div>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:gain>0?"#06d6a0":"#555"}}>{gain>0?"+"+gain:gain}</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:gain>0?"#06d6a0":"#555"}}>{gain>0?"+"+gain:gain}</div>
                   </div>
                 );
               })}
@@ -1334,15 +1365,15 @@ export default function App() {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
               <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
                 <div style={{fontSize:9,color:"#555",marginBottom:4}}>SESSIONS</div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:"#f0f0f0"}}>{shareCard.sessionsCompleted||"—"}</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0"}}>{shareCard.sessionsCompleted||"—"}</div>
               </div>
               <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
                 <div style={{fontSize:9,color:"#555",marginBottom:4}}>STREAK</div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:"#f7b731"}}>{shareCard.bestStreak||"—"}🔥</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f7b731"}}>{shareCard.bestStreak||"—"}🔥</div>
               </div>
               <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
                 <div style={{fontSize:9,color:"#555",marginBottom:4}}>VOLUME</div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:"#3a86ff"}}>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#3a86ff"}}>
                   {shareCard.totalVolume >= 1000000 ? (shareCard.totalVolume/1000000).toFixed(1)+"M" : shareCard.totalVolume >= 1000 ? Math.round(shareCard.totalVolume/1000)+"k" : shareCard.totalVolume||"—"}
                 </div>
               </div>
@@ -1350,7 +1381,7 @@ export default function App() {
             <div style={{textAlign:"center",color:"#333",fontSize:10,letterSpacing:2}}>barnone-six.vercel.app</div>
           </div>
           <div style={{width:"100%",maxWidth:360,marginTop:12,display:"flex",gap:10}}>
-            <button onClick={()=>setShareCard(null)} style={{flex:1,background:"none",border:"1px solid #333",color:"#555",borderRadius:8,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>CLOSE</button>
+            <button onClick={()=>setShareCard(null)} style={{flex:1,background:"none",border:"1px solid #333",color:"#555",borderRadius:8,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>CLOSE</button>
             <button onClick={()=>{
               import("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js").then(()=>{
                 window.html2canvas(document.getElementById("shareCardEl"),{backgroundColor:"#0a0a0f",scale:3,useCORS:true}).then(canvas=>{
@@ -1360,7 +1391,7 @@ export default function App() {
                   link.click();
                 });
               });
-            }} style={{flex:2,background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1}}>SAVE TO PHOTOS</button>
+            }} style={{flex:2,background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1}}>SAVE TO PHOTOS</button>
           </div>
         </div>
       )}
@@ -1369,21 +1400,21 @@ export default function App() {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid "+finishAlert.color}}>
             <div style={{fontSize:48,marginBottom:8}}>💪</div>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:finishAlert.color,letterSpacing:2,marginBottom:4}}>{finishAlert.liftName.toUpperCase()} DONE!</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:32,color:finishAlert.color,letterSpacing:2,marginBottom:4}}>{finishAlert.liftName.toUpperCase()} DONE!</div>
             <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>WEEK {finishAlert.week} COMPLETE</div>
             <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:24}}>
               <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
                 <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>VOLUME</div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#f0f0f0"}}>{finishAlert.vol.toLocaleString()}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#f0f0f0"}}>{finishAlert.vol.toLocaleString()}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
               </div>
               {finishAlert.estMax && (
                 <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>EST MAX</div>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#06d6a0"}}>{finishAlert.estMax}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#06d6a0"}}>{finishAlert.estMax}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
                 </div>
               )}
             </div>
-            <button onClick={()=>{setFinishAlert(null);setView("dashboard");}} style={{width:"100%",background:finishAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,cursor:"pointer"}}>LETS GO 🔥</button>
+            <button onClick={()=>{setFinishAlert(null);setView("dashboard");}} style={{width:"100%",background:finishAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,cursor:"pointer"}}>LETS GO 🔥</button>
           </div>
         </div>
       )}
@@ -1391,16 +1422,16 @@ export default function App() {
       {showWeightPrompt && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0f99",zIndex:200,display:"flex",alignItems:"flex-end"}}>
           <div style={{background:"#0f0f1a",borderRadius:"16px 16px 0 0",padding:24,width:"100%",maxWidth:500,margin:"0 auto",borderTop:"3px solid #06d6a0"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#06d6a0",marginBottom:4,letterSpacing:1}}>LOG THIS WEEK'S WEIGHT</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#06d6a0",marginBottom:4,letterSpacing:1}}>LOG THIS WEEK'S WEIGHT</div>
             <div style={{color:"#555",fontSize:12,marginBottom:16}}>Track your progress alongside your lifts.</div>
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:16}}>
               <input type="number" value={weightEntry} placeholder="185 lbs" autoFocus
                 onChange={e=>setWeightEntry(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&weightEntry){logWeightAndDismiss();setShowWeightPrompt(false);}}}
-                style={{flex:1,background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"10px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,textAlign:"center"}} />
+                style={{flex:1,background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"10px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,textAlign:"center"}} />
               <span style={{color:"#555",fontSize:12}}>lbs</span>
             </div>
-            <button onClick={()=>{if(weightEntry){logWeightAndDismiss();setShowWeightPrompt(false);}}} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG WEIGHT</button>
+            <button onClick={()=>{if(weightEntry){logWeightAndDismiss();setShowWeightPrompt(false);}}} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG WEIGHT</button>
             <button onClick={()=>setShowWeightPrompt(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:8,padding:"10px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>skip for now</button>
           </div>
         </div>
@@ -1409,15 +1440,15 @@ export default function App() {
       {showWeightModal && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0fdd",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,borderTop:"4px solid #f7b731"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,color:"#f7b731",marginBottom:6}}>HEY! LOG YOUR WEIGHT</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,letterSpacing:2,color:"#f7b731",marginBottom:6}}>HEY! LOG YOUR WEIGHT</div>
             <div style={{color:"#aaa",fontSize:13,marginBottom:20,lineHeight:1.6}}>You've skipped a couple times this week. Tracking your weight is just as important as tracking your lifts. Takes 5 seconds.</div>
             <div style={{display:"flex",gap:8,marginBottom:16}}>
               <input type="number" value={weightEntry} placeholder="185 lbs"
                 onChange={e=>setWeightEntry(e.target.value)}
                 onKeyDown={e=>e.key==="Enter"&&logWeightAndDismiss()}
-                style={{flex:1,background:"#1a1a2e",border:"1px solid #f7b731",color:"#f7b731",borderRadius:6,padding:"10px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,textAlign:"center"}} />
+                style={{flex:1,background:"#1a1a2e",border:"1px solid #f7b731",color:"#f7b731",borderRadius:6,padding:"10px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,textAlign:"center"}} />
             </div>
-            <button onClick={logWeightAndDismiss} style={{width:"100%",background:"#f7b731",border:"none",color:"#000",borderRadius:8,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG IT NOW</button>
+            <button onClick={logWeightAndDismiss} style={{width:"100%",background:"#f7b731",border:"none",color:"#000",borderRadius:8,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG IT NOW</button>
             <button onClick={()=>setShowWeightModal(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:8,padding:"10px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>maybe later</button>
           </div>
         </div>
@@ -1426,7 +1457,7 @@ export default function App() {
 }
 
 
-      <div style={{padding:"12px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#0a0a0f",zIndex:10}}>
+      <div style={{padding:"12px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg-secondary)",zIndex:10}}>
         <div>
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
         </div>
@@ -1442,16 +1473,16 @@ export default function App() {
           {runDays.length < 2 ? (
             <div style={{textAlign:"center",padding:40}}>
               <div style={{fontSize:48,marginBottom:12}}>🏃</div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#555",letterSpacing:2,marginBottom:8}}>C25K NOT SET UP</div>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#555",letterSpacing:2,marginBottom:8}}>C25K NOT SET UP</div>
               <div style={{color:"#444",fontSize:12,marginBottom:20}}>Go to SETUP and pick at least 2 running days to start the Couch to 5K program.</div>
-              <button onClick={()=>setView("setup")} style={{background:"#3a86ff",border:"none",color:"#000",borderRadius:8,padding:"12px 24px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1}}>GO TO SETUP</button>
+              <button onClick={()=>setView("setup")} style={{background:"#3a86ff",border:"none",color:"#000",borderRadius:8,padding:"12px 24px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1}}>GO TO SETUP</button>
             </div>
           ) : (
             <>
               {/* Run view tabs */}
               <div style={{display:"flex",gap:8,marginBottom:16}}>
                 {["today","plan","history"].map(t=>(
-                  <button key={t} onClick={()=>setRunView(t)} style={{flex:1,background:runView===t?"#1a1a2e":"#0f0f1a",border:"1px solid "+(runView===t?"#3a86ff":"#222"),color:runView===t?"#3a86ff":"#555",borderRadius:6,padding:"8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
+                  <button key={t} onClick={()=>setRunView(t)} style={{flex:1,background:runView===t?"#1a1a2e":"#0f0f1a",border:"1px solid "+(runView===t?"#3a86ff":"#222"),color:runView===t?"#3a86ff":"#555",borderRadius:6,padding:"8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
                     {t.toUpperCase()}
                   </button>
                 ))}
@@ -1481,7 +1512,7 @@ export default function App() {
                     <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #333",display:"flex",alignItems:"center",gap:16}}>
                       <div style={{fontSize:38}}>😴</div>
                       <div style={{flex:1}}>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#555",letterSpacing:2,lineHeight:1}}>NO RUN TODAY</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#555",letterSpacing:2,lineHeight:1}}>NO RUN TODAY</div>
                         <div style={{fontSize:12,color:"#888",marginTop:6}}>{nextRun ? "NEXT RUN: "+nextRun.day+" · "+(nextRun.daysAway===1?"TOMORROW":"IN "+nextRun.daysAway+" DAYS")+" · WK "+runWeek+" DAY "+runDay : "REST UP!"}</div>
                       </div>
                     </div>
@@ -1493,7 +1524,7 @@ export default function App() {
                     <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #06d6a0",display:"flex",alignItems:"center",gap:16}}>
                       <div style={{fontSize:38}}>✅</div>
                       <div style={{flex:1}}>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#06d6a0",letterSpacing:2,lineHeight:1}}>RUN COMPLETE!</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#06d6a0",letterSpacing:2,lineHeight:1}}>RUN COMPLETE!</div>
                         <div style={{fontSize:12,color:"#888",marginTop:6}}>Week {runWeek} Day {runDay} done · {nextRun?"Next: "+nextRun.day:"All done!"}</div>
                       </div>
                     </div>
@@ -1507,7 +1538,7 @@ export default function App() {
                       <div style={{display:"flex",alignItems:"center",gap:16}}>
                         <div style={{fontSize:38}}>🏃</div>
                         <div style={{flex:1}}>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#3a86ff",letterSpacing:2,lineHeight:1}}>RUN DAY!</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#3a86ff",letterSpacing:2,lineHeight:1}}>RUN DAY!</div>
                           <div style={{fontSize:12,color:"#888",marginTop:6}}>WEEK {runWeek} · DAY {runDay} · ~{dayPlan?.totalMin} MIN</div>
                         </div>
                       </div>
@@ -1517,14 +1548,14 @@ export default function App() {
                     {!showRunLog && dayPlan && (
                       <div style={{...card,marginBottom:16,borderTop:"4px solid #3a86ff"}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>WEEK {runWeek} — DAY {runDay} {dayPlan.isEasy?"· EASY RUN":""}</div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#3a86ff",letterSpacing:2,marginBottom:16}}>{weekPlan.goal}</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#3a86ff",letterSpacing:2,marginBottom:16}}>{weekPlan.goal}</div>
                         {dayPlan.intervals.map((seg,i) => (
                           <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<dayPlan.intervals.length-1?"1px solid #1a1a1a":"none"}}>
                             <div style={{width:24,height:24,borderRadius:"50%",background:"#1a1a2e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#555",flexShrink:0}}>{i+1}</div>
                             <div style={{flex:1}}>
                               {seg.type==="repeat" ? (
                                 <div>
-                                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#f7b731"}}>× {seg.reps} ROUNDS</div>
+                                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#f7b731"}}>× {seg.reps} ROUNDS</div>
                                   {seg.intervals.map((s,j)=>(
                                     <div key={j} style={{fontSize:11,color:s.type==="jog"?"#3a86ff":"#f7b731",marginLeft:8}}>
                                       {s.type==="jog"?"🏃 JOG":"🚶 WALK"} {s.duration < 1 ? s.duration*60+"s" : s.duration+"min"}
@@ -1532,7 +1563,7 @@ export default function App() {
                                   ))}
                                 </div>
                               ) : (
-                                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:seg.type==="jog"?"#3a86ff":"#f7b731"}}>
+                                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:seg.type==="jog"?"#3a86ff":"#f7b731"}}>
                                   {seg.type==="jog"?"🏃 JOG":"🚶 WALK"} {seg.label||seg.duration+"min"}
                                 </div>
                               )}
@@ -1545,7 +1576,7 @@ export default function App() {
                     {/* Log form */}
                     {showRunLog && (
                       <div style={{...card,marginBottom:16,borderTop:"4px solid #06d6a0"}}>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:16,letterSpacing:2}}>LOG YOUR RUN</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:16,letterSpacing:2}}>LOG YOUR RUN</div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
                           <div>
                             <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>DISTANCE (miles)</div>
@@ -1566,7 +1597,7 @@ export default function App() {
                         {runDistEntry && runMinEntry && (
                           <div style={{background:"#111",borderRadius:8,padding:12,textAlign:"center",marginBottom:16}}>
                             <div style={{color:"#555",fontSize:10,marginBottom:4}}>EST PACE</div>
-                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#06d6a0"}}>
+                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#06d6a0"}}>
                               {(()=>{
                                 const totalSecs = (+runMinEntry*60) + (+runSecEntry||0);
                                 const paceSecPerMile = totalSecs / +runDistEntry;
@@ -1595,14 +1626,14 @@ export default function App() {
                           }
                           setShowRunLog(false);
                           setRunDistEntry("");setRunMinEntry("");setRunSecEntry("");
-                        }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:8}}>SAVE RUN ✓</button>
-                        <button onClick={()=>setShowRunLog(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:10,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,cursor:"pointer"}}>BACK</button>
+                        }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:8}}>SAVE RUN ✓</button>
+                        <button onClick={()=>setShowRunLog(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>BACK</button>
                       </div>
                     )}
 
                     {!showRunLog && (
                       <>
-                        <button onClick={()=>setShowRunLog(true)} style={{width:"100%",background:"#3a86ff",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG COMPLETED RUN</button>
+                        <button onClick={()=>setShowRunLog(true)} style={{width:"100%",background:"#3a86ff",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG COMPLETED RUN</button>
                       </>
                     )}
                   </div>
@@ -1621,17 +1652,17 @@ export default function App() {
                       return (
                         <div key={wp.week} style={{...card,borderLeft:"3px solid "+color,marginBottom:10,opacity:wp.week>runWeek+1?0.5:1}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color,letterSpacing:1}}>WEEK {wp.week}{isCurrent?" ← YOU ARE HERE":""}</div>
-                            <div style={{background:isDone?"#06d6a020":isCurrent?"#3a86ff20":"#1a1a2e",color:isDone?"#06d6a0":isCurrent?"#3a86ff":"#555",borderRadius:4,padding:"2px 8px",fontSize:10,fontFamily:"'Bebas Neue',sans-serif"}}>
+                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color,letterSpacing:1}}>WEEK {wp.week}{isCurrent?" ← YOU ARE HERE":""}</div>
+                            <div style={{background:isDone?"#06d6a020":isCurrent?"#3a86ff20":"#1a1a2e",color:isDone?"#06d6a0":isCurrent?"#3a86ff":"#555",borderRadius:4,padding:"2px 8px",fontSize:10,fontFamily:"'Roboto Condensed',sans-serif"}}>
                               {isDone?"✓ DONE":isCurrent?"IN PROGRESS":"UPCOMING"}
                             </div>
                           </div>
                           <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>{wp.goal}</div>
                           {wp.days.map(d=>(
                             <div key={d.day} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #1a1a1a",fontSize:11}}>
-                              <span style={{color,minWidth:45,fontFamily:"'Bebas Neue',sans-serif"}}>DAY {d.day}{d.isEasy?" 🟢":""}</span>
+                              <span style={{color,minWidth:45,fontFamily:"'Roboto Condensed',sans-serif"}}>DAY {d.day}{d.isEasy?" 🟢":""}</span>
                               <span style={{color:"#555",flex:1,padding:"0 8px"}}>{d.intervals.find(i=>i.type==="jog"||i.type==="repeat")?.label || (d.intervals.find(i=>i.type==="jog")?.duration ? d.intervals.find(i=>i.type==="jog").duration+"min jog" : "Intervals")}</span>
-                              <span style={{color:"#f7b731",fontFamily:"'Bebas Neue',sans-serif"}}>{d.totalMin}min</span>
+                              <span style={{color:"#f7b731",fontFamily:"'Roboto Condensed',sans-serif"}}>{d.totalMin}min</span>
                             </div>
                           ))}
                         </div>
@@ -1651,25 +1682,25 @@ export default function App() {
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
                         <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
                           <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>RUNS</div>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#3a86ff"}}>{runHistory.length}</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#3a86ff"}}>{runHistory.length}</div>
                         </div>
                         <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
                           <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>TOTAL</div>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#f7b731"}}>{runHistory.reduce((s,r)=>s+(r.dist||0),0).toFixed(1)}<span style={{fontSize:11}}>mi</span></div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#f7b731"}}>{runHistory.reduce((s,r)=>s+(r.dist||0),0).toFixed(1)}<span style={{fontSize:11}}>mi</span></div>
                         </div>
                         <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
                           <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>BEST PACE</div>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0"}}>{(()=>{const best=runHistory.filter(r=>r.pace).sort((a,b)=>a.pace.localeCompare(b.pace))[0];return best?.pace||"—"})()}</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0"}}>{(()=>{const best=runHistory.filter(r=>r.pace).sort((a,b)=>a.pace.localeCompare(b.pace))[0];return best?.pace||"—"})()}</div>
                         </div>
                       </div>
                       {runHistory.map((r,i)=>(
                         <div key={i} style={{...card,display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                           <div>
-                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#3a86ff"}}>WEEK {r.week} · DAY {r.day}</div>
+                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,color:"#3a86ff"}}>WEEK {r.week} · DAY {r.day}</div>
                             <div style={{color:"#555",fontSize:10,marginTop:2}}>{fmtDate(r.date)}</div>
                           </div>
                           <div style={{textAlign:"right"}}>
-                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f0f0f0"}}>{r.dist} mi</div>
+                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f0f0f0"}}>{r.dist} mi</div>
                             <div style={{color:"#555",fontSize:10}}>{r.pace} / mile</div>
                           </div>
                         </div>
@@ -1686,11 +1717,11 @@ export default function App() {
       {view==="social" && (
         <div style={{maxWidth:600,margin:"0 auto"}}>
           <div style={{padding:"16px 16px 0"}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>SOCIAL</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>SOCIAL</div>
           </div>
           <div style={{display:"flex",borderBottom:"1px solid #1a1a1a"}}>
             {[{id:"friends",label:"FRIENDS"},{id:"requests",label:friendRequests.length > 0 ? "REQUESTS (" + friendRequests.length + ")" : "REQUESTS"},{id:"profile",label:"MY PROFILE"}].map(t => (
-              <button key={t.id} onClick={()=>{setSocialTab(t.id);if(t.id==="profile"){localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewReactionCount(0);}}} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
+              <button key={t.id} onClick={()=>{setSocialTab(t.id);if(t.id==="profile"){localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewReactionCount(0);}}} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
                 {t.label}
               </button>
             ))}
@@ -1709,7 +1740,7 @@ export default function App() {
                         <div style={{color:"#f0f0f0",fontSize:13}}>{u.name}</div>
                         {u.username && <div style={{color:"#555",fontSize:11}}>{"@" + u.username}</div>}
                       </div>
-                      <button onClick={()=>sendFriendRequest(u.id)} style={{background:"#e85d04",border:"none",color:"#000",borderRadius:4,padding:"5px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>ADD</button>
+                      <button onClick={()=>sendFriendRequest(u.id)} style={{background:"#e85d04",border:"none",color:"#000",borderRadius:4,padding:"5px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>ADD</button>
                     </div>
                   ))}
                 </div>
@@ -1721,7 +1752,7 @@ export default function App() {
                     <div key={f.id} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:12}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                         <div>
-                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f0f0f0"}}>{f.name}</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f0f0f0"}}>{f.name}</div>
                           {f.username && <div style={{color:"#555",fontSize:11}}>{"@" + f.username}</div>}
                         </div>
                         {lastSession && <div style={{color:"#555",fontSize:11}}>{fmtDate(lastSession.date)}</div>}
@@ -1729,7 +1760,7 @@ export default function App() {
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:lastSession ? 10 : 0}}>
                         {fLifts.filter(l => l.startingMax > 0).map(l => {
                           const cardStyle = {background:"#1a1a2e",borderRadius:6,padding:"6px 10px",borderLeft:"2px solid " + l.color};
-                          const nameStyle = {color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:13};
+                          const nameStyle = {color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:13};
                           return (
                             <div key={l.id} style={cardStyle}>
                               <div style={nameStyle}>{l.name}</div>
@@ -1767,8 +1798,8 @@ export default function App() {
                       <div style={{color:"#444",fontSize:11}}>wants to be friends</div>
                     </div>
                     <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>acceptFriendRequest(r.id)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:4,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>ACCEPT</button>
-                      <button onClick={()=>declineFriendRequest(r.id)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>DECLINE</button>
+                      <button onClick={()=>acceptFriendRequest(r.id)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:4,padding:"6px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>ACCEPT</button>
+                      <button onClick={()=>declineFriendRequest(r.id)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"6px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>DECLINE</button>
                     </div>
                   </div>
                 ))}
@@ -1788,12 +1819,12 @@ export default function App() {
                               <button onClick={async()=>{
                                 await supabase.from("public_profiles").update({name:displayName}).eq("id",uid);
                                 setEditingName(false);
-                              }} style={{background:"#e85d04",border:"none",color:"#000",borderRadius:6,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>SAVE</button>
+                              }} style={{background:"#e85d04",border:"none",color:"#000",borderRadius:6,padding:"6px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>SAVE</button>
                               <button onClick={()=>setEditingName(false)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:6,padding:"6px 10px",fontSize:12,cursor:"pointer"}}>✕</button>
                             </div>
                           : <div style={{display:"flex",alignItems:"center",gap:8}}>
                               <div style={{color:"#f0f0f0",fontSize:15}}>{displayName || currentUser?.user_metadata?.name || currentUser?.email}</div>
-                              <button onClick={()=>setEditingName(true)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"2px 8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:11,cursor:"pointer"}}>EDIT</button>
+                              <button onClick={()=>setEditingName(true)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"2px 8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:11,cursor:"pointer"}}>EDIT</button>
                             </div>
                         }
                       </div>
@@ -1801,6 +1832,17 @@ export default function App() {
                         <div style={{color:"#555",fontSize:10,marginBottom:4}}>USERNAME</div>
                         <div style={{color:"#f0f0f0",fontSize:16,fontFamily:"'DM Mono',monospace"}}>@{username}</div>
                         <div style={{color:"#333",fontSize:10,marginTop:4}}>Username is permanent and cannot be changed</div>
+                      </div>
+                      <div style={{marginBottom:12}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>THEME</div>
+                        <div style={{display:"flex",gap:8}}>
+                          {[{id:"dark",label:"DARK"},{id:"midnight",label:"MIDNIGHT"},{id:"light",label:"LIGHT"}].map(t=>(
+                            <button key={t.id} onClick={()=>setThemePref(t.id)}
+                              style={{flex:1,background:theme===t.id?"#1a1a2e":"#111",border:"1px solid "+(theme===t.id?"#3a86ff":"#333"),color:theme===t.id?"#3a86ff":"#555",borderRadius:6,padding:"8px 4px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                         <div>
@@ -1831,13 +1873,13 @@ export default function App() {
                           {isPublic ? "ON" : "OFF"}
                         </button>
                       </div>
-                      <button onClick={savePublicProfile} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1,cursor:"pointer"}}>SET USERNAME</button>
+                      <button onClick={savePublicProfile} style={{width:"100%",background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:1,cursor:"pointer"}}>SET USERNAME</button>
                     </>
                   )}
                 </div>
                 {myReactions.length > 0 && (
                   <div style={{background:"#0f0f1a",borderRadius:10,padding:14}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>REACTIONS RECEIVED</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>REACTIONS RECEIVED</div>
                     {myReactions.slice(0,10).map((r,i) => (
                       <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a",fontSize:12}}>
                         <span style={{color:"#555"}}>{r.lift_name + " · " + fmtDate(r.session_date)}</span>
@@ -1854,7 +1896,7 @@ export default function App() {
 
         {view==="dashboard" && (
           <div style={{padding:16}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>DASHBOARD</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>DASHBOARD</div>
             {hasSetup && dataLoaded && (()=>{
               const todayAbbr = DAY_ABBR[new Date().getDay()];
               // Find lifts scheduled today that haven't been completed yet
@@ -1933,7 +1975,7 @@ export default function App() {
                 <div onClick={()=>todayPending.length>0&&setView("workout")} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:todayPending.length>0?"pointer":"default"}}>
                   <div style={{fontSize:38}}>{bannerIcon}</div>
                   <div style={{flex:1}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
                     <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#888",marginTop:6}}>{bannerSub}</div>
                   </div>
                   {todayPending.length>0 && <div style={{color:bannerColor,fontSize:28,fontWeight:"bold"}}>›</div>}
@@ -1942,7 +1984,7 @@ export default function App() {
             })()}
             {!hasSetup && dataLoaded && (
               <div style={{...card,borderLeft:"3px solid #f7b731"}}>
-                <div style={{color:"#f7b731",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,marginBottom:4}}>SETUP REQUIRED</div>
+                <div style={{color:"#f7b731",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,marginBottom:4}}>SETUP REQUIRED</div>
                 <div style={{color:"#555",fontSize:12,marginBottom:10}}>Enter your starting maxes to begin the program.</div>
                 <button onClick={()=>setView("setup")} className="bn" style={{background:"#f7b731",color:"#000"}}>GO TO SETUP</button>
               </div>
@@ -1950,7 +1992,7 @@ export default function App() {
             {nudgeLevel === 0 && (
               <div style={{...card,borderLeft:"3px solid #f7b731",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
                 <div>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#f7b731",letterSpacing:1}}>LOG THIS WEEK'S WEIGHT</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,color:"#f7b731",letterSpacing:1}}>LOG THIS WEEK'S WEIGHT</div>
                   <div style={{color:"#555",fontSize:11}}>Last: {latestWeight ? latestWeight+" lbs" : "never"}</div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -1966,7 +2008,7 @@ export default function App() {
 
             {nudgeLevel === 1 && (
               <div style={{...card,borderLeft:"3px solid #f7b731",marginBottom:14}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f7b731",letterSpacing:1,marginBottom:4}}>YOUR BODY IS CHANGING</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f7b731",letterSpacing:1,marginBottom:4}}>YOUR BODY IS CHANGING</div>
                 <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>You're putting in the work — track the results. Log this week's weight to see how your body is responding to the program.</div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <input type="number" value={weightEntry} placeholder="lbs" step="0.1" onFocus={e=>e.target.select()}
@@ -1983,13 +2025,13 @@ export default function App() {
               {[{l:"SESSIONS",v:totalPossible > 0 ? totalSessions + " of " + totalPossible : totalSessions,c:"#f0f0f0"},{l:"STREAK",v:streak+"🔥",c:"#f7b731"},{l:"VOLUME",v:programVolume > 0 ? programVolumeDisplay + " lbs" : "—",c:"#3a86ff"}].map(s=>(
                 <div key={s.l} style={{...card,textAlign:"center",marginBottom:0}}>
                   <div style={{color:"#555",fontSize:9,marginBottom:4}}>{s.l}</div>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:s.c}}>{s.v}</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:s.c}}>{s.v}</div>
                 </div>
               ))}
             </div>
 
             <div style={{...card}}>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:14,letterSpacing:1}}>BODY STATS</div>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:14,letterSpacing:1}}>BODY STATS</div>
               {(()=>{
                 const prevWeight = bodyStats.entries[1]?.weightLbs;
                 const trend = prevWeight ? (latestWeight > prevWeight ? "↑" : latestWeight < prevWeight ? "↓" : "→") : null;
@@ -1999,7 +2041,7 @@ export default function App() {
                     {bodyStats.heightIn && (
                       <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>HEIGHT</div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#aaa",lineHeight:1}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#aaa",lineHeight:1}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
                       </div>
                     )}
                     {/* Weight card with trend */}
@@ -2008,7 +2050,7 @@ export default function App() {
                       {latestWeight ? (
                         <>
                           <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#06d6a0",lineHeight:1}}>{latestWeight}</div>
+                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#06d6a0",lineHeight:1}}>{latestWeight}</div>
                             <div style={{fontSize:10,color:"#555"}}>lbs</div>
                           </div>
                           {trend && (
@@ -2025,7 +2067,7 @@ export default function App() {
                     {/* LOG card */}
                     <div style={{background:"#111",borderRadius:8,padding:"12px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}>
                       <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>LOG</div>
-                      <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1,width:"100%"}}>LOG WEIGHT</button>
+                      <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1,width:"100%"}}>LOG WEIGHT</button>
                       {loggedThisWeek && <div style={{color:"#06d6a0",fontSize:9,marginTop:4}}>✓ logged this week</div>}
                     </div>
                     {!bodyStats.heightIn && !latestWeight && (
@@ -2038,15 +2080,15 @@ export default function App() {
             </div>
 
             <div style={{...card}}>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>CURRENT MAXES</div>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>CURRENT MAXES</div>
               {PRs.map(l=>(
                 <div key={l.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #1a1a1a"}}>
                   <div>
-                    <div style={{color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1}}>{l.name}</div>
+                    <div style={{color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1}}>{l.name}</div>
                     <div style={{color:"#555",fontSize:10}}>Week {liftWeeks[l.id]||1} · Started {l.startMax} lbs</div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:l.color}}>{l.curMax} lbs</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:l.color}}>{l.curMax} lbs</div>
                     {l.curMax>l.startMax && <div style={{color:"#06d6a0",fontSize:11}}>+{l.curMax-l.startMax} lbs</div>}
                   </div>
                 </div>
@@ -2055,9 +2097,9 @@ export default function App() {
 
             {sessionLedger[0] && (
               <div style={{...card,borderLeft:"3px solid "+(sessionLedger[0].liftColor||"#555")}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>LAST SESSION</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>LAST SESSION</div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                  <div style={{color:sessionLedger[0].liftColor,fontFamily:"'Bebas Neue',sans-serif",fontSize:18}}>{sessionLedger[0].liftName}</div>
+                  <div style={{color:sessionLedger[0].liftColor,fontFamily:"'Roboto Condensed',sans-serif",fontSize:18}}>{sessionLedger[0].liftName}</div>
                   <div style={{color:"#555",fontSize:11}}>{fmtDate(sessionLedger[0].date)} · Wk {sessionLedger[0].week}</div>
                 </div>
                 <div style={{color:"#555",fontSize:11}}>Vol: <span style={{color:"#f0f0f0"}}>{sessionLedger[0].volume?.toLocaleString()} lbs</span>{sessionLedger[0].estMax?<> · Est: <span style={{color:"#06d6a0"}}>{sessionLedger[0].estMax} lbs</span></>:""}</div>
@@ -2067,7 +2109,7 @@ export default function App() {
 
             {latestWeight && PRs.some(l=>l.curMax>0) && (
               <div style={{...card}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>STRENGTH / BW RATIO</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>STRENGTH / BW RATIO</div>
                 {PRs.filter(l=>l.curMax>0).map(l=>(
                   <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #1a1a1a"}}>
                     <span style={{color:l.color,fontSize:12}}>{l.name}</span>
@@ -2081,16 +2123,16 @@ export default function App() {
 
         {view==="setup" && (
           <div style={{padding:16}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>{hasSetup?"MY PROGRAM":"PROGRAM SETUP"}</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>{hasSetup?"MY PROGRAM":"PROGRAM SETUP"}</div>
 
             {hasSetup && (
               <>
                 <div style={{...card,borderLeft:"3px solid #06d6a0"}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:8}}>PROGRAM ACTIVE</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:8}}>PROGRAM ACTIVE</div>
                   <div style={{color:"#555",fontSize:11,marginBottom:4}}>Started: <span style={{color:"#aaa"}}>{fmtDate(startDate)}</span></div>
                   {lifts.map(l=>(
                     <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
-                      <span style={{color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:15}}>{l.name}</span>
+                      <span style={{color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:15}}>{l.name}</span>
                       <span style={{color:"#555",fontSize:11}}>Week {liftWeeks[l.id]||1} · {l.startingMax} lbs</span>
                     </div>
                   ))}
@@ -2101,7 +2143,7 @@ export default function App() {
                 )}
                 {confirmStart && (
                   <div style={{background:"#0f0f1a",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #e85d04"}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#e85d04",marginBottom:6,letterSpacing:1}}>⚠️ START NEW PROGRAM?</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#e85d04",marginBottom:6,letterSpacing:1}}>⚠️ START NEW PROGRAM?</div>
                     <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>Your current program will be archived. All workout history, progress and custom exercises will be saved. Enter your new starting maxes before confirming.</div>
                     <div style={{display:"flex",gap:8}}>
                       <button className="bigbtn" onClick={()=>{startNewProgram();setConfirmStart(false);}} style={{background:"#e85d04",color:"#000",flex:2,marginBottom:0}}>CONFIRM →</button>
@@ -2120,7 +2162,7 @@ export default function App() {
                   <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"transparent",border:"none",color:"#f0f0f0",fontSize:14,outline:"none",width:"100%"}} />
                 </div>
                 <div style={{...card,borderLeft:"3px solid #06d6a0"}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
                   <div style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap"}}>
                     <div>
                       <div style={{color:"#555",fontSize:10,marginBottom:4}}>HEIGHT</div>
@@ -2148,12 +2190,12 @@ export default function App() {
 
                 {/* Running days picker */}
                 <div style={{...card,marginBottom:14}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#3a86ff",marginBottom:4,letterSpacing:1}}>🏃 COUCH TO 5K</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#3a86ff",marginBottom:4,letterSpacing:1}}>🏃 COUCH TO 5K</div>
                   <div style={{color:"#555",fontSize:11,marginBottom:10}}>Pick your running days (min 2, max 3). Choose days not used for lifting.</div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                     {DAY_ABBR.slice(1).concat(["Sun"]).map(d=>(
                       <button key={d} onClick={()=>setRunDays(prev=>prev.includes(d)?prev.filter(x=>x!==d):prev.length<3?[...prev,d]:prev)}
-                        style={{background:runDays.includes(d)?"#1a1a2e":"#111",border:"1px solid "+(runDays.includes(d)?"#3a86ff":"#333"),color:runDays.includes(d)?"#3a86ff":"#444",borderRadius:4,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>
+                        style={{background:runDays.includes(d)?"#1a1a2e":"#111",border:"1px solid "+(runDays.includes(d)?"#3a86ff":"#333"),color:runDays.includes(d)?"#3a86ff":"#444",borderRadius:4,padding:"6px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>
                         {d}
                       </button>
                     ))}
@@ -2163,7 +2205,7 @@ export default function App() {
                 </div>
 
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1}}>YOUR LIFTS</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:1}}>YOUR LIFTS</div>
                   <button onClick={addLift} className="bn" style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",fontSize:13,padding:"4px 10px"}}>+ ADD LIFT</button>
                 </div>
             {lifts.map(l=>{
@@ -2173,16 +2215,16 @@ export default function App() {
                 <div key={l.id} style={{...card,borderLeft:"3px solid "+l.color}}>
                   <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10}}>
                     <div style={{flex:1}}>
-                      <select value={l.mainLiftOption||"Bench"} onChange={e=>{const v=e.target.value;updateLift(l.id,"mainLiftOption",v);if(v==="Custom")updateLift(l.id,"name","");else updateLift(l.id,"name",v);}} style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid "+l.color+"66",color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1,padding:"2px 0",cursor:"pointer",marginBottom:6}}>
+                      <select value={l.mainLiftOption||"Bench"} onChange={e=>{const v=e.target.value;updateLift(l.id,"mainLiftOption",v);if(v==="Custom")updateLift(l.id,"name","");else updateLift(l.id,"name",v);}} style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid "+l.color+"66",color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:1,padding:"2px 0",cursor:"pointer",marginBottom:6}}>
                         {MAIN_LIFT_OPTIONS.map(o=><option key={o} value={o} style={{background:"#1a1a2e",fontFamily:"sans-serif",fontSize:14}}>{o}</option>)}
                       </select>
-                      {l.mainLiftOption==="Custom" && <input type="text" value={l.name} placeholder="Type lift name..." onChange={e=>updateLift(l.id,"name",e.target.value)} style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid "+l.color+"44",color:l.color,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,padding:"2px 0",outline:"none",marginBottom:6}} />}
+                      {l.mainLiftOption==="Custom" && <input type="text" value={l.name} placeholder="Type lift name..." onChange={e=>updateLift(l.id,"name",e.target.value)} style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid "+l.color+"44",color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,padding:"2px 0",outline:"none",marginBottom:6}} />}
                       <div style={{display:"flex",gap:6}}>
                         {["UPPER","LOWER"].map(t=><button key={t} onClick={()=>updateLift(l.id,"isLower",t==="LOWER")} style={{background:(t==="LOWER")===l.isLower?l.color:"#111",color:(t==="LOWER")===l.isLower?"#000":"#555",border:"1px solid "+((t==="LOWER")===l.isLower?l.color:"#333"),borderRadius:3,padding:"2px 8px",fontSize:10,cursor:"pointer"}}>{t}</button>)}
                       </div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <input type="number" value={l.startingMax||""} placeholder="0" style={{width:80,fontSize:18,fontFamily:"'Bebas Neue',sans-serif",borderColor:l.color,color:l.color,textAlign:"center"}} onFocus={e=>{e.target.select();}} onChange={e=>updateLift(l.id,"startingMax",+e.target.value||0)} />
+                      <input type="number" value={l.startingMax||""} placeholder="0" style={{width:80,fontSize:18,fontFamily:"'Roboto Condensed',sans-serif",borderColor:l.color,color:l.color,textAlign:"center"}} onFocus={e=>{e.target.select();}} onChange={e=>updateLift(l.id,"startingMax",+e.target.value||0)} />
                       <span style={{color:"#555",fontSize:11}}>{l.mainLiftOption==="Assisted Pull Up"?"lbs assist":"lbs"}</span>
                       {lifts.length>1 && <button onClick={()=>removeLift(l.id)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>}
                     </div>
@@ -2202,14 +2244,14 @@ export default function App() {
             })}
             {"Notification" in window && Notification.permission!=="granted" && (
               <div style={{...card,borderLeft:"3px solid #f7b731",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#f7b731"}}>TRAINING REMINDERS</div><div style={{color:"#555",fontSize:11}}>Get hyped on your training days</div></div>
+                <div><div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,color:"#f7b731"}}>TRAINING REMINDERS</div><div style={{color:"#555",fontSize:11}}>Get hyped on your training days</div></div>
                 <button onClick={()=>Notification.requestPermission()} className="bn" style={{background:"#f7b731",color:"#000",fontSize:13,padding:"5px 12px"}}>ENABLE</button>
               </div>
             )}
                 {/* Show checklist of what's still needed */}
                 {!readyToStart && !hasSetup && startDate && (
                   <div style={{...card,borderLeft:"3px solid #555",marginTop:8}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#555",marginBottom:8,letterSpacing:1}}>COMPLETE TO START:</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#555",marginBottom:8,letterSpacing:1}}>COMPLETE TO START:</div>
                     {lifts.some(l=>!l.startingMax) && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Enter starting max for all lifts</div>}
                     {lifts.some(l=>!(l.trainingDays||[]).length) && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Select training days for all lifts</div>}
                     {!heightFtEntry && !bodyStats.heightIn && <div style={{color:"#555",fontSize:11,marginBottom:4}}>⬜ Enter your height</div>}
@@ -2230,11 +2272,11 @@ export default function App() {
                   <>
                     {!confirmStart && (
                       <div style={{...card,borderLeft:"3px solid #06d6a0",marginTop:8}}>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:4,letterSpacing:1}}>✅ READY TO GO</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:4,letterSpacing:1}}>✅ READY TO GO</div>
                         <div style={{color:"#555",fontSize:11,marginBottom:12}}>All lifts configured. Review your maxes above then confirm to lock them in.</div>
                         {lifts.map(l=>(
                           <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #1a1a1a",fontSize:12}}>
-                            <span style={{color:l.color,fontFamily:"'Bebas Neue',sans-serif"}}>{l.name}</span>
+                            <span style={{color:l.color,fontFamily:"'Roboto Condensed',sans-serif"}}>{l.name}</span>
                             <span style={{color:"#aaa"}}>{calcCurrentMax(l.startingMax)} lbs training max</span>
                           </div>
                         ))}
@@ -2243,7 +2285,7 @@ export default function App() {
                     )}
                     {confirmStart && (
                       <div style={{background:"#0f0f1a",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #06d6a0"}}>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:6,letterSpacing:1}}>LAST CHANCE!</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:6,letterSpacing:1}}>LAST CHANCE!</div>
                         <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>
                           Starting {fmtDate(startDate)} with {lifts.length} lift{lifts.length>1?"s":""}. Your maxes are locked in once you start — you cannot change them mid-program.
                         </div>
@@ -2276,11 +2318,11 @@ export default function App() {
             )}
             {programHistory.length>0 && (
               <div style={{marginTop:20}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#555",letterSpacing:1,marginBottom:10}}>PROGRAM HISTORY</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#555",letterSpacing:1,marginBottom:10}}>PROGRAM HISTORY</div>
                 {programHistory.map((p,i)=>(
                   <div key={i} style={{...card,borderLeft:"3px solid #333"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#555"}}>PROGRAM {programHistory.length-i} · {fmtDate(p.startDate)} → {fmtDate(p.endDate)}</div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#555"}}>PROGRAM {programHistory.length-i} · {fmtDate(p.startDate)} → {fmtDate(p.endDate)}</div>
                       <button onClick={async()=>{if(window.confirm("Delete this program from history?")){{await deleteProgramFromHistory(p.id);const ph=await loadProgramHistory(uid);setProgramHistory(ph);}}}} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -2289,8 +2331,8 @@ export default function App() {
                         {p.bestStreak > 0 && <span>🔥 {p.bestStreak} day best streak</span>}
                       </div>
                       <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>setConfirmContinue(p)} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>CONTINUE</button>
-                        <button onClick={()=>setShareCard(p)} style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",borderRadius:6,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>SHARE</button>
+                        <button onClick={()=>setConfirmContinue(p)} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>CONTINUE</button>
+                        <button onClick={()=>setShareCard(p)} style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",borderRadius:6,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>SHARE</button>
                       </div>
                     </div>
                     {(p.lifts||[]).map(l=>{const sm=l.startingMax||0;const fm=p.finalMaxes?.[l.id]||0;return(<div key={l.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555",padding:"2px 0"}}><span style={{color:l.color}}>{l.name}</span><span>{sm} → {fm} lbs{fm>sm?<span style={{color:"#06d6a0"}}> (+{fm-sm})</span>:""}</span></div>);})}
@@ -2321,26 +2363,26 @@ export default function App() {
               {isScheduledToday ? (
                 <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid "+(lift?.color||"#e85d04")}}>
                   <div style={{fontSize:40,marginBottom:8}}>🏋️</div>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:lift?.color||"#e85d04",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:lift?.color||"#e85d04",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
                   <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:12}}>WEEK {liftWeeks[activeId]||1}</div>
                   <div style={{color:"#aaa",fontSize:13,marginBottom:24,fontStyle:"italic"}}>"{pumpMsg}"</div>
-                  <button onClick={()=>{setWorkoutInProgress(true);setInProgressLiftId(activeId);}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
-                  <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
+                  <button onClick={()=>{setWorkoutInProgress(true);setInProgressLiftId(activeId);}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
+                  <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               ) : (
                 <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #333"}}>
                   <div style={{fontSize:40,marginBottom:8}}>😴</div>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#555",letterSpacing:2,marginBottom:8}}>REST DAY</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,color:"#555",letterSpacing:2,marginBottom:8}}>REST DAY</div>
                   <div style={{color:"#444",fontSize:12,marginBottom:20}}>No lifts scheduled today. Recovery is part of the program.</div>
                   {nextLift && (
                     <div style={{background:"#111",borderRadius:10,padding:"14px",marginBottom:20}}>
                       <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>NEXT UP</div>
-                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:nextLift.lift.color,letterSpacing:1,marginBottom:2}}>{nextLift.lift.name.toUpperCase()}</div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:nextLift.lift.color,letterSpacing:1,marginBottom:2}}>{nextLift.lift.name.toUpperCase()}</div>
                       <div style={{color:"#555",fontSize:11}}>{nextLift.daysAway === 1 ? "Tomorrow" : "In "+nextLift.daysAway+" days"} · {nextLift.day} · Week {liftWeeks[nextLift.lift.id]||1}</div>
                     </div>
                   )}
-                  <button onClick={()=>{setWorkoutInProgress(true);setInProgressLiftId(activeId);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
-                  <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#444",borderRadius:10,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
+                  <button onClick={()=>{setWorkoutInProgress(true);setInProgressLiftId(activeId);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
+                  <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#444",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               )}
             </div>
@@ -2351,8 +2393,8 @@ export default function App() {
             <div style={{padding:"8px 16px",display:"flex",gap:8,borderBottom:"1px solid #1a1a1a",flexWrap:"wrap"}}>
               {lifts.map(l=>(
                 <div key={l.id} style={{display:"flex",alignItems:"center",gap:4}}>
-                  <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:11,color:activeId===l.id?l.color:"#333",letterSpacing:1}}>{l.name}</span>
-                  <span style={{background:activeId===l.id?l.color:"#1a1a2e",color:activeId===l.id?"#000":"#444",borderRadius:3,padding:"1px 5px",fontFamily:"'Bebas Neue',sans-serif",fontSize:11}}>W{liftWeeks[l.id]||1}</span>
+                  <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:11,color:activeId===l.id?l.color:"#333",letterSpacing:1}}>{l.name}</span>
+                  <span style={{background:activeId===l.id?l.color:"#1a1a2e",color:activeId===l.id?"#000":"#444",borderRadius:3,padding:"1px 5px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:11}}>W{liftWeeks[l.id]||1}</span>
                 </div>
               ))}
             </div>
@@ -2361,14 +2403,14 @@ export default function App() {
             </div>
             <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid #1a1a1a"}}>
               <button onClick={()=>navigateWeek(-1)} disabled={viewingWeek<=1} style={{background:"#1a1a2e",border:"1px solid #333",color:viewingWeek<=1?"#333":"#aaa",borderRadius:4,width:32,height:32,cursor:viewingWeek<=1?"default":"pointer",fontSize:18}}>‹</button>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:lift.color,minWidth:80,textAlign:"center"}}>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:lift.color,minWidth:80,textAlign:"center"}}>
                 WEEK {viewingWeek}{isPastWeek&&<div style={{color:"#555",fontSize:10,fontFamily:"'DM Mono',monospace"}}>current: w{activeLiftWeek}</div>}
               </div>
               <button onClick={()=>navigateWeek(1)} disabled={viewingWeek>=activeLiftWeek} style={{background:"#1a1a2e",border:"1px solid #333",color:viewingWeek>=activeLiftWeek?"#333":"#aaa",borderRadius:4,width:32,height:32,cursor:viewingWeek>=activeLiftWeek?"default":"pointer",fontSize:18}}>›</button>
               {isPastWeek && (
                 <>
                   <button onClick={()=>{setViewingWeek(activeLiftWeek);setEditingPastWeek(false);}} style={{background:"none",border:"1px solid "+lift.color,color:lift.color,borderRadius:4,padding:"4px 10px",fontSize:11,cursor:"pointer"}}>current</button>
-                  <button onClick={()=>setEditingPastWeek(e=>!e)} style={{background:editingPastWeek?"#2e1a1a":"#1a1a2e",border:"1px solid "+(editingPastWeek?"#e85d04":"#555"),color:editingPastWeek?"#e85d04":"#aaa",borderRadius:4,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>{editingPastWeek?"CANCEL":"EDIT"}</button>
+                  <button onClick={()=>setEditingPastWeek(e=>!e)} style={{background:editingPastWeek?"#2e1a1a":"#1a1a2e",border:"1px solid "+(editingPastWeek?"#e85d04":"#555"),color:editingPastWeek?"#e85d04":"#aaa",borderRadius:4,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>{editingPastWeek?"CANCEL":"EDIT"}</button>
                 </>
               )}
             </div>
@@ -2381,7 +2423,7 @@ export default function App() {
               ].map(x=>(
                   <div key={x.l} style={{...card,flex:1,borderLeft:"3px solid "+x.c,marginBottom:0}}>
                     <div style={{color:"#555",fontSize:9,marginBottom:2}}>{x.l}</div>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:x.c}}>{x.v} <span style={{fontSize:9,color:"#555"}}>lbs</span></div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:x.c}}>{x.v} <span style={{fontSize:9,color:"#555"}}>lbs</span></div>
                   </div>
                 ))}
               </div>
@@ -2389,7 +2431,7 @@ export default function App() {
 
 
               <div style={{marginBottom:20}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:2,color:lift.color,marginBottom:10}}>{lift.name} — MAIN SETS</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:19,letterSpacing:2,color:lift.color,marginBottom:10}}>{lift.name} — MAIN SETS</div>
                 <div className="srow" style={{color:"#555",fontSize:10}}><div>SET</div><div>WEIGHT</div><div>REPS</div></div>
                 {weights.map((w,i)=>(
                   <div key={i} className="srow">
@@ -2402,7 +2444,7 @@ export default function App() {
                         : <div style={{display:"flex",alignItems:"center",gap:0}}>
                             <button onClick={()=>setReps(week,activeId,i,String(Math.max(1,+(getReps(week,activeId,i)||10)-1)))}
                               style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"8px 0 0 8px",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                            <div style={{background:"#1a1a2e",borderTop:"2px solid "+lift.color,borderBottom:"2px solid "+lift.color,color:lift.color,width:64,height:48,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:28}}>{getReps(week,activeId,i)}</div>
+                            <div style={{background:"#1a1a2e",borderTop:"2px solid "+lift.color,borderBottom:"2px solid "+lift.color,color:lift.color,width:64,height:48,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Roboto Condensed',sans-serif",fontSize:28}}>{getReps(week,activeId,i)}</div>
                             <button onClick={()=>setReps(week,activeId,i,String(+(getReps(week,activeId,i)||10)+1))}
                               style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"0 8px 8px 0",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
                           </div>
@@ -2412,7 +2454,7 @@ export default function App() {
               </div>
 
               <div style={{marginBottom:20}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:2,color:"#888",marginBottom:10}}>ACCESSORIES</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:19,letterSpacing:2,color:"#888",marginBottom:10}}>ACCESSORIES</div>
                 {!isReadOnly && (
                   <div style={{marginBottom:12}}>
                     <div style={{display:"flex",gap:8,marginBottom:selectedAcc[activeId]==="__custom__"?8:0}}>
@@ -2440,8 +2482,8 @@ export default function App() {
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                         <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{color:"#555",fontSize:11,fontFamily:"'Bebas Neue',sans-serif"}}>3 × 10</span>
-                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>DEL</button>}
+                          <span style={{color:"#555",fontSize:11,fontFamily:"'Roboto Condensed',sans-serif"}}>3 × 10</span>
+                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>DEL</button>}
                         </div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -2507,7 +2549,7 @@ export default function App() {
                   </button>
                   {willProgress&&!isDayDone&&!isAssisted&&<div style={{textAlign:"center",color:"#06d6a0",fontSize:12}}>🔥 Next week's max: {nextMax} lbs</div>}
                   {willProgress&&!isDayDone&&isAssisted&&nextMax>0&&<div style={{textAlign:"center",color:"#06d6a0",fontSize:12}}>💪 Next week: {nextMax} lbs assistance — getting closer!</div>}
-                  {willProgress&&!isDayDone&&isAssisted&&nextMax===0&&<div style={{textAlign:"center",color:"#f7b731",fontSize:13,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>🎉 UNASSISTED NEXT WEEK! YOU DID IT!</div>}
+                  {willProgress&&!isDayDone&&isAssisted&&nextMax===0&&<div style={{textAlign:"center",color:"#f7b731",fontSize:13,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>🎉 UNASSISTED NEXT WEEK! YOU DID IT!</div>}
                   {!isDayDone&&isAssisted&&effMax===0&&<div style={{textAlign:"center",color:"#f7b731",fontSize:12,marginTop:8}}>🏆 You're doing unassisted pullups! Consider switching to Weighted Pull Up.</div>}
                 </>
               )}
@@ -2517,7 +2559,7 @@ export default function App() {
 
         {view==="progress" && (
           <div style={{padding:16}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>PROGRESS</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>PROGRESS</div>
             {lifts.map(l=>{
               const startMax=l.startingMax||0;
               const curMax=getEffMax(l.id,liftWeeks[l.id]||1);
@@ -2559,7 +2601,7 @@ export default function App() {
               })() : [];
               return (
                 <div key={l.id} style={{...card,borderLeft:"3px solid "+l.color}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:l.color,marginBottom:2}}>{l.name}</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:l.color,marginBottom:2}}>{l.name}</div>
                   <div style={{color:"#555",fontSize:11,marginBottom:10}}>
                     {isAssistedPullUp(l)
                       ? <>
@@ -2641,7 +2683,7 @@ export default function App() {
               if (weeklyData.length === 0) return null;
               return (
                 <div style={{...card}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:4}}>BODYWEIGHT</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:4}}>BODYWEIGHT</div>
                   <div style={{color:"#555",fontSize:10,marginBottom:10}}>12-WEEK WEEKLY AVERAGE</div>
                   <ResponsiveContainer width="100%" height={110}>
                     <LineChart data={weeklyData}>
@@ -2660,22 +2702,22 @@ export default function App() {
 
         {view==="ledger" && (
           <div style={{padding:16}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>WORKOUT LEDGER</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>WORKOUT LEDGER</div>
             {sessionLedger.length===0&&<div style={{color:"#333",fontSize:13,textAlign:"center",padding:40}}>No sessions logged yet</div>}
             {sessionLedger.map((s,i)=>(
               <div key={i} style={{...card,borderLeft:"3px solid "+(s.liftColor||"#555")}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:s.liftColor||"#f0f0f0"}}>{s.liftName}</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:s.liftColor||"#f0f0f0"}}>{s.liftName}</div>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <div style={{color:"#555",fontSize:11}}>{fmtDate(s.date)} · Wk {s.week}</div>
-                    <button onClick={()=>{if(window.confirm("Delete this session?"))setSessionLedger(prev=>prev.filter((_,j)=>j!==i));}} style={{background:"none",border:"1px solid #333",color:"#444",borderRadius:4,padding:"2px 6px",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>DEL</button>
+                    <button onClick={()=>setConfirmDeleteSession(i)} style={{background:"none",border:"1px solid #333",color:"#444",borderRadius:4,padding:"2px 6px",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>DEL</button>
                   </div>
                 </div>
                 <div style={{display:"flex",gap:14,marginBottom:6,flexWrap:"wrap"}}>
                   {s.sets?.map((set,j)=>(
                     <div key={j} style={{textAlign:"center"}}>
                       <div style={{color:"#555",fontSize:9}}>SET {j+1}</div>
-                      <div style={{color:s.liftColor,fontFamily:"'Bebas Neue',sans-serif",fontSize:14}}>{set.weight}</div>
+                      <div style={{color:s.liftColor,fontFamily:"'Roboto Condensed',sans-serif",fontSize:14}}>{set.weight}</div>
                       <div style={{color:"#555",fontSize:10}}>×{set.reps}</div>
                     </div>
                   ))}
@@ -2693,10 +2735,10 @@ export default function App() {
       </div>
 
       {view==="workout" && (
-        <div style={{position:"fixed",bottom:70,left:0,right:0,background:"#0a0a0f",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",zIndex:9,display:"flex",alignItems:"center",gap:10,padding:"8px 12px"}}>
+        <div style={{position:"fixed",bottom:70,left:0,right:0,background:"var(--bg-secondary)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",zIndex:9,display:"flex",alignItems:"center",gap:10,padding:"8px 12px"}}>
           {/* Timer display */}
           <div style={{textAlign:"center",minWidth:60}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
               {restTimer!==null?Math.floor(restTimer/60)+":"+String(restTimer%60).padStart(2,"0"):restDuration+"s"}
             </div>
             <div style={{color:"#555",fontSize:8,letterSpacing:1}}>REST</div>
@@ -2705,20 +2747,20 @@ export default function App() {
           <div style={{display:"flex",gap:4,flex:1}}>
             {[60,90,120,180].map(s=>(
               <button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}}
-                style={{flex:1,background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:5,padding:"5px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>
+                style={{flex:1,background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:5,padding:"5px 0",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>
                 {s}s
               </button>
             ))}
           </div>
           {/* GO / RST */}
           <button onClick={()=>{primeAudio();setRestTimer(restDuration);setRestRunning(true);}}
-            style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,cursor:"pointer"}}>GO</button>
+            style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"6px 14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,cursor:"pointer"}}>GO</button>
           <button onClick={()=>{setRestTimer(null);setRestRunning(false);}}
-            style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>RST</button>
+            style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>RST</button>
         </div>
       )}
 
-      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0a0a0f",borderTop:"1px solid #1a1a1a",display:"flex",zIndex:10,padding:"4px"}}>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"var(--bg-secondary)",borderTop:"1px solid var(--border)",display:"flex",zIndex:10,padding:"4px"}}>
         {[
           {id:"dashboard", label:"HOME", color:"#e85d04", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
           {id:"workout",   label:"LIFT",     color:"#3a86ff", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><circle cx="4" cy="12" r="2"/><circle cx="20" cy="12" r="2"/><rect x="7" y="8" width="2" height="8" rx="1"/><rect x="15" y="8" width="2" height="8" rx="1"/></svg>},
