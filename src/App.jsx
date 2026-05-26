@@ -74,6 +74,7 @@
 // v5.65 - Fixed root cause: liftWeeks advances after finish so check current-1 week too
 // v5.66 - Migrates old completedDays true entries to {done,date} on load — no sessionLedger dependency
 // v5.67 - SAVE CHANGES on past week edit updates ledger (replace existing or add if missing)
+// v5.68 - C25K running module (run days setup, RUN tab, 12-week plan, log distance/time/pace, home banner)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -154,6 +155,70 @@ const ACCESSORIES_BY_LIFT = {
 };
 const HYPE = ["Time to move some weight!","Let's get after it!","No excuses. Let's go!","Your future self will thank you.","The bar is waiting.","Stronger than last week. Prove it."];
 const DAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+// C25K Plan - keyed by number of days per week (2 or 3)
+const C25K_PLAN = {
+  2: [
+    {week:1,  goal:"START MOVING",          days:[
+      {day:1, intervals:[{type:"walk",duration:5,label:"Warm up walk"},{type:"repeat",reps:8,intervals:[{type:"jog",duration:1},{type:"walk",duration:1.5}]},{type:"walk",duration:5,label:"Cool down"}], totalMin:28},
+      {day:2, intervals:[{type:"walk",duration:5,label:"Warm up walk"},{type:"repeat",reps:8,intervals:[{type:"jog",duration:1},{type:"walk",duration:1.5}]},{type:"walk",duration:5,label:"Cool down"}], totalMin:28},
+    ]},
+    {week:2,  goal:"BUILD RHYTHM",          days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"repeat",reps:6,intervals:[{type:"jog",duration:1.5},{type:"walk",duration:2}]},{type:"walk",duration:5}], totalMin:30},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"repeat",reps:6,intervals:[{type:"jog",duration:1.5},{type:"walk",duration:2}]},{type:"walk",duration:5}], totalMin:30},
+    ]},
+    {week:3,  goal:"LONGER INTERVALS",      days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"repeat",reps:2,intervals:[{type:"jog",duration:1.5},{type:"walk",duration:1.5},{type:"jog",duration:3},{type:"walk",duration:3}]},{type:"walk",duration:5}], totalMin:30},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"repeat",reps:2,intervals:[{type:"jog",duration:1.5},{type:"walk",duration:1.5},{type:"jog",duration:3},{type:"walk",duration:3}]},{type:"walk",duration:5}], totalMin:30},
+    ]},
+    {week:4,  goal:"PUSH THROUGH",          days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:3},{type:"walk",duration:1.5},{type:"jog",duration:5},{type:"walk",duration:2.5},{type:"jog",duration:3},{type:"walk",duration:1.5},{type:"jog",duration:5},{type:"walk",duration:5}], totalMin:31},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:3},{type:"walk",duration:1.5},{type:"jog",duration:5},{type:"walk",duration:2.5},{type:"jog",duration:3},{type:"walk",duration:1.5},{type:"jog",duration:5},{type:"walk",duration:5}], totalMin:31},
+    ]},
+    {week:5,  goal:"FIRST CONTINUOUS RUN",  days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:5},{type:"walk",duration:3},{type:"jog",duration:5},{type:"walk",duration:3},{type:"jog",duration:5},{type:"walk",duration:5}], totalMin:31},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:20,label:"Continuous run!"},{type:"walk",duration:5}], totalMin:30},
+    ]},
+    {week:6,  goal:"EXTEND RUNS",           days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:5},{type:"walk",duration:3},{type:"jog",duration:8},{type:"walk",duration:3},{type:"jog",duration:5},{type:"walk",duration:5}], totalMin:34},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:22,label:"Continuous run"},{type:"walk",duration:5}], totalMin:32},
+    ]},
+    {week:7,  goal:"25 MIN CONTINUOUS",     days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:25,label:"Continuous run"},{type:"walk",duration:5}], totalMin:35},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:25,label:"Continuous run"},{type:"walk",duration:5}], totalMin:35},
+    ]},
+    {week:8,  goal:"28 MIN CONTINUOUS",     days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:28,label:"Continuous run"},{type:"walk",duration:5}], totalMin:38},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:28,label:"Continuous run"},{type:"walk",duration:5}], totalMin:38},
+    ]},
+    {week:9,  goal:"30 MIN / 5K!",          days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:30,label:"You got this!"},{type:"walk",duration:5}], totalMin:40},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:30,label:"You got this!"},{type:"walk",duration:5}], totalMin:40},
+    ]},
+    {week:10, goal:"BUILD DISTANCE",        days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:32},{type:"walk",duration:5}], totalMin:42},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:32},{type:"walk",duration:5}], totalMin:42},
+    ]},
+    {week:11, goal:"FIND YOUR PACE",        days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:35},{type:"walk",duration:5}], totalMin:45},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:35},{type:"walk",duration:5}], totalMin:45},
+    ]},
+    {week:12, goal:"RACE DAY!",             days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:38},{type:"walk",duration:5}], totalMin:48},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:0,label:"🏁 5K RACE DAY! Run 5 kilometers!"}], totalMin:35},
+    ]},
+  ]
+};
+// 3-day plan = 2-day plan + extra easy day
+C25K_PLAN[3] = C25K_PLAN[2].map(week => ({
+  ...week,
+  days: [...week.days, {
+    day:3,
+    intervals:[{type:"walk",duration:5},{type:"jog",duration: week.week < 5 ? 20 : week.week < 9 ? 25 : 30, label:"Easy recovery run"},{type:"walk",duration:5}],
+    totalMin: week.week < 5 ? 30 : 35,
+    isEasy: true
+  }]
+}));
 
 let _audioCtx = null;
 function getAudioCtx() {
@@ -311,6 +376,10 @@ async function saveUD(userId, d) {
     program_id: d.programId,
     workout_in_progress: d.workoutInProgress,
     in_progress_lift_id: d.inProgressLiftId,
+    run_days: d.runDays,
+    run_week: d.runWeek,
+    run_day: d.runDay,
+    run_history: d.runHistory,
     updated_at: new Date().toISOString()
   }, { onConflict: "user_id" });
 }
@@ -350,7 +419,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.67";
+  const APP_VERSION = "v5.68";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -366,6 +435,16 @@ export default function App() {
   const [confirmStart, setConfirmStart] = useState(false);
   const [workoutInProgress, setWorkoutInProgress] = useState(false);
   const [inProgressLiftId, setInProgressLiftId] = useState(null);
+  // Running module
+  const [runDays, setRunDays] = useState([]);
+  const [runWeek, setRunWeek] = useState(1);
+  const [runDay, setRunDay] = useState(1);
+  const [runHistory, setRunHistory] = useState([]);
+  const [runView, setRunView] = useState("today");
+  const [showRunLog, setShowRunLog] = useState(false);
+  const [runDistEntry, setRunDistEntry] = useState("");
+  const [runMinEntry, setRunMinEntry] = useState("");
+  const [runSecEntry, setRunSecEntry] = useState("");
   const [setupSnapshot, setSetupSnapshot] = useState(null);
   const [shareCard, setShareCard] = useState(null);
   const [programId, setProgramId] = useState("");
@@ -428,7 +507,7 @@ export default function App() {
   useEffect(() => {
     if (!uid || !dataLoaded) return;
     const timer = setTimeout(() => {
-      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, weightNudge, programStarted, programId, workoutInProgress, inProgressLiftId });
+      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, weightNudge, programStarted, programId, workoutInProgress, inProgressLiftId, runDays, runWeek, runDay, runHistory });
     }, 800);
     return () => clearTimeout(timer);
   }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,weightNudge,programStarted,uid,dataLoaded]);
@@ -557,6 +636,10 @@ export default function App() {
       setProgramId(d.program_id || "");
       setWorkoutInProgress(d.workout_in_progress || false);
       setInProgressLiftId(d.in_progress_lift_id || null);
+      setRunDays(d.run_days || []);
+      setRunWeek(d.run_week || 1);
+      setRunDay(d.run_day || 1);
+      setRunHistory(d.run_history || []);
       // Infer programStarted from any existing data
       const inferred = d.program_started ||
         (d.lifts && d.lifts.some(l => l.startingMax > 0) && d.start_date) ||
@@ -1272,6 +1355,252 @@ export default function App() {
 
 }
 
+      {view==="run" && (
+        <div style={{padding:16,paddingBottom:100}}>
+          {runDays.length < 2 ? (
+            <div style={{textAlign:"center",padding:40}}>
+              <div style={{fontSize:48,marginBottom:12}}>🏃</div>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#555",letterSpacing:2,marginBottom:8}}>C25K NOT SET UP</div>
+              <div style={{color:"#444",fontSize:12,marginBottom:20}}>Go to SETUP and pick at least 2 running days to start the Couch to 5K program.</div>
+              <button onClick={()=>setView("setup")} style={{background:"#3a86ff",border:"none",color:"#000",borderRadius:8,padding:"12px 24px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1}}>GO TO SETUP</button>
+            </div>
+          ) : (
+            <>
+              {/* Run view tabs */}
+              <div style={{display:"flex",gap:8,marginBottom:16}}>
+                {["today","plan","history"].map(t=>(
+                  <button key={t} onClick={()=>setRunView(t)} style={{flex:1,background:runView===t?"#1a1a2e":"#0f0f1a",border:"1px solid "+(runView===t?"#3a86ff":"#222"),color:runView===t?"#3a86ff":"#555",borderRadius:6,padding:"8px",fontFamily:"'Bebas Neue',sans-serif",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
+                    {t.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+
+              {/* TODAY */}
+              {runView==="today" && (()=>{
+                const plan = C25K_PLAN[runDays.length >= 3 ? 3 : 2];
+                const weekPlan = plan[runWeek-1];
+                const dayPlan = weekPlan?.days[runDay-1];
+                const todayAbbr = DAY_ABBR[new Date().getDay()];
+                const isRunDay = runDays.includes(todayAbbr);
+                const completedToday = runHistory.some(r => r.date === todayISO());
+
+                // Find next run day
+                const getNextRunDay = () => {
+                  for(let i=1; i<=7; i++){
+                    const d = DAY_ABBR[(new Date().getDay()+i)%7];
+                    if(runDays.includes(d)) return {day:d, daysAway:i};
+                  }
+                  return null;
+                };
+                const nextRun = getNextRunDay();
+
+                if (!isRunDay) return (
+                  <div>
+                    <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #333",display:"flex",alignItems:"center",gap:16}}>
+                      <div style={{fontSize:38}}>😴</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#555",letterSpacing:2,lineHeight:1}}>NO RUN TODAY</div>
+                        <div style={{fontSize:12,color:"#888",marginTop:6}}>{nextRun ? "NEXT RUN: "+nextRun.day+" · "+(nextRun.daysAway===1?"TOMORROW":"IN "+nextRun.daysAway+" DAYS")+" · WK "+runWeek+" DAY "+runDay : "REST UP!"}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+
+                if (completedToday) return (
+                  <div>
+                    <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #06d6a0",display:"flex",alignItems:"center",gap:16}}>
+                      <div style={{fontSize:38}}>✅</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#06d6a0",letterSpacing:2,lineHeight:1}}>RUN COMPLETE!</div>
+                        <div style={{fontSize:12,color:"#888",marginTop:6}}>Week {runWeek} Day {runDay} done · {nextRun?"Next: "+nextRun.day:"All done!"}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <div>
+                    {/* Banner */}
+                    <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #3a86ff"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:16}}>
+                        <div style={{fontSize:38}}>🏃</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#3a86ff",letterSpacing:2,lineHeight:1}}>RUN DAY!</div>
+                          <div style={{fontSize:12,color:"#888",marginTop:6}}>WEEK {runWeek} · DAY {runDay} · ~{dayPlan?.totalMin} MIN</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Workout card */}
+                    {!showRunLog && dayPlan && (
+                      <div style={{...card,marginBottom:16,borderTop:"4px solid #3a86ff"}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>WEEK {runWeek} — DAY {runDay} {dayPlan.isEasy?"· EASY RUN":""}</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#3a86ff",letterSpacing:2,marginBottom:16}}>{weekPlan.goal}</div>
+                        {dayPlan.intervals.map((seg,i) => (
+                          <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<dayPlan.intervals.length-1?"1px solid #1a1a1a":"none"}}>
+                            <div style={{width:24,height:24,borderRadius:"50%",background:"#1a1a2e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#555",flexShrink:0}}>{i+1}</div>
+                            <div style={{flex:1}}>
+                              {seg.type==="repeat" ? (
+                                <div>
+                                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:"#f7b731"}}>× {seg.reps} ROUNDS</div>
+                                  {seg.intervals.map((s,j)=>(
+                                    <div key={j} style={{fontSize:11,color:s.type==="jog"?"#3a86ff":"#f7b731",marginLeft:8}}>
+                                      {s.type==="jog"?"🏃 JOG":"🚶 WALK"} {s.duration < 1 ? s.duration*60+"s" : s.duration+"min"}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:seg.type==="jog"?"#3a86ff":"#f7b731"}}>
+                                  {seg.type==="jog"?"🏃 JOG":"🚶 WALK"} {seg.label||seg.duration+"min"}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Log form */}
+                    {showRunLog && (
+                      <div style={{...card,marginBottom:16,borderTop:"4px solid #06d6a0"}}>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:16,letterSpacing:2}}>LOG YOUR RUN</div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                          <div>
+                            <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>DISTANCE (miles)</div>
+                            <input type="number" step="0.1" value={runDistEntry} onChange={e=>setRunDistEntry(e.target.value)} placeholder="0.0"
+                              style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:6,padding:8,fontFamily:"'DM Mono',monospace",fontSize:18,textAlign:"center"}} />
+                          </div>
+                          <div>
+                            <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>TIME (min : sec)</div>
+                            <div style={{display:"flex",alignItems:"center",gap:4}}>
+                              <input type="number" value={runMinEntry} onChange={e=>setRunMinEntry(e.target.value)} placeholder="00"
+                                style={{width:"50%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:6,padding:8,fontFamily:"'DM Mono',monospace",fontSize:18,textAlign:"center"}} />
+                              <span style={{color:"#555"}}>:</span>
+                              <input type="number" value={runSecEntry} onChange={e=>setRunSecEntry(e.target.value)} placeholder="00"
+                                style={{width:"50%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:6,padding:8,fontFamily:"'DM Mono',monospace",fontSize:18,textAlign:"center"}} />
+                            </div>
+                          </div>
+                        </div>
+                        {runDistEntry && runMinEntry && (
+                          <div style={{background:"#111",borderRadius:8,padding:12,textAlign:"center",marginBottom:16}}>
+                            <div style={{color:"#555",fontSize:10,marginBottom:4}}>EST PACE</div>
+                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:26,color:"#06d6a0"}}>
+                              {(()=>{
+                                const totalSecs = (+runMinEntry*60) + (+runSecEntry||0);
+                                const paceSecPerMile = totalSecs / +runDistEntry;
+                                const pm = Math.floor(paceSecPerMile/60);
+                                const ps = Math.round(paceSecPerMile%60);
+                                return pm+":"+String(ps).padStart(2,"0");
+                              })()} <span style={{fontSize:12,color:"#555"}}>/ mile</span>
+                            </div>
+                          </div>
+                        )}
+                        <button onClick={()=>{
+                          const totalSecs = (+runMinEntry*60)+(+runSecEntry||0);
+                          const paceSecPerMile = runDistEntry ? totalSecs/+runDistEntry : 0;
+                          const pm = Math.floor(paceSecPerMile/60);
+                          const ps = Math.round(paceSecPerMile%60);
+                          const entry = {date:todayISO(),week:runWeek,day:runDay,dist:+runDistEntry,totalSecs,pace:pm+":"+String(ps).padStart(2,"0")};
+                          setRunHistory(prev=>[entry,...prev]);
+                          // Advance to next run day
+                          const plan = C25K_PLAN[runDays.length>=3?3:2];
+                          const weekPlan = plan[runWeek-1];
+                          if(runDay < weekPlan.days.length) {
+                            setRunDay(d=>d+1);
+                          } else if(runWeek < 12) {
+                            setRunWeek(w=>w+1);
+                            setRunDay(1);
+                          }
+                          setShowRunLog(false);
+                          setRunDistEntry("");setRunMinEntry("");setRunSecEntry("");
+                        }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:8}}>SAVE RUN ✓</button>
+                        <button onClick={()=>setShowRunLog(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:10,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,cursor:"pointer"}}>BACK</button>
+                      </div>
+                    )}
+
+                    {!showRunLog && (
+                      <>
+                        <button onClick={()=>setShowRunLog(true)} style={{width:"100%",background:"#3a86ff",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG COMPLETED RUN</button>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* PLAN */}
+              {runView==="plan" && (()=>{
+                const plan = C25K_PLAN[runDays.length>=3?3:2];
+                return (
+                  <div>
+                    {plan.map(wp=>{
+                      const isDone = wp.week < runWeek || (wp.week === runWeek && runDay > wp.days.length);
+                      const isCurrent = wp.week === runWeek;
+                      const color = isDone?"#06d6a0":isCurrent?"#3a86ff":"#333";
+                      return (
+                        <div key={wp.week} style={{...card,borderLeft:"3px solid "+color,marginBottom:10,opacity:wp.week>runWeek+1?0.5:1}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color,letterSpacing:1}}>WEEK {wp.week}{isCurrent?" ← YOU ARE HERE":""}</div>
+                            <div style={{background:isDone?"#06d6a020":isCurrent?"#3a86ff20":"#1a1a2e",color:isDone?"#06d6a0":isCurrent?"#3a86ff":"#555",borderRadius:4,padding:"2px 8px",fontSize:10,fontFamily:"'Bebas Neue',sans-serif"}}>
+                              {isDone?"✓ DONE":isCurrent?"IN PROGRESS":"UPCOMING"}
+                            </div>
+                          </div>
+                          <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>{wp.goal}</div>
+                          {wp.days.map(d=>(
+                            <div key={d.day} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #1a1a1a",fontSize:11}}>
+                              <span style={{color,minWidth:45,fontFamily:"'Bebas Neue',sans-serif"}}>DAY {d.day}{d.isEasy?" 🟢":""}</span>
+                              <span style={{color:"#555",flex:1,padding:"0 8px"}}>{d.intervals.find(i=>i.type==="jog"||i.type==="repeat")?.label || (d.intervals.find(i=>i.type==="jog")?.duration ? d.intervals.find(i=>i.type==="jog").duration+"min jog" : "Intervals")}</span>
+                              <span style={{color:"#f7b731",fontFamily:"'Bebas Neue',sans-serif"}}>{d.totalMin}min</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* HISTORY */}
+              {runView==="history" && (
+                <div>
+                  {runHistory.length === 0 ? (
+                    <div style={{textAlign:"center",padding:40,color:"#444"}}>No runs logged yet. Get out there! 🏃</div>
+                  ) : (
+                    <>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
+                        <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
+                          <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>RUNS</div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#3a86ff"}}>{runHistory.length}</div>
+                        </div>
+                        <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
+                          <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>TOTAL</div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#f7b731"}}>{runHistory.reduce((s,r)=>s+(r.dist||0),0).toFixed(1)}<span style={{fontSize:11}}>mi</span></div>
+                        </div>
+                        <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
+                          <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>BEST PACE</div>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0"}}>{(()=>{const best=runHistory.filter(r=>r.pace).sort((a,b)=>a.pace.localeCompare(b.pace))[0];return best?.pace||"—"})()}</div>
+                        </div>
+                      </div>
+                      {runHistory.map((r,i)=>(
+                        <div key={i} style={{...card,display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                          <div>
+                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:"#3a86ff"}}>WEEK {r.week} · DAY {r.day}</div>
+                            <div style={{color:"#555",fontSize:10,marginTop:2}}>{fmtDate(r.date)}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#f0f0f0"}}>{r.dist} mi</div>
+                            <div style={{color:"#555",fontSize:10}}>{r.pace} / mile</div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {view==="social" && (
         <div style={{maxWidth:600,margin:"0 auto"}}>
           <div style={{padding:"16px 16px 0"}}>
@@ -1459,6 +1788,8 @@ export default function App() {
               const todayAbbr = DAY_ABBR[new Date().getDay()];
               // Find lifts scheduled today that haven't been completed yet
               const todayScheduled = lifts.filter(l => (l.trainingDays||[]).includes(todayAbbr));
+              const isRunDay = runDays.includes(todayAbbr);
+              const runCompletedToday = runHistory.some(r => r.date === todayISO());
               const isCompletedThisWeek = (l) => {
                 // liftWeeks advances after finish so check current AND previous week
                 const currentWeek = liftWeeks[l.id] || 1;
@@ -1495,14 +1826,22 @@ export default function App() {
               const nextLift = getNextLift();
               // Determine banner message
               let bannerColor, bannerIcon, bannerTitle, bannerSub;
-              if (todayPending.length > 0) {
+              if (isRunDay && !runCompletedToday && todayPending.length === 0) {
+                // Run day and no lifts pending
+                const plan = C25K_PLAN[runDays.length>=3?3:2];
+                const wp = plan[runWeek-1];
+                bannerColor = "#3a86ff";
+                bannerIcon = "🏃";
+                bannerTitle = "RUN DAY!";
+                bannerSub = "WEEK " + runWeek + " · DAY " + runDay + " · ~" + (wp?.days[runDay-1]?.totalMin||30) + " MIN";
+              } else if (todayPending.length > 0) {
                 // Time to lift today
                 const l = todayPending[0];
                 bannerColor = l.color || "#e85d04";
                 bannerIcon = "💪";
                 bannerTitle = "TIME TO LIFT";
                 bannerSub = l.name.toUpperCase() + " — WEEK " + (liftWeeks[l.id]||1);
-              } else if (todayCompleted.length > 0 && todayPending.length === 0) {
+              } else if ((todayCompleted.length > 0 || (isRunDay && runCompletedToday)) && todayPending.length === 0) {
                 // All done today
                 bannerColor = "#06d6a0";
                 bannerIcon = "✅";
@@ -1734,6 +2073,22 @@ export default function App() {
                       {bmi && <>{" · "}BMI: <span style={{color:bmiCol(bmi)}}>{bmi} ({bmiCat(bmi)})</span></>}
                     </div>
                   )}
+                </div>
+
+                {/* Running days picker */}
+                <div style={{...card,marginBottom:14}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#3a86ff",marginBottom:4,letterSpacing:1}}>🏃 COUCH TO 5K</div>
+                  <div style={{color:"#555",fontSize:11,marginBottom:10}}>Pick your running days (min 2, max 3). Choose days not used for lifting.</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                    {DAY_ABBR.slice(1).concat(["Sun"]).map(d=>(
+                      <button key={d} onClick={()=>setRunDays(prev=>prev.includes(d)?prev.filter(x=>x!==d):prev.length<3?[...prev,d]:prev)}
+                        style={{background:runDays.includes(d)?"#1a1a2e":"#111",border:"1px solid "+(runDays.includes(d)?"#3a86ff":"#333"),color:runDays.includes(d)?"#3a86ff":"#444",borderRadius:4,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                  {runDays.length > 0 && <div style={{color:"#3a86ff",fontSize:10}}>{runDays.length} day{runDays.length>1?"s":""}/week · {runDays.length >= 2 ? "✓ Ready" : "Need 1 more day"}</div>}
+                  {runDays.length === 0 && <div style={{color:"#333",fontSize:10}}>Optional — skip if not running</div>}
                 </div>
 
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -2318,6 +2673,7 @@ export default function App() {
           {id:"dashboard", label:"HOME", color:"#e85d04", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
           {id:"workout",   label:"LIFT",     color:"#3a86ff", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><circle cx="4" cy="12" r="2"/><circle cx="20" cy="12" r="2"/><rect x="7" y="8" width="2" height="8" rx="1"/><rect x="15" y="8" width="2" height="8" rx="1"/></svg>},
           {id:"progress",  label:"PROGRESS", color:"#8338ec", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>},
+          {id:"run",      label:"RUN",      color:"#3a86ff", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7l-2 5h4l-2 5"/><path d="M8 17l-2 3M16 17l2 3"/><path d="M7 12l-3 1M17 12l3 1"/></svg>},
           {id:"social",    label:"SOCIAL",   color:"#ff006e", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
           {id:"ledger",    label:"LEDGER",   color:"#06d6a0", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>},
           {id:"setup",     label:hasSetup?"PROGRAM":"SETUP", color:"#f7b731", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>},
