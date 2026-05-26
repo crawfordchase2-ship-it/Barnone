@@ -1,3 +1,25 @@
+// ============================================================
+// BAR NONE — THE PROGRAM
+// App.jsx Version History
+// ------------------------------------------------------------
+// v1.0 - Initial build, local storage auth
+// v2.0 - Migrated to Supabase auth + cloud storage
+// v3.0 - Social features (friends, reactions, profiles)
+// v4.0 - SVG nav icons, colored tabs, cream logo
+// v5.0 - Program confirm flow, checklist, final max carry-over
+// v5.1 - dataLoaded flag, SIGNED_IN guard, data loss fix
+// v5.2 - True max display, progression math fix
+// v5.3 - In-app alerts (finish, PR, rest, new week, streak)
+// v5.4 - Timer always sticky, aux +/=/- buttons, DEL button
+// v5.5 - Notification timing fix (localStorage, training day)
+// v5.6 - Height/weight in setup, post-workout weight prompt
+// v5.7 - Weekly avg weight chart, 12-week rolling window
+// v5.8 - Display name editable, username permanent
+// v5.9 - Save debounce fix, timer countdown fix
+// v5.10 - New week alert fix (completedDays keyed by week not date)
+// v5.11 - Full check verified, version header added
+// ============================================================
+
 import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar } from "recharts";
 import { createClient } from "@supabase/supabase-js";
@@ -242,9 +264,12 @@ export default function App() {
       if (w <= 1) return;
       // Only notify on a day this lift is scheduled
       if (!(l.trainingDays||[]).includes(todayAbbr)) return;
-      // Don't notify if this lift was completed today (just finished Week w-1)
-      const completedToday = completedDays?.[todayISO()]?.[l.id];
-      if (completedToday) return;
+      // Don't notify if this lift was completed in the previous week (just finished)
+      // completedDays is keyed by week number, w is already advanced to next week
+      const justCompleted = completedDays?.[w-1]?.[l.id];
+      // Also check if session was logged today for this lift
+      const loggedToday = sessionLedger.some(s => s.date === todayISO() && s.liftId === l.id);
+      if (justCompleted && loggedToday) return;
       const key = "barnone_newweek_" + uid + "_" + l.id + "_w" + w + "_" + todayISO();
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, "1");
@@ -1434,8 +1459,8 @@ export default function App() {
 
               <div style={{...card,display:"flex",alignItems:"center",gap:12,marginBottom:14,
                 borderLeft:restRunning?"3px solid #06d6a0":"1px solid #222",
-                position:"sticky",top:58,zIndex:8,
-                background:"#0f0f1a"}}>
+                position:"sticky",top:64,zIndex:8,
+                background:"#0a0a0f"}}>
                 {/* Timer display */}
                 <div style={{textAlign:"center",minWidth:72}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
