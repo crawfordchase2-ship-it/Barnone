@@ -19,6 +19,7 @@
 // v5.10 - New week alert fix (completedDays keyed by week not date)
 // v5.11 - Full check verified, version header added
 // v5.12 - Timer sticky fix (top:0, no cutoff behind header)
+// v5.13 - Timer moved to footer bar, only visible on LIFT tab
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -710,7 +711,7 @@ export default function App() {
   const card = { background:"#0f0f1a", borderRadius:10, padding:"14px 16px", marginBottom:14 };
 
   return (
-    <div style={{minHeight:"100vh",background:"#000000",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:100}}>
+    <div style={{minHeight:"100vh",background:"#000000",color:"#f0f0f0",fontFamily:"'DM Mono','Courier New',monospace",fontSize:14,paddingBottom:view==="workout"?160:100}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
@@ -1458,36 +1459,7 @@ export default function App() {
                 ))}
               </div>
 
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,
-                background:"#0f0f1a",
-                borderLeft:restRunning?"3px solid #06d6a0":"1px solid #222",
-                position:"sticky",top:0,zIndex:8,
-                borderRadius:10,
-                padding:"14px 16px"}}>
-                {/* Timer display */}
-                <div style={{textAlign:"center",minWidth:72}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
-                    {restTimer!==null?`${Math.floor(restTimer/60)}:${String(restTimer%60).padStart(2,"0")}`:restDuration+"s"}
-                  </div>
-                  <div style={{color:"#555",fontSize:9,letterSpacing:1}}>REST</div>
-                </div>
-                {/* Preset grid */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,flex:1}}>
-                  {[60,90,120,180].map(s=>(
-                    <button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}}
-                      style={{background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:5,padding:"7px",fontFamily:"'Bebas Neue',sans-serif",fontSize:15,cursor:"pointer"}}>
-                      {s}s
-                    </button>
-                  ))}
-                </div>
-                {/* GO / RST */}
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}}
-                    style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"10px 16px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,cursor:"pointer"}}>GO</button>
-                  <button onClick={()=>{setRestTimer(null);setRestRunning(false);}}
-                    style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,cursor:"pointer"}}>RST</button>
-                </div>
-              </div>
+
 
               <div style={{marginBottom:20}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:19,letterSpacing:2,color:lift.color,marginBottom:10}}>{lift.name} — MAIN SETS</div>
@@ -1735,6 +1707,32 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {view==="workout" && (
+        <div style={{position:"fixed",bottom:70,left:0,right:0,background:"#0a0a0f",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",zIndex:9,display:"flex",alignItems:"center",gap:10,padding:"8px 12px"}}>
+          {/* Timer display */}
+          <div style={{textAlign:"center",minWidth:60}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
+              {restTimer!==null?Math.floor(restTimer/60)+":"+String(restTimer%60).padStart(2,"0"):restDuration+"s"}
+            </div>
+            <div style={{color:"#555",fontSize:8,letterSpacing:1}}>REST</div>
+          </div>
+          {/* Presets */}
+          <div style={{display:"flex",gap:4,flex:1}}>
+            {[60,90,120,180].map(s=>(
+              <button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}}
+                style={{flex:1,background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:5,padding:"5px 0",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>
+                {s}s
+              </button>
+            ))}
+          </div>
+          {/* GO / RST */}
+          <button onClick={()=>{setRestTimer(restDuration);setRestRunning(true);}}
+            style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"6px 14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:18,cursor:"pointer"}}>GO</button>
+          <button onClick={()=>{setRestTimer(null);setRestRunning(false);}}
+            style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>RST</button>
+        </div>
+      )}
 
       <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0a0a0f",borderTop:"1px solid #1a1a1a",display:"flex",zIndex:10,padding:"4px"}}>
         {[
