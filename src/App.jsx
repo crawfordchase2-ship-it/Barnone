@@ -79,6 +79,7 @@
 // v5.70 - Streak only counts scheduled training days, rest days dont break it
 // v5.71 - CONTINUE button uses in-app modal instead of window.confirm (fixes iOS issue)
 // v5.72 - CONTINUE works even if new program not started yet (no unnecessary archive)
+// v5.73 - CONTINUE button try/catch, better fallbacks, sets activeId on restore
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -423,7 +424,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.72";
+  const APP_VERSION = "v5.73";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -1261,26 +1262,35 @@ export default function App() {
               You can always come back to it from the PROGRAM tab.
             </div>
             <button onClick={async()=>{
-              const p = confirmContinue;
-              // Only archive current program if it was actually started
-              if (programStarted && programId) {
-                const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
-                await saveProgramToHistory(uid, curArchive);
+              try {
+                const p = confirmContinue;
+                // Only archive current program if it was actually started
+                if (programStarted && programId) {
+                  const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
+                  await saveProgramToHistory(uid, curArchive);
+                }
+                // Restore old program with safe fallbacks
+                const restoredLifts = p.lifts || DEFAULT_LIFTS;
+                setLifts(restoredLifts);
+                setStartDate(p.startDate || "");
+                setLogs(p.logs || {});
+                setLiftWeeks(p.liftWeeks || Object.fromEntries(restoredLifts.map(l=>[l.id,1])));
+                setCompletedDays(p.completedDays || {});
+                setAccList(p.accList || {});
+                setProgramId(p.programId || (uid + "_" + Date.now()));
+                setProgramStarted(true);
+                setActiveId(restoredLifts[0]?.id || DEFAULT_LIFTS[0].id);
+                setViewingWeek(1);
+                setWorkoutInProgress(false);
+                if (p.id) await deleteProgramFromHistory(p.id);
+                const ph = await loadProgramHistory(uid);
+                setProgramHistory(ph);
+                setConfirmContinue(null);
+                setView("dashboard");
+              } catch(e) {
+                console.error("Continue error:", e);
+                setConfirmContinue(null);
               }
-              // Restore old program
-              setLifts(p.lifts || DEFAULT_LIFTS);
-              setStartDate(p.startDate || "");
-              setLogs(p.logs || {});
-              setLiftWeeks(p.liftWeeks || Object.fromEntries((p.lifts||DEFAULT_LIFTS).map(l=>[l.id,1])));
-              setCompletedDays(p.completedDays || {});
-              setAccList(p.accList || {});
-              setProgramId(p.programId || "");
-              setProgramStarted(true);
-              if (p.id) await deleteProgramFromHistory(p.id);
-              const ph = await loadProgramHistory(uid);
-              setProgramHistory(ph);
-              setConfirmContinue(null);
-              setView("dashboard");
             }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>YES, CONTINUE 💪</button>
             <button onClick={()=>setConfirmContinue(null)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,cursor:"pointer"}}>CANCEL</button>
           </div>
