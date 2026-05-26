@@ -27,6 +27,9 @@
 // v5.18 - Sessions shows X of Y (this program), archived with program history
 // v5.19 - Streak counts current program only, best streak archived in history
 // v5.20 - programId fixes sessions/streak bleeding across programs
+// v5.21 - Returns to home screen after dismissing finish alert
+// v5.22 - Friend requests show sender name and username
+// v5.23 - SOCIAL tab badge shows when friend logs new session
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -168,6 +171,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
+  const APP_VERSION = "v5.20";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -185,6 +189,7 @@ export default function App() {
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
   const [newReactionCount, setNewReactionCount] = useState(0);
+  const [newFriendSessions, setNewFriendSessions] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [editingName, setEditingName] = useState(false);
@@ -373,7 +378,21 @@ export default function App() {
       .select("id, from_id, to_id, status")
       .or("from_id.eq." + userId + ",to_id.eq." + userId);
     if (requests) {
-      setFriendRequests(requests.filter(r => r.status === "pending" && r.to_id === userId));
+      const pendingRequests = requests.filter(r => r.status === "pending" && r.to_id === userId);
+      // Fetch sender names
+      if (pendingRequests.length > 0) {
+        const senderIds = pendingRequests.map(r => r.from_id);
+        const { data: senderProfiles } = await supabase
+          .from("public_profiles").select("id, name, username").in("id", senderIds);
+        const requestsWithNames = pendingRequests.map(r => ({
+          ...r,
+          from_name: senderProfiles?.find(p => p.id === r.from_id)?.name || "Someone",
+          from_username: senderProfiles?.find(p => p.id === r.from_id)?.username || ""
+        }));
+        setFriendRequests(requestsWithNames);
+      } else {
+        setFriendRequests([]);
+      }
       const accepted = requests.filter(r => r.status === "accepted");
       const friendIds = accepted.map(r => r.from_id === userId ? r.to_id : r.from_id);
       if (friendIds.length > 0) {
@@ -389,6 +408,14 @@ export default function App() {
             ...(friendData.find(d => d.user_id === p.id) || {})
           }));
           setFriends(merged);
+          // Count new friend sessions since last check
+          const lastCheck = localStorage.getItem("barnone_social_check_" + userId) || "";
+          let newCount = 0;
+          merged.forEach(f => {
+            const sessions = f.session_ledger || [];
+            if (sessions.length > 0 && sessions[0].date > lastCheck) newCount++;
+          });
+          setNewFriendSessions(newCount);
         }
       }
     }
@@ -793,6 +820,7 @@ export default function App() {
             </div>
             <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
             <button onClick={()=>setShowProfile(false)} className="bigbtn" style={{background:"none",border:"1px solid #333",color:"#555"}}>CANCEL</button>
+            <div style={{textAlign:"center",color:"#333",fontSize:10,marginTop:12,letterSpacing:1}}>BAR NONE — THE PROGRAM {APP_VERSION}</div>
           </div>
         </div>
       )}
@@ -884,7 +912,7 @@ export default function App() {
                 </div>
               )}
             </div>
-            <button onClick={()=>setFinishAlert(null)} style={{width:"100%",background:finishAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,cursor:"pointer"}}>LETS GO 🔥</button>
+            <button onClick={()=>{setFinishAlert(null);setView("dashboard");}} style={{width:"100%",background:finishAlert.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,cursor:"pointer"}}>LETS GO 🔥</button>
           </div>
         </div>
       )}
@@ -1006,7 +1034,8 @@ export default function App() {
                   <div key={r.id} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
                       <div style={{color:"#f0f0f0",fontSize:14}}>{r.from_name || "Someone"}</div>
-                      <div style={{color:"#555",fontSize:11}}>wants to be friends</div>
+                      {r.from_username && <div style={{color:"#555",fontSize:11}}>@{r.from_username}</div>}
+                      <div style={{color:"#444",fontSize:11}}>wants to be friends</div>
                     </div>
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={()=>acceptFriendRequest(r.id)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:4,padding:"6px 12px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>ACCEPT</button>
@@ -1791,12 +1820,12 @@ export default function App() {
           {id:"social",    label:"SOCIAL",   color:"#ff006e", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
           {id:"setup",     label:hasSetup?"PROGRAM":"SETUP", color:"#f7b731", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>},
         ].map(t=>(
-          <button key={t.id} onClick={()=>setView(t.id)} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id?t.color:"#444",position:"relative"}}>
+          <button key={t.id} onClick={()=>{setView(t.id);if(t.id==="social"){localStorage.setItem("barnone_social_check_"+uid, todayISO());setNewFriendSessions(0);}}} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id?t.color:"#444",position:"relative"}}>
             {t.svg}
             <span style={{fontSize:9,letterSpacing:1,fontFamily:"'DM Mono',monospace"}}>{t.label}</span>
             <div style={{width:4,height:4,borderRadius:"50%",background:view===t.id?t.color:"transparent"}}></div>
-            {t.id==="social" && (friendRequests.length + newReactionCount) > 0 && (
-              <span style={{position:"absolute",top:4,right:"15%",background:"#e85d04",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace"}}>{friendRequests.length + newReactionCount}</span>
+            {t.id==="social" && (friendRequests.length + newReactionCount + newFriendSessions) > 0 && (
+              <span style={{position:"absolute",top:4,right:"15%",background:"#e85d04",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace"}}>{friendRequests.length + newReactionCount + newFriendSessions}</span>
             )}
           </button>
         ))}
