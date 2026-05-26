@@ -206,7 +206,10 @@ export default function App() {
 
   useEffect(() => {
     if (!uid || !dataLoaded) return;
-    saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted });
+    const timer = setTimeout(() => {
+      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, programHistory, weightNudge, programStarted });
+    }, 800);
+    return () => clearTimeout(timer);
   }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,programHistory,weightNudge,programStarted,uid,dataLoaded]);
 
   useEffect(() => {
@@ -239,9 +242,12 @@ export default function App() {
       if (w <= 1) return;
       // Only notify on a day this lift is scheduled
       if (!(l.trainingDays||[]).includes(todayAbbr)) return;
-      const key = `barnone_newweek_${uid}_${l.id}_w${w}_${todayISO()}`;
-      if (sessionStorage.getItem(key)) return;
-      sessionStorage.setItem(key, "1");
+      // Don't notify if this lift was completed today (just finished Week w-1)
+      const completedToday = completedDays?.[todayISO()]?.[l.id];
+      if (completedToday) return;
+      const key = "barnone_newweek_" + uid + "_" + l.id + "_w" + w + "_" + todayISO();
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
       const wts = calcWorkingWeights(getWorkingMax(l.id, w));
       setNewWeekAlert({ liftName: l.name, week: w, weights: wts, color: l.color });
     });
@@ -250,13 +256,13 @@ export default function App() {
   // Streak reminder - if no session logged in 3+ days
   useEffect(() => {
     if (!hasSetup || !uid || !sessionLedger.length) return;
-    const key = `barnone_streak_${uid}_${todayISO()}`;
-    if (sessionStorage.getItem(key)) return;
+    const key = "barnone_streak_" + uid + "_" + todayISO();
+    if (localStorage.getItem(key)) return;
     const lastDate = sessionLedger[0]?.date;
     if (!lastDate) return;
     const daysSince = Math.floor((new Date(todayISO()) - new Date(lastDate)) / 86400000);
     if (daysSince >= 3) {
-      sessionStorage.setItem(key, "1");
+      localStorage.setItem(key, "1");
       setStreakAlert(true);
     }
   }, [hasSetup, uid, sessionLedger]);
@@ -266,9 +272,9 @@ export default function App() {
     if (!hasSetup || !uid) return;
     const today = new Date();
     if (today.getDay() !== 0) return; // Sunday only
-    const key = `barnone_summary_${uid}_${todayISO()}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
+    const key = "barnone_summary_" + uid + "_" + todayISO();
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
     const thisWeekStart = new Date(today);
     thisWeekStart.setDate(today.getDate() - 6);
     const weekSessions = sessionLedger.filter(s => new Date(s.date) >= thisWeekStart);
@@ -1427,8 +1433,9 @@ export default function App() {
               </div>
 
               <div style={{...card,display:"flex",alignItems:"center",gap:12,marginBottom:14,
-                borderLeft:restRunning?"3px solid #06d6a0":undefined,
-                transition:"all 0.2s"}}>
+                borderLeft:restRunning?"3px solid #06d6a0":"1px solid #222",
+                position:"sticky",top:58,zIndex:8,
+                background:"#0f0f1a"}}>
                 {/* Timer display */}
                 <div style={{textAlign:"center",minWidth:72}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
