@@ -1206,6 +1206,7 @@ export default function App() {
             <button onClick={handleLogout} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04",marginBottom:8}}>SIGN OUT</button>
             <button onClick={()=>setShowProfile(false)} className="bigbtn" style={{background:"none",border:"1px solid #333",color:"#555"}}>CANCEL</button>
             <div style={{textAlign:"center",color:"#333",fontSize:10,marginTop:12,letterSpacing:1}}>BAR NONE — THE PROGRAM {APP_VERSION}</div>
+            </div>
           </div>
         </div>
       )}
@@ -2806,6 +2807,5 @@ export default function App() {
         ))}
       </div>
     </div>
-  </div>
   );
 }
