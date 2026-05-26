@@ -20,6 +20,10 @@
 // v5.11 - Full check verified, version header added
 // v5.12 - Timer sticky fix (top:0, no cutoff behind header)
 // v5.13 - Timer moved to footer bar, only visible on LIFT tab
+// v5.14 - Setup alert hidden until dataLoaded (no flash on open)
+// v5.15 - Body stats bigger text, 3-col grid layout, fills card properly
+// v5.16 - Body stats font size 28, weight trend arrow (↑↓→)
+// v5.17 - LOG button on dashboard weight card, always prompt after workout
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -626,7 +630,7 @@ export default function App() {
     });
     setSessionNotes("");
     // Show weight prompt if not logged this week
-    if (!loggedThisWeek) setShowWeightPrompt(true);
+    if (!loggedThisWeek) setShowWeightPrompt(true); // Always prompt if not logged this week
     setCompletedDays(prev=>{const n=JSON.parse(JSON.stringify(prev));if(!n[week])n[week]={};n[week][activeId]=true;return n;});
     const nw=Math.min(12,activeLiftWeek+1);
     setLiftWeeks(prev=>({...prev,[activeId]:nw}));
@@ -1088,7 +1092,7 @@ export default function App() {
         {view==="dashboard" && (
           <div style={{padding:16}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>DASHBOARD</div>
-            {!hasSetup && (
+            {!hasSetup && dataLoaded && (
               <div style={{...card,borderLeft:"3px solid #f7b731"}}>
                 <div style={{color:"#f7b731",fontFamily:"'Bebas Neue',sans-serif",fontSize:16,marginBottom:4}}>SETUP REQUIRED</div>
                 <div style={{color:"#555",fontSize:12,marginBottom:10}}>Enter your starting maxes to begin the program.</div>
@@ -1137,30 +1141,51 @@ export default function App() {
             </div>
 
             <div style={{...card}}>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
-              <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:bodyStats.entries.length>1?12:0}}>
-                {bodyStats.heightIn && (
-                  <div>
-                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>HEIGHT</div>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#aaa"}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:"#888",marginBottom:14,letterSpacing:1}}>BODY STATS</div>
+              {(()=>{
+                const prevWeight = bodyStats.entries[1]?.weightLbs;
+                const trend = prevWeight ? (latestWeight > prevWeight ? "↑" : latestWeight < prevWeight ? "↓" : "→") : null;
+                const trendCol = prevWeight ? (latestWeight > prevWeight ? "#e85d04" : latestWeight < prevWeight ? "#06d6a0" : "#555") : null;
+                return (
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+                    {bodyStats.heightIn && (
+                      <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>HEIGHT</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#aaa",lineHeight:1}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
+                      </div>
+                    )}
+                    {latestWeight && (
+                      <div style={{background:"#111",borderRadius:8,padding:"12px",position:"relative"}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>WEIGHT</div>
+                        <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:"#06d6a0",lineHeight:1}}>{latestWeight}</div>
+                          {trend && <span style={{fontSize:18,color:trendCol,lineHeight:1}}>{trend}</span>}
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
+                          <div style={{fontSize:9,color:"#555"}}>lbs</div>
+                          <button onClick={()=>setShowWeightPrompt(true)} style={{background:"none",border:"none",color:"#06d6a0",fontSize:10,cursor:"pointer",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>LOG</button>
+                        </div>
+                      </div>
+                    )}
+                    {!latestWeight && (
+                      <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>WEIGHT</div>
+                        <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:4,padding:"4px 10px",fontFamily:"'Bebas Neue',sans-serif",fontSize:13,cursor:"pointer"}}>LOG</button>
+                      </div>
+                    )}
+                    {bmi && (
+                      <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
+                        <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>BMI</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:bmiCol(bmi),lineHeight:1}}>{bmi}</div>
+                        <div style={{fontSize:9,color:bmiCol(bmi),marginTop:2}}>{bmiCat(bmi)}</div>
+                      </div>
+                    )}
+                    {!bodyStats.heightIn && !latestWeight && (
+                      <div style={{color:"#444",fontSize:11,gridColumn:"1/-1"}}>Set up height & weight in PROGRAM setup</div>
+                    )}
                   </div>
-                )}
-                {latestWeight && (
-                  <div>
-                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>WEIGHT</div>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:"#06d6a0"}}>{latestWeight} lbs</div>
-                  </div>
-                )}
-                {bmi && (
-                  <div>
-                    <div style={{color:"#555",fontSize:10,marginBottom:2}}>BMI</div>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:bmiCol(bmi)}}>{bmi} <span style={{fontSize:11}}>{bmiCat(bmi)}</span></div>
-                  </div>
-                )}
-                {!bodyStats.heightIn && !latestWeight && (
-                  <div style={{color:"#444",fontSize:11}}>Set up height & weight in PROGRAM setup</div>
-                )}
-              </div>
+                );
+              })()}
               {bodyStats.entries.length>0 && (()=>{
                 const now = new Date();
                 const weeklyData = [];
@@ -1268,7 +1293,7 @@ export default function App() {
               </>
             )}
 
-            {!hasSetup && (
+            {!hasSetup && dataLoaded && (
               <>
                 <div style={{...card,borderLeft:"3px solid #fff"}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:6}}>PROGRAM START DATE</div>
