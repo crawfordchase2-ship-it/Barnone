@@ -89,6 +89,7 @@
 // v5.80 - Profile modal scrollable so theme toggle is reachable
 // v5.81 - Profile is now fullscreen settings page, kg/lbs toggle, theme/preferences sections
 // v5.82 - Fixed JSX tag mismatch in settings page
+// v5.83 - Fixed profile section tag mismatch (build error)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -441,7 +442,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.82";
+  const APP_VERSION = "v5.83";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   const [showProfile, setShowProfile] = useState(false);
@@ -1877,13 +1878,14 @@ export default function App() {
                       <div style={{borderTop:"1px solid var(--border)",paddingTop:16,marginTop:4,marginBottom:12}}>
                         <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,marginBottom:12}}>PROFILE</div>
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                        <div>
-                          <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
-                          <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
+                          <div>
+                            <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
+                            <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
+                          </div>
+                          <button onClick={()=>{const newVal=!isPublic;setIsPublic(newVal);if(username){supabase.from("public_profiles").update({is_public:newVal}).eq("id",uid);}}} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                            {isPublic ? "ON" : "OFF"}
+                          </button>
                         </div>
-                        <button onClick={()=>{const newVal=!isPublic;setIsPublic(newVal);if(username){supabase.from("public_profiles").update({is_public:newVal}).eq("id",uid);}}} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
-                          {isPublic ? "ON" : "OFF"}
-                        </button>
                       </div>
                     </>
                   ) : (
