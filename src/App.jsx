@@ -68,6 +68,7 @@
 // v5.59 - Smart home banner (time to lift/rest day/next up), date-aware completion tracking
 // v5.60 - Timer sound fixed for iOS (resumes AudioContext, primed on GO tap)
 // v5.61 - Program history moved to separate Supabase table (keeps user_data lean)
+// v5.62 - Fixed async/await in startNewProgram and CONTINUE button
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -344,7 +345,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.61";
+  const APP_VERSION = "v5.62";
   const [showProfile, setShowProfile] = useState(false);
   const [weightEntry, setWeightEntry] = useState("");
   const [heightFtEntry, setHeightFtEntry] = useState("");
@@ -889,7 +890,7 @@ export default function App() {
     setViewingWeek(nw);
   }
 
-  function startNewProgram() {
+  async function startNewProgram() {
     // Save final maxes before archiving
     const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
     const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume, logs, liftWeeks, completedDays, programId, accList};
@@ -1836,7 +1837,7 @@ export default function App() {
                         {p.bestStreak > 0 && <span>🔥 {p.bestStreak} day best streak</span>}
                       </div>
                       <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>{
+                        <button onClick={async()=>{
                           if(window.confirm("Continue this program? Your current program will be archived.")) {
                             // Archive current program first
                             const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
