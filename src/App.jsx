@@ -98,6 +98,7 @@
 // v5.89 - Better CONTINUE restore: logs state, resets editing flags, handles lift weeks correctly
 // v5.90 - CONTINUE shows visible error message on screen if something fails
 // v5.91 - CONTINUE blocks save debounce during restore, writes directly to Supabase
+// v5.92 - Fixed finalMaxes not defined error in CONTINUE button
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -448,7 +449,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.91";
+  const APP_VERSION = "v5.92";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1379,6 +1380,7 @@ export default function App() {
                 const p = confirmContinue;
                 // Only archive current program if it was actually started
                 if (programStarted && programId) {
+                  const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
                   const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
                   await saveProgramToHistory(uid, curArchive);
                 }
