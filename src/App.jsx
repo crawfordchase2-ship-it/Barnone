@@ -97,6 +97,7 @@
 // v5.88 - Added error logging to program history load/save to diagnose issues
 // v5.89 - Better CONTINUE restore: logs state, resets editing flags, handles lift weeks correctly
 // v5.90 - CONTINUE shows visible error message on screen if something fails
+// v5.91 - CONTINUE blocks save debounce during restore, writes directly to Supabase
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -447,7 +448,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.90";
+  const APP_VERSION = "v5.91";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1381,26 +1382,46 @@ export default function App() {
                   const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
                   await saveProgramToHistory(uid, curArchive);
                 }
-                // Restore old program with safe fallbacks
-                console.log("Restoring program:", p.programId, "lifts:", p.lifts?.length, "logs:", Object.keys(p.logs||{}).length);
+                // Block saves during restore
+                setDataLoaded(false);
                 const restoredLifts = p.lifts || DEFAULT_LIFTS;
+                const restoredLiftWeeks = p.liftWeeks || Object.fromEntries(restoredLifts.map(l=>[l.id,1]));
                 setLifts(restoredLifts);
                 setStartDate(p.startDate || "");
                 setLogs(p.logs || {});
-                setLiftWeeks(p.liftWeeks || Object.fromEntries(restoredLifts.map(l=>[l.id,1])));
+                setLiftWeeks(restoredLiftWeeks);
                 setCompletedDays(p.completedDays || {});
                 setAccList(p.accList || {});
                 setProgramId(p.programId || (uid + "_" + Date.now()));
                 setProgramStarted(true);
                 setActiveId(restoredLifts[0]?.id || DEFAULT_LIFTS[0].id);
-                setViewingWeek(liftWeeks[restoredLifts[0]?.id] || 1);
+                setViewingWeek(restoredLiftWeeks[restoredLifts[0]?.id] || 1);
                 setWorkoutInProgress(false);
                 setInProgressLiftId(null);
-                // Reset session ledger view
                 setEditingPastWeek(false);
                 if (p.id) await deleteProgramFromHistory(p.id);
                 const ph = await loadProgramHistory(uid);
                 setProgramHistory(ph);
+                // Save restored state to Supabase
+                await saveUD(uid, {
+                  lifts: restoredLifts,
+                  startDate: p.startDate || "",
+                  activeId: restoredLifts[0]?.id || DEFAULT_LIFTS[0].id,
+                  logs: p.logs || {},
+                  completedDays: p.completedDays || {},
+                  accList: p.accList || {},
+                  exerciseHistory, weightAdjust,
+                  liftWeeks: restoredLiftWeeks,
+                  customAccessories, sessionLedger, bodyStats,
+                  weightNudge,
+                  programStarted: true,
+                  programId: p.programId || (uid + "_" + Date.now()),
+                  workoutInProgress: false,
+                  inProgressLiftId: null,
+                  runDays, runWeek, runDay, runHistory
+                });
+                // Now allow saves again
+                setDataLoaded(true);
                 setConfirmContinue(null);
                 setView("dashboard");
               } catch(e) {
