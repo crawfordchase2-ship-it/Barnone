@@ -99,6 +99,7 @@
 // v5.90 - CONTINUE shows visible error message on screen if something fails
 // v5.91 - CONTINUE blocks save debounce during restore, writes directly to Supabase
 // v5.92 - Fixed finalMaxes not defined error in CONTINUE button
+// v5.93 - CONTINUE resets run state to match restored program (fixes run day showing on lift-only programs)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -449,7 +450,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.92";
+  const APP_VERSION = "v5.93";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1401,6 +1402,14 @@ export default function App() {
                 setWorkoutInProgress(false);
                 setInProgressLiftId(null);
                 setEditingPastWeek(false);
+                // Reset run state to match restored program (old programs had no running)
+                const restoredRunDays = p.runDays || [];
+                const restoredRunWeek = p.runWeek || 1;
+                const restoredRunDay = p.runDay || 1;
+                setRunDays(restoredRunDays);
+                setRunWeek(restoredRunWeek);
+                setRunDay(restoredRunDay);
+                setRunHistory(p.runHistory || []);
                 if (p.id) await deleteProgramFromHistory(p.id);
                 const ph = await loadProgramHistory(uid);
                 setProgramHistory(ph);
@@ -1420,7 +1429,10 @@ export default function App() {
                   programId: p.programId || (uid + "_" + Date.now()),
                   workoutInProgress: false,
                   inProgressLiftId: null,
-                  runDays, runWeek, runDay, runHistory
+                  runDays: p.runDays || [],
+                  runWeek: p.runWeek || 1,
+                  runDay: p.runDay || 1,
+                  runHistory: p.runHistory || []
                 });
                 // Now allow saves again
                 setDataLoaded(true);
