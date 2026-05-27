@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.99
+// v5.100
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -351,7 +351,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.99";
+  const APP_VERSION = "v5.100";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -450,7 +450,7 @@ export default function App() {
       saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, weightNudge, programStarted, programId, workoutInProgress, inProgressLiftId, runDays, runWeek, runDay, runHistory });
     }, 800);
     return () => clearTimeout(timer);
-  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,weightNudge,programStarted,uid,dataLoaded]);
+  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,weightNudge,programStarted,uid,dataLoaded,runDays,runWeek,runDay,runHistory,workoutInProgress,inProgressLiftId]);
 
   useEffect(() => {
     if (restRunning && restTimer > 0) {
