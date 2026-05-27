@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.100
+// v5.102
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -351,7 +351,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.100";
+  const APP_VERSION = "v5.102";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -2039,13 +2039,13 @@ export default function App() {
                   : "ENJOY THE RECOVERY";
               }
               return (
-                <div onClick={()=>todayPending.length>0&&setView("workout")} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:todayPending.length>0?"pointer":"default"}}>
+                <div onClick={()=>{ if(todayPending.length>0) { setActiveId(todayPending[0].id); setWorkoutInProgress(true); setInProgressLiftId(todayPending[0].id); setView("workout"); } else if(isRunDay&&!runCompletedToday) { setView("run"); setRunView("today"); } }} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:(todayPending.length>0||(isRunDay&&!runCompletedToday))?"pointer":"default"}}>
                   <div style={{fontSize:38}}>{bannerIcon}</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
                     <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#888",marginTop:6}}>{bannerSub}</div>
                   </div>
-                  {todayPending.length>0 && <div style={{color:bannerColor,fontSize:28,fontWeight:"bold"}}>›</div>}
+                  {(todayPending.length>0||(isRunDay&&!runCompletedToday)) && <div style={{color:bannerColor,fontSize:28,fontWeight:"bold"}}>›</div>}
                 </div>
               );
             })()}
