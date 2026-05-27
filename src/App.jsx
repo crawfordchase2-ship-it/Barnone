@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.97
+// v5.98
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -351,7 +351,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.97";
+  const APP_VERSION = "v5.98";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1686,7 +1686,7 @@ export default function App() {
               {/* PLAN */}
               {runView==="plan" && (
                   <div>
-                    {plan.map(wp=>{
+                    {C25K_PLAN[runDays.length>=3?3:2].map(wp=>{
                       const isDone = wp.week < runWeek || (wp.week === runWeek && runDay > wp.days.length);
                       const isCurrent = wp.week === runWeek;
                       const color = isDone?"#06d6a0":isCurrent?"#3a86ff":"#333";
