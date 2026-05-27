@@ -1802,6 +1802,7 @@ export default function App() {
             </>
           )}
         </div>
+        </div>
       )}
 
       {view==="social" && (
@@ -2882,6 +2883,5 @@ export default function App() {
         ))}
       </div>
     </div>
-  </div>
   );
 }
