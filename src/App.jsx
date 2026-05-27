@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.98
+// v5.99
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -351,7 +351,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.98";
+  const APP_VERSION = "v5.99";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -2009,23 +2009,26 @@ export default function App() {
                 bannerTitle = "RUN DAY!";
                 bannerSub = "WEEK " + runWeek + " · DAY " + runDay + " · ~" + (wp?.days[runDay-1]?.totalMin||30) + " MIN";
               } else if ((todayCompleted.length > 0 || (isRunDay && runCompletedToday)) && todayPending.length === 0) {
-                // All done today
+                // All done today - find next scheduled event (lift OR run) whichever comes first
                 bannerColor = "#06d6a0";
                 bannerIcon = "✅";
                 bannerTitle = "GREAT WORK TODAY!";
-                // Show next run or next lift
-                const nextRunDay = runDays.length > 0 && !runCompletedToday ? null : (() => {
-                  for(let i=1;i<=7;i++){
-                    const d=DAY_ABBR[(new Date().getDay()+i)%7];
-                    if(runDays.includes(d)) return {day:d,daysAway:i};
-                  }
-                  return null;
-                })();
-                bannerSub = nextRunDay
-                  ? "NEXT RUN: " + nextRunDay.day + (nextRunDay.daysAway===1?" · TOMORROW":" · IN "+nextRunDay.daysAway+" DAYS")
-                  : nextLift 
-                    ? "NEXT: " + nextLift.lift.name.toUpperCase() + " WK " + (liftWeeks[nextLift.lift.id]||1) + (nextLift.daysAway===1?" · TOMORROW":" · IN "+nextLift.daysAway+" DAYS")
-                    : "ALL CAUGHT UP 🎉";
+                // Find next run day
+                let nextRunInfo = null;
+                for(let i=1;i<=7;i++){
+                  const d=DAY_ABBR[(new Date().getDay()+i)%7];
+                  if(runDays.includes(d)) { nextRunInfo={day:d,daysAway:i}; break; }
+                }
+                // Compare next lift vs next run and show whichever is sooner
+                const nextLiftDays = nextLift ? nextLift.daysAway : 99;
+                const nextRunDays = nextRunInfo ? nextRunInfo.daysAway : 99;
+                if (nextLiftDays <= nextRunDays && nextLift) {
+                  bannerSub = "NEXT: " + nextLift.lift.name.toUpperCase() + " WK " + (liftWeeks[nextLift.lift.id]||1) + (nextLift.daysAway===1?" · TOMORROW":" · IN "+nextLift.daysAway+" DAYS");
+                } else if (nextRunInfo) {
+                  bannerSub = "NEXT RUN: WK " + runWeek + " DAY " + runDay + (nextRunInfo.daysAway===1?" · TOMORROW":" · IN "+nextRunInfo.daysAway+" DAYS");
+                } else {
+                  bannerSub = "ALL CAUGHT UP 🎉";
+                }
               } else {
                 // Rest day
                 bannerColor = "#555";
