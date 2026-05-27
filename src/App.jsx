@@ -1554,15 +1554,13 @@ export default function App() {
               </div>
 
               {/* TODAY */}
-              {runView==="today" && (()=>{
+              {runView==="today" && (() => {
                 const plan = C25K_PLAN[runDays.length >= 3 ? 3 : 2];
                 const weekPlan = plan[runWeek-1];
                 const dayPlan = weekPlan?.days[runDay-1];
                 const todayAbbr = DAY_ABBR[new Date().getDay()];
                 const isRunDay = runDays.includes(todayAbbr);
                 const completedToday = runHistory.some(r => r.date === todayISO());
-
-                // Find next run day
                 const getNextRunDay = () => {
                   for(let i=1; i<=7; i++){
                     const d = DAY_ABBR[(new Date().getDay()+i)%7];
@@ -1571,7 +1569,6 @@ export default function App() {
                   return null;
                 };
                 const nextRun = getNextRunDay();
-
                 if (!isRunDay) return (
                   <div>
                     <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #333",display:"flex",alignItems:"center",gap:16}}>
@@ -1723,13 +1720,10 @@ export default function App() {
                       </>
                     )}
                   </div>
-                );
-              })()}
+              }
 
               {/* PLAN */}
-              {runView==="plan" && (()=>{
-                const plan = C25K_PLAN[runDays.length>=3?3:2];
-                return (
+              {runView==="plan" && (
                   <div>
                     {plan.map(wp=>{
                       const isDone = wp.week < runWeek || (wp.week === runWeek && runDay > wp.days.length);
@@ -1755,8 +1749,7 @@ export default function App() {
                       );
                     })}
                   </div>
-                );
-              })()}
+              )}
 
               {/* HISTORY */}
               {runView==="history" && (
