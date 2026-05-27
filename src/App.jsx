@@ -91,6 +91,8 @@
 // v5.82 - Fixed JSX tag mismatch in settings page
 // v5.83 - Fixed profile section tag mismatch (build error) — take 2
 // v5.84 - Fixed theme/unit toggle functions being outside App component (buttons not working)
+// v5.85 - Run intervals redesigned (color coded rows, repeat blocks, total time, better log form)
+// v5.85 - Run intervals redesigned with repeat blocks, color coded rows, times prominent, pace + notes log form
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -435,7 +437,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.84";
+  const APP_VERSION = "v5.85";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -463,6 +465,7 @@ export default function App() {
   const [runView, setRunView] = useState("today");
   const [showRunLog, setShowRunLog] = useState(false);
   const [runDistEntry, setRunDistEntry] = useState("");
+  const [runNotesEntry, setRunNotesEntry] = useState("");
   const [runMinEntry, setRunMinEntry] = useState("");
   const [runSecEntry, setRunSecEntry] = useState("");
   const [setupSnapshot, setSetupSnapshot] = useState(null);
@@ -1612,83 +1615,104 @@ export default function App() {
                         <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>WEEK {runWeek} — DAY {runDay} {dayPlan.isEasy?"· EASY RUN":""}</div>
                         <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#3a86ff",letterSpacing:2,marginBottom:16}}>{weekPlan.goal}</div>
                         {dayPlan.intervals.map((seg,i) => (
-                          <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<dayPlan.intervals.length-1?"1px solid #1a1a1a":"none"}}>
-                            <div style={{width:24,height:24,borderRadius:"50%",background:"#1a1a2e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#555",flexShrink:0}}>{i+1}</div>
-                            <div style={{flex:1}}>
-                              {seg.type==="repeat" ? (
-                                <div>
-                                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#f7b731"}}>× {seg.reps} ROUNDS</div>
+                          <div key={i} style={{marginBottom:8}}>
+                            {seg.type==="repeat" ? (
+                              <div style={{background:"#1a1a2e",borderRadius:10,overflow:"hidden"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderBottom:"1px solid #111"}}>
+                                  <span style={{fontSize:18}}>🔁</span>
+                                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#8338ec",letterSpacing:1,flex:1}}>REPEAT</div>
+                                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#8338ec"}}>× {seg.reps}</div>
+                                </div>
+                                <div style={{padding:"8px 14px 12px",display:"flex",flexDirection:"column",gap:6}}>
                                   {seg.intervals.map((s,j)=>(
-                                    <div key={j} style={{fontSize:11,color:s.type==="jog"?"#3a86ff":"#f7b731",marginLeft:8}}>
-                                      {s.type==="jog"?"🏃 JOG":"🚶 WALK"} {s.duration < 1 ? s.duration*60+"s" : s.duration+"min"}
+                                    <div key={j} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,background:s.type==="jog"?"#1a2a4a":"#1a1a0a"}}>
+                                      <span style={{fontSize:18}}>{s.type==="jog"?"🏃":"🚶"}</span>
+                                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,fontWeight:700,flex:1,color:s.type==="jog"?"#3a86ff":"#f7b731"}}>{s.type==="jog"?"JOG":"WALK"}</div>
+                                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,fontWeight:700,color:s.type==="jog"?"#3a86ff":"#f7b731"}}>
+                                        {s.duration<1?s.duration*60+"s":s.duration%1===0?s.duration+"min":Math.floor(s.duration)+":"+(s.duration%1*60<10?"0":"")+s.duration%1*60+"min"}
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
-                              ) : (
-                                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:seg.type==="jog"?"#3a86ff":"#f7b731"}}>
-                                  {seg.type==="jog"?"🏃 JOG":"🚶 WALK"} {seg.label||seg.duration+"min"}
+                              </div>
+                            ) : (
+                              <div style={{display:"flex",alignItems:"center",borderRadius:10,overflow:"hidden"}}>
+                                <div style={{width:32,height:56,background:"#1a1a2e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#555",flexShrink:0}}>{i+1}</div>
+                                <div style={{flex:1,height:56,display:"flex",alignItems:"center",padding:"0 14px",gap:12,background:seg.type==="jog"?"#1a2a4a":"#1a1a0a"}}>
+                                  <span style={{fontSize:20}}>{seg.type==="jog"?"🏃":"🚶"}</span>
+                                  <div style={{flex:1}}>
+                                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,fontWeight:700,color:seg.type==="jog"?"#3a86ff":"#f7b731"}}>{seg.type==="jog"?"JOG":"WALK"}</div>
+                                    {seg.label&&<div style={{fontSize:11,color:"#555"}}>{seg.label}</div>}
+                                  </div>
+                                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,fontWeight:700,color:seg.type==="jog"?"#3a86ff":"#f7b731"}}>{seg.duration+"min"}</div>
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </div>
                         ))}
-                      </div>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111",borderRadius:8,padding:"10px 14px",marginTop:4}}>
+                          <div style={{fontSize:10,color:"#555",letterSpacing:1}}>TOTAL TIME</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0"}}>~{dayPlan.totalMin} min</div>
+                        </div>
                     )}
 
                     {/* Log form */}
                     {showRunLog && (
                       <div style={{...card,marginBottom:16,borderTop:"4px solid #06d6a0"}}>
-                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:16,letterSpacing:2}}>LOG YOUR RUN</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#06d6a0",marginBottom:4,letterSpacing:2}}>LOG YOUR RUN</div>
+                        <div style={{color:"#555",fontSize:11,marginBottom:20}}>WEEK {runWeek} · DAY {runDay}</div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
                           <div>
-                            <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>DISTANCE (miles)</div>
+                            <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>DISTANCE</div>
                             <input type="number" step="0.1" value={runDistEntry} onChange={e=>setRunDistEntry(e.target.value)} placeholder="0.0"
-                              style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:6,padding:8,fontFamily:"'DM Mono',monospace",fontSize:18,textAlign:"center"}} />
+                              style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:"12px 8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,fontWeight:700,textAlign:"center",outline:"none"}} />
+                            <div style={{color:"#555",fontSize:10,textAlign:"center",marginTop:4}}>miles</div>
                           </div>
                           <div>
-                            <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>TIME (min : sec)</div>
+                            <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>TIME</div>
                             <div style={{display:"flex",alignItems:"center",gap:4}}>
                               <input type="number" value={runMinEntry} onChange={e=>setRunMinEntry(e.target.value)} placeholder="00"
-                                style={{width:"50%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:6,padding:8,fontFamily:"'DM Mono',monospace",fontSize:18,textAlign:"center"}} />
-                              <span style={{color:"#555"}}>:</span>
+                                style={{width:"50%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:"12px 4px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,fontWeight:700,textAlign:"center",outline:"none"}} />
+                              <span style={{color:"#555",fontSize:22,fontWeight:700}}>:</span>
                               <input type="number" value={runSecEntry} onChange={e=>setRunSecEntry(e.target.value)} placeholder="00"
-                                style={{width:"50%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:6,padding:8,fontFamily:"'DM Mono',monospace",fontSize:18,textAlign:"center"}} />
+                                style={{width:"50%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:"12px 4px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,fontWeight:700,textAlign:"center",outline:"none"}} />
                             </div>
+                            <div style={{color:"#555",fontSize:10,textAlign:"center",marginTop:4}}>min : sec</div>
                           </div>
                         </div>
-                        {runDistEntry && runMinEntry && (
-                          <div style={{background:"#111",borderRadius:8,padding:12,textAlign:"center",marginBottom:16}}>
-                            <div style={{color:"#555",fontSize:10,marginBottom:4}}>EST PACE</div>
-                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#06d6a0"}}>
-                              {(()=>{
-                                const totalSecs = (+runMinEntry*60) + (+runSecEntry||0);
-                                const paceSecPerMile = totalSecs / +runDistEntry;
-                                const pm = Math.floor(paceSecPerMile/60);
-                                const ps = Math.round(paceSecPerMile%60);
-                                return pm+":"+String(ps).padStart(2,"0");
-                              })()} <span style={{fontSize:12,color:"#555"}}>/ mile</span>
-                            </div>
+                        <div style={{background:"#111",borderRadius:10,padding:"14px",textAlign:"center",marginBottom:14}}>
+                          <div style={{color:"#555",fontSize:10,letterSpacing:1,marginBottom:4}}>PACE</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:32,fontWeight:700,color:"#06d6a0"}}>
+                            {runDistEntry && runMinEntry ? (()=>{
+                              const totalSecs = (+runMinEntry*60)+(+runSecEntry||0);
+                              const paceSecPerMile = totalSecs / +runDistEntry;
+                              const pm = Math.floor(paceSecPerMile/60);
+                              const ps = Math.round(paceSecPerMile%60);
+                              return pm+":"+String(ps).padStart(2,"0");
+                            })() : "—"}
+                            <span style={{fontSize:13,color:"#555",fontWeight:400}}> / mile</span>
                           </div>
-                        )}
+                        </div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{color:"#555",fontSize:10,letterSpacing:1,marginBottom:6}}>NOTES <span style={{color:"#333"}}>(optional)</span></div>
+                          <textarea value={runNotesEntry} onChange={e=>setRunNotesEntry(e.target.value)} placeholder="How did it feel?"
+                            style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:8,padding:10,fontFamily:"'Roboto',sans-serif",fontSize:13,resize:"none",height:70,outline:"none"}} />
+                        </div>
                         <button onClick={()=>{
                           const totalSecs = (+runMinEntry*60)+(+runSecEntry||0);
-                          const paceSecPerMile = runDistEntry ? totalSecs/+runDistEntry : 0;
+                          const paceSecPerMile = runDistEntry && totalSecs ? totalSecs/+runDistEntry : 0;
                           const pm = Math.floor(paceSecPerMile/60);
                           const ps = Math.round(paceSecPerMile%60);
-                          const entry = {date:todayISO(),week:runWeek,day:runDay,dist:+runDistEntry,totalSecs,pace:pm+":"+String(ps).padStart(2,"0")};
+                          const pace = paceSecPerMile > 0 ? pm+":"+String(ps).padStart(2,"0") : null;
+                          const entry = {date:todayISO(),week:runWeek,day:runDay,dist:+runDistEntry||null,totalSecs:totalSecs||null,pace,notes:runNotesEntry||null};
                           setRunHistory(prev=>[entry,...prev]);
-                          // Advance to next run day
                           const plan = C25K_PLAN[runDays.length>=3?3:2];
                           const weekPlan = plan[runWeek-1];
-                          if(runDay < weekPlan.days.length) {
-                            setRunDay(d=>d+1);
-                          } else if(runWeek < 12) {
-                            setRunWeek(w=>w+1);
-                            setRunDay(1);
-                          }
+                          if(runDay < weekPlan.days.length){setRunDay(d=>d+1);}
+                          else if(runWeek < 12){setRunWeek(w=>w+1);setRunDay(1);}
                           setShowRunLog(false);
-                          setRunDistEntry("");setRunMinEntry("");setRunSecEntry("");
-                        }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:8}}>SAVE RUN ✓</button>
+                          setRunDistEntry("");setRunMinEntry("");setRunSecEntry("");setRunNotesEntry("");
+                        }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,fontWeight:700,letterSpacing:2,cursor:"pointer",marginBottom:8}}>SAVE RUN ✓</button>
                         <button onClick={()=>setShowRunLog(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>BACK</button>
                       </div>
                     )}
@@ -1756,15 +1780,19 @@ export default function App() {
                         </div>
                       </div>
                       {runHistory.map((r,i)=>(
-                        <div key={i} style={{...card,display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                          <div>
-                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,color:"#3a86ff"}}>WEEK {r.week} · DAY {r.day}</div>
-                            <div style={{color:"#555",fontSize:10,marginTop:2}}>{fmtDate(r.date)}</div>
+                        <div key={i} style={{...card,marginBottom:8}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:r.notes?6:0}}>
+                            <div>
+                              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#3a86ff"}}>WEEK {r.week} · DAY {r.day}</div>
+                              <div style={{color:"#555",fontSize:10,marginTop:2}}>{fmtDate(r.date)}</div>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              {r.dist?<div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,fontWeight:700,color:"#f0f0f0"}}>{r.dist} <span style={{fontSize:12,color:"#555"}}>mi</span></div>:null}
+                              {r.pace?<div style={{color:"#06d6a0",fontSize:12}}>{r.pace} / mile</div>:null}
+                              {r.totalSecs?<div style={{color:"#555",fontSize:11}}>{Math.floor(r.totalSecs/60)}:{String(r.totalSecs%60).padStart(2,"0")} total</div>:null}
+                            </div>
                           </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f0f0f0"}}>{r.dist} mi</div>
-                            <div style={{color:"#555",fontSize:10}}>{r.pace} / mile</div>
-                          </div>
+                          {r.notes&&<div style={{color:"#888",fontSize:12,fontStyle:"italic",borderTop:"1px solid #1a1a1a",paddingTop:6}}>"{r.notes}"</div>}
                         </div>
                       ))}
                     </>
@@ -2854,5 +2882,6 @@ export default function App() {
         ))}
       </div>
     </div>
+  </div>
   );
 }
