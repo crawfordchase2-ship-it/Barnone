@@ -94,6 +94,9 @@
 // v5.85 - Run intervals redesigned (color coded rows, repeat blocks, total time, better log form)
 // v5.86 - Fixed IIFE JSX build errors in run view, rewritten cleanly
 // v5.87 - Fixed div balance in run view and main app wrapper
+// v5.88 - Added error logging to program history load/save to diagnose issues
+// v5.89 - Better CONTINUE restore: logs state, resets editing flags, handles lift weeks correctly
+// v5.90 - CONTINUE shows visible error message on screen if something fails
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -328,6 +331,7 @@ async function loadUD(userId) {
   return data;
 }
 async function saveProgramToHistory(userId, archive) {
+  console.log("Saving program to history for user:", userId);
   const { error } = await supabase.from("program_history").insert({
     user_id: userId,
     start_date: archive.startDate || "",
@@ -353,7 +357,12 @@ async function loadProgramHistory(userId) {
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
-  if (error) { console.error("Error loading program history:", error); return []; }
+  if (error) { 
+    console.error("Error loading program history:", error); 
+    console.error("Error details:", JSON.stringify(error));
+    return []; 
+  }
+  console.log("Loaded program history:", data?.length, "records");
   return (data || []).map(p => ({
     id: p.id,
     startDate: p.start_date,
@@ -438,7 +447,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.87";
+  const APP_VERSION = "v5.90";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -472,6 +481,7 @@ export default function App() {
   const [setupSnapshot, setSetupSnapshot] = useState(null);
   const [shareCard, setShareCard] = useState(null);
   const [confirmContinue, setConfirmContinue] = useState(null);
+  const [continueError, setContinueError] = useState(null);
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(null); // stores the program to continue
   const [programId, setProgramId] = useState("");
   const [programStarted, setProgramStarted] = useState(false);
@@ -1361,7 +1371,9 @@ export default function App() {
               <div style={{color:"#e85d04",marginBottom:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>⚠️ YOUR CURRENT PROGRAM WILL BE ARCHIVED</div>
               You can always come back to it from the PROGRAM tab.
             </div>
+            {continueError && <div style={{background:"#2a0a0a",border:"1px solid #e85d04",borderRadius:8,padding:10,marginBottom:12,color:"#e85d04",fontSize:11}}>{continueError}</div>}
             <button onClick={async()=>{
+              setContinueError(null);
               try {
                 const p = confirmContinue;
                 // Only archive current program if it was actually started
@@ -1370,6 +1382,7 @@ export default function App() {
                   await saveProgramToHistory(uid, curArchive);
                 }
                 // Restore old program with safe fallbacks
+                console.log("Restoring program:", p.programId, "lifts:", p.lifts?.length, "logs:", Object.keys(p.logs||{}).length);
                 const restoredLifts = p.lifts || DEFAULT_LIFTS;
                 setLifts(restoredLifts);
                 setStartDate(p.startDate || "");
@@ -1380,19 +1393,21 @@ export default function App() {
                 setProgramId(p.programId || (uid + "_" + Date.now()));
                 setProgramStarted(true);
                 setActiveId(restoredLifts[0]?.id || DEFAULT_LIFTS[0].id);
-                setViewingWeek(1);
+                setViewingWeek(liftWeeks[restoredLifts[0]?.id] || 1);
                 setWorkoutInProgress(false);
+                setInProgressLiftId(null);
+                // Reset session ledger view
+                setEditingPastWeek(false);
                 if (p.id) await deleteProgramFromHistory(p.id);
                 const ph = await loadProgramHistory(uid);
                 setProgramHistory(ph);
                 setConfirmContinue(null);
                 setView("dashboard");
               } catch(e) {
-                console.error("Continue error:", e);
-                setConfirmContinue(null);
+                setContinueError("Error: " + (e?.message || JSON.stringify(e)));
               }
             }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>YES, CONTINUE 💪</button>
-            <button onClick={()=>setConfirmContinue(null)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>CANCEL</button>
+            <button onClick={()=>{setConfirmContinue(null);setContinueError(null);}} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>CANCEL</button>
           </div>
         </div>
       )}
