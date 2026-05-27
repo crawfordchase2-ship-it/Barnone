@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.95
+// v5.96
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -351,7 +351,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.95";
+  const APP_VERSION = "v5.96";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -947,7 +947,7 @@ export default function App() {
     });
     // Note: when user adds custom lifts after reset, exerciseHistory still has their last weights
     setLifts(nl);
-    setStartDate("");
+    setStartDate(todayISO());
     setLogs({});
     setCompletedDays({});
     setAccList({});
@@ -2271,7 +2271,7 @@ export default function App() {
               <>
                 <div style={{...card,borderLeft:"3px solid #fff"}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:6}}>PROGRAM START DATE</div>
-                  <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"transparent",border:"none",color:"#f0f0f0",fontSize:14,outline:"none",width:"100%"}} />
+                  <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",fontSize:14,outline:"none",width:"100%",borderRadius:6,padding:"8px 10px",WebkitAppearance:"none"}} />
                 </div>
                 <div style={{...card,borderLeft:"3px solid #06d6a0"}}>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
