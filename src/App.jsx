@@ -93,6 +93,7 @@
 // v5.84 - Fixed theme/unit toggle functions being outside App component (buttons not working)
 // v5.85 - Run intervals redesigned (color coded rows, repeat blocks, total time, better log form)
 // v5.86 - Fixed IIFE JSX build errors in run view, rewritten cleanly
+// v5.87 - Fixed div balance in run view and main app wrapper
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -437,7 +438,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.86";
+  const APP_VERSION = "v5.87";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1785,7 +1786,6 @@ export default function App() {
             </>
           )}
         </div>
-        </div>
       )}
 
       {view==="social" && (
@@ -2865,5 +2865,6 @@ export default function App() {
           </button>
         ))}
       </div>
+    </div>
   );
 }
