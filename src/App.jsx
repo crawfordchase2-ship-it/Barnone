@@ -100,6 +100,8 @@
 // v5.91 - CONTINUE blocks save debounce during restore, writes directly to Supabase
 // v5.92 - Fixed finalMaxes not defined error in CONTINUE button
 // v5.93 - CONTINUE resets run state to match restored program (fixes run day showing on lift-only programs)
+// v5.94 - Run stats on home banner, program history cards, and share card
+// v5.95 - C25K progress card on dashboard (week/day, total miles, avg pace, best pace, last run)
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -450,7 +452,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.93";
+  const APP_VERSION = "v5.95";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1031,7 +1033,7 @@ export default function App() {
   async function startNewProgram() {
     // Save final maxes before archiving
     const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
-    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume, logs, liftWeeks, completedDays, programId, accList};
+    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume, logs, liftWeeks, completedDays, programId, accList, runHistory, runDays, runWeek, runDay};
     // Save to program_history table
     await saveProgramToHistory(uid, archive);
     // Reload history
@@ -1382,7 +1384,7 @@ export default function App() {
                 // Only archive current program if it was actually started
                 if (programStarted && programId) {
                   const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
-                  const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList};
+                  const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList, runHistory, runDays, runWeek, runDay};
                   await saveProgramToHistory(uid, curArchive);
                 }
                 // Block saves during restore
@@ -1494,6 +1496,25 @@ export default function App() {
                 </div>
               </div>
             </div>
+            {(shareCard.runHistory||[]).length > 0 && (
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,color:"#555",letterSpacing:1,marginBottom:10}}>RUNNING</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                  <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                    <div style={{fontSize:9,color:"#555",marginBottom:4}}>RUNS</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#3a86ff"}}>{(shareCard.runHistory||[]).length}</div>
+                  </div>
+                  <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                    <div style={{fontSize:9,color:"#555",marginBottom:4}}>MILES</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f7b731"}}>{((shareCard.runHistory||[]).reduce((s,r)=>s+(r.dist||0),0)).toFixed(1)}</div>
+                  </div>
+                  <div style={{background:"#1a1a2e",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                    <div style={{fontSize:9,color:"#555",marginBottom:4}}>BEST PACE</div>
+                    <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:"#06d6a0"}}>{(()=>{const best=(shareCard.runHistory||[]).filter(r=>r.pace).sort((a,b)=>a.pace.localeCompare(b.pace))[0];return best?best.pace+"/mi":"—"})()}</div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div style={{textAlign:"center",color:"#333",fontSize:10,letterSpacing:2}}>barnone-six.vercel.app</div>
           </div>
           <div style={{width:"100%",maxWidth:360,marginTop:12,display:"flex",gap:10}}>
@@ -2074,29 +2095,38 @@ export default function App() {
               const nextLift = getNextLift();
               // Determine banner message
               let bannerColor, bannerIcon, bannerTitle, bannerSub;
-              if (isRunDay && !runCompletedToday && todayPending.length === 0) {
-                // Run day and no lifts pending
-                const plan = C25K_PLAN[runDays.length>=3?3:2];
-                const wp = plan[runWeek-1];
-                bannerColor = "#3a86ff";
-                bannerIcon = "🏃";
-                bannerTitle = "RUN DAY!";
-                bannerSub = "WEEK " + runWeek + " · DAY " + runDay + " · ~" + (wp?.days[runDay-1]?.totalMin||30) + " MIN";
-              } else if (todayPending.length > 0) {
+              if (todayPending.length > 0) {
                 // Time to lift today
                 const l = todayPending[0];
                 bannerColor = l.color || "#e85d04";
                 bannerIcon = "💪";
                 bannerTitle = "TIME TO LIFT";
                 bannerSub = l.name.toUpperCase() + " — WEEK " + (liftWeeks[l.id]||1);
+              } else if (isRunDay && !runCompletedToday && todayPending.length === 0) {
+                // Run day - lifts done or no lifts today
+                const wp = C25K_PLAN[runDays.length>=3?3:2]?.[runWeek-1];
+                bannerColor = "#3a86ff";
+                bannerIcon = "🏃";
+                bannerTitle = "RUN DAY!";
+                bannerSub = "WEEK " + runWeek + " · DAY " + runDay + " · ~" + (wp?.days[runDay-1]?.totalMin||30) + " MIN";
               } else if ((todayCompleted.length > 0 || (isRunDay && runCompletedToday)) && todayPending.length === 0) {
                 // All done today
                 bannerColor = "#06d6a0";
                 bannerIcon = "✅";
                 bannerTitle = "GREAT WORK TODAY!";
-                bannerSub = nextLift 
-                  ? "NEXT: " + nextLift.lift.name.toUpperCase() + " WK " + (liftWeeks[nextLift.lift.id]||1) + (nextLift.daysAway===1?" · TOMORROW":" · IN "+nextLift.daysAway+" DAYS")
-                  : "ALL CAUGHT UP 🎉";
+                // Show next run or next lift
+                const nextRunDay = runDays.length > 0 && !runCompletedToday ? null : (() => {
+                  for(let i=1;i<=7;i++){
+                    const d=DAY_ABBR[(new Date().getDay()+i)%7];
+                    if(runDays.includes(d)) return {day:d,daysAway:i};
+                  }
+                  return null;
+                })();
+                bannerSub = nextRunDay
+                  ? "NEXT RUN: " + nextRunDay.day + (nextRunDay.daysAway===1?" · TOMORROW":" · IN "+nextRunDay.daysAway+" DAYS")
+                  : nextLift 
+                    ? "NEXT: " + nextLift.lift.name.toUpperCase() + " WK " + (liftWeeks[nextLift.lift.id]||1) + (nextLift.daysAway===1?" · TOMORROW":" · IN "+nextLift.daysAway+" DAYS")
+                    : "ALL CAUGHT UP 🎉";
               } else {
                 // Rest day
                 bannerColor = "#555";
@@ -2229,6 +2259,54 @@ export default function App() {
                 </div>
               ))}
             </div>
+
+            {runDays.length > 0 && (
+              <div style={{...card}}>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>C25K PROGRESS</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{color:"#3a86ff",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1}}>WEEK {runWeek} · DAY {runDay}</div>
+                  <div style={{color:"#555",fontSize:11}}>{runHistory.length} run{runHistory.length!==1?"s":""} logged</div>
+                </div>
+                {runHistory.length > 0 ? (
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                    <div style={{background:"#111",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                      <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>TOTAL MILES</div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f7b731"}}>{runHistory.reduce((s,r)=>s+(r.dist||0),0).toFixed(1)}</div>
+                    </div>
+                    <div style={{background:"#111",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                      <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>AVG PACE</div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#3a86ff"}}>{(()=>{
+                        const runs = runHistory.filter(r=>r.totalSecs&&r.dist);
+                        if(!runs.length) return "—";
+                        const avgPace = runs.reduce((s,r)=>s+(r.totalSecs/r.dist),0)/runs.length;
+                        return Math.floor(avgPace/60)+":"+String(Math.round(avgPace%60)).padStart(2,"0");
+                      })()}</div>
+                    </div>
+                    <div style={{background:"#111",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                      <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>BEST PACE</div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0"}}>{(()=>{
+                        const best=runHistory.filter(r=>r.pace).sort((a,b)=>a.pace.localeCompare(b.pace))[0];
+                        return best?best.pace:"—";
+                      })()}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{color:"#333",fontSize:11,marginBottom:10}}>No runs logged yet — get out there! 🏃</div>
+                )}
+                {runHistory[0] && (
+                  <div style={{background:"#111",borderRadius:8,padding:"10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#3a86ff"}}>LAST RUN · WK {runHistory[0].week} DAY {runHistory[0].day}</div>
+                      <div style={{color:"#555",fontSize:10,marginTop:2}}>{fmtDate(runHistory[0].date)}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      {runHistory[0].dist && <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:"#f0f0f0"}}>{runHistory[0].dist} mi</div>}
+                      {runHistory[0].pace && <div style={{color:"#555",fontSize:10}}>{runHistory[0].pace}/mi</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {sessionLedger[0] && (
               <div style={{...card,borderLeft:"3px solid "+(sessionLedger[0].liftColor||"#555")}}>
@@ -2471,6 +2549,15 @@ export default function App() {
                       </div>
                     </div>
                     {(p.lifts||[]).map(l=>{const sm=l.startingMax||0;const fm=p.finalMaxes?.[l.id]||0;return(<div key={l.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555",padding:"2px 0"}}><span style={{color:l.color}}>{l.name}</span><span>{sm} → {fm} lbs{fm>sm?<span style={{color:"#06d6a0"}}> (+{fm-sm})</span>:""}</span></div>);})}
+                    {(p.runHistory||[]).length > 0 && (
+                      <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1a1a1a"}}>
+                        <div style={{display:"flex",gap:16,fontSize:11,color:"#555"}}>
+                          <span>🏃 {(p.runHistory||[]).length} runs</span>
+                          <span>{((p.runHistory||[]).reduce((s,r)=>s+(r.dist||0),0)).toFixed(1)} mi total</span>
+                          {(()=>{const best=(p.runHistory||[]).filter(r=>r.pace).sort((a,b)=>a.pace.localeCompare(b.pace))[0];return best?<span>Best: {best.pace}/mi</span>:null;})()}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
