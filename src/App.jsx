@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.109
+// v5.112
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -362,7 +362,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.109";
+  const APP_VERSION = "v5.112";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -400,7 +400,8 @@ export default function App() {
   const [confirmContinue, setConfirmContinue] = useState(null);
   const [continueError, setContinueError] = useState(null);
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(null);
-  const [postWorkoutScreen, setPostWorkoutScreen] = useState(null); // {liftName, week, vol, estMax, color}
+  const [postWorkoutScreen, setPostWorkoutScreen] = useState(null);
+  const [reviewingCompletedWorkout, setReviewingCompletedWorkout] = useState(false); // {liftName, week, vol, estMax, color}
   const [expandedProgramId, setExpandedProgramId] = useState(null); // stores the program to continue
   const [programId, setProgramId] = useState("");
   const [programName, setProgramName] = useState("");
@@ -798,7 +799,7 @@ export default function App() {
   }
   function removeLift(id) { setSetupSnapshot(prev => prev || {lifts:[...lifts], startDate}); setLifts(prev=>prev.filter(l=>l.id!==id)); }
   function updateLift(id,field,val) { setLifts(prev=>prev.map(l=>l.id===id?{...l,[field]:val}:l)); }
-  function switchLift(id) { setActiveId(id); setViewingWeek(liftWeeks[id]||1); setEditingPastWeek(false); }
+  function switchLift(id) { setActiveId(id); setViewingWeek(liftWeeks[id]||1); setEditingPastWeek(false); setReviewingCompletedWorkout(false); }
   function navigateWeek(dir) {
     setViewingWeek(v=>Math.max(1,Math.min(liftWeeks[activeId]||1,v+dir)));
     setEditingPastWeek(false);
@@ -1586,8 +1587,9 @@ export default function App() {
         <div>
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
         </div>
-        <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
-          {(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}
+        <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",textAlign:"center"}}>
+          <div>{(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}</div>
+          <div style={{fontSize:9,color:"#333",letterSpacing:1}}>{APP_VERSION}</div>
         </button>
       </div>
 
@@ -2576,7 +2578,19 @@ export default function App() {
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
           </div>
         )}
-        {view==="workout" && !workoutInProgress && (()=>{
+        {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+            <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
+              <div style={{fontSize:40,marginBottom:8}}>✅</div>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#06d6a0",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
+              <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>TODAY'S WORKOUT COMPLETE</div>
+              <button onClick={()=>{setView("dashboard");setReviewingCompletedWorkout(false);}} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>HOME</button>
+              <button onClick={()=>{}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>REVIEW WORKOUT</button>
+              <button onClick={()=>setEditingPastWeek(true)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>EDIT WORKOUT</button>
+            </div>
+          </div>
+        )}
+        {view==="workout" && !workoutInProgress && !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (()=>{
           const todayAbbr = DAY_ABBR[new Date().getDay()];
           const scheduledLifts = lifts.filter(l=>(l.trainingDays||[]).includes(todayAbbr));
           const isScheduledToday = scheduledLifts.length > 0;
