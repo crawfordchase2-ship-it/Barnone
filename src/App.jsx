@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.112
+// v5.113
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -362,7 +362,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.112";
+  const APP_VERSION = "v5.113";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -2585,8 +2585,8 @@ export default function App() {
               <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#06d6a0",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
               <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>TODAY'S WORKOUT COMPLETE</div>
               <button onClick={()=>{setView("dashboard");setReviewingCompletedWorkout(false);}} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>HOME</button>
-              <button onClick={()=>{}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>REVIEW WORKOUT</button>
-              <button onClick={()=>setEditingPastWeek(true)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>EDIT WORKOUT</button>
+              <button onClick={()=>setReviewingCompletedWorkout(true)} style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>REVIEW WORKOUT</button>
+              <button onClick={()=>{setReviewingCompletedWorkout(true);setEditingPastWeek(true);setViewingWeek((liftWeeks[activeId]||1)-1||1);}} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>EDIT WORKOUT</button>
             </div>
           </div>
         )}
