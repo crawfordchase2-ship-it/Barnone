@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.102
+// v5.106
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -177,6 +177,15 @@ function playTimerSound() {
   } catch(e) {}
 }
 // Prime audio context on first user tap (iOS requirement)
+function fmtDuration(secs) {
+  if (!secs || secs <= 0) return "0:00";
+  const h = Math.floor(secs/3600);
+  const m = Math.floor((secs%3600)/60);
+  const s = secs%60;
+  if (h > 0) return h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+  return m+":"+String(s).padStart(2,"0");
+}
+
 function primeAudio() {
   try { getAudioCtx(); } catch(e) {}
 }
@@ -306,8 +315,10 @@ async function saveUD(userId, d) {
     weight_nudge: d.weightNudge,
     program_started: d.programStarted,
     program_id: d.programId,
+    program_name: d.programName,
     workout_in_progress: d.workoutInProgress,
     in_progress_lift_id: d.inProgressLiftId,
+    workout_start_time: d.workoutStartTime,
     run_days: d.runDays,
     run_week: d.runWeek,
     run_day: d.runDay,
@@ -351,7 +362,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.102";
+  const APP_VERSION = "v5.106";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -371,6 +382,8 @@ export default function App() {
   const [confirmStart, setConfirmStart] = useState(false);
   const [workoutInProgress, setWorkoutInProgress] = useState(false);
   const [inProgressLiftId, setInProgressLiftId] = useState(null);
+  const [workoutStartTime, setWorkoutStartTime] = useState(null); // ISO timestamp when workout started
+  const [workoutElapsed, setWorkoutElapsed] = useState(0); // seconds elapsed, updates every second
   // Running module
   const [runDays, setRunDays] = useState([]);
   const [runWeek, setRunWeek] = useState(1);
@@ -386,8 +399,10 @@ export default function App() {
   const [shareCard, setShareCard] = useState(null);
   const [confirmContinue, setConfirmContinue] = useState(null);
   const [continueError, setContinueError] = useState(null);
-  const [confirmDeleteSession, setConfirmDeleteSession] = useState(null); // stores the program to continue
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState(null);
+  const [expandedProgramId, setExpandedProgramId] = useState(null); // stores the program to continue
   const [programId, setProgramId] = useState("");
+  const [programName, setProgramName] = useState("");
   const [programStarted, setProgramStarted] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
   const [newReactionCount, setNewReactionCount] = useState(0);
@@ -403,6 +418,7 @@ export default function App() {
   const [friendSearch, setFriendSearch] = useState("");
   const [friendSearchResults, setFriendSearchResults] = useState([]);
   const [username, setUsername] = useState("");
+  const [usernameEntry, setUsernameEntry] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const timerRef = useRef(null);
 
@@ -444,13 +460,25 @@ export default function App() {
     lifts.every(l=>(l.trainingDays||[]).length>0);
   const hasSetup = readyToStart && programStarted;
 
+  // Workout elapsed timer
+  useEffect(() => {
+    if (!workoutInProgress || !workoutStartTime) { setWorkoutElapsed(0); return; }
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - new Date(workoutStartTime).getTime()) / 1000);
+      setWorkoutElapsed(elapsed);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [workoutInProgress, workoutStartTime]);
+
   useEffect(() => {
     if (!uid || !dataLoaded) return;
     const timer = setTimeout(() => {
-      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, weightNudge, programStarted, programId, workoutInProgress, inProgressLiftId, runDays, runWeek, runDay, runHistory });
+      saveUD(uid, { lifts, startDate, activeId, logs, completedDays, accList, exerciseHistory, weightAdjust, liftWeeks, customAccessories, sessionLedger, bodyStats, weightNudge, programStarted, programId, programName, workoutInProgress, inProgressLiftId, workoutStartTime, runDays, runWeek, runDay, runHistory });
     }, 800);
     return () => clearTimeout(timer);
-  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,weightNudge,programStarted,uid,dataLoaded,runDays,runWeek,runDay,runHistory,workoutInProgress,inProgressLiftId]);
+  }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,weightNudge,programStarted,uid,dataLoaded,runDays,runWeek,runDay,runHistory,workoutInProgress,inProgressLiftId,workoutStartTime,programName]);
 
   useEffect(() => {
     if (restRunning && restTimer > 0) {
@@ -574,8 +602,10 @@ export default function App() {
       setProgramHistory(ph);
       setWeightNudge(d.weight_nudge || { weekKey:"", skips:0 });
       setProgramId(d.program_id || "");
+      setProgramName(d.program_name || "");
       setWorkoutInProgress(d.workout_in_progress || false);
       setInProgressLiftId(d.in_progress_lift_id || null);
+      setWorkoutStartTime(d.workout_start_time || null);
       setRunDays(d.run_days || []);
       setRunWeek(d.run_week || 1);
       setRunDay(d.run_day || 1);
@@ -612,6 +642,7 @@ export default function App() {
       .from("public_profiles").select("*").eq("id", userId).single();
     if (profile) {
       setUsername(profile.username || "");
+      setUsernameEntry(profile.username || "");
       setIsPublic(profile.is_public || false);
       setDisplayName(profile.name || currentUser?.user_metadata?.name || "");
     }
@@ -878,7 +909,7 @@ export default function App() {
   }
 
   async function savePublicProfile() {
-    const uname = username.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const uname = usernameEntry.toLowerCase().replace(/[^a-z0-9_]/g, "");
     const { error } = await supabase.from("public_profiles").upsert({
       id: uid,
       name: currentUser?.user_metadata?.name || currentUser?.email || "User",
@@ -910,8 +941,22 @@ export default function App() {
     };
     setSessionLedger(prev=>[entry,...prev]);
     checkForPR(activeId, sessionEstMax);
+    const workoutDurationSecs = workoutStartTime ? Math.floor((Date.now() - new Date(workoutStartTime).getTime()) / 1000) : 0;
+    const weightKg = (bodyStats.entries?.[bodyStats.entries.length-1]?.weight || 180) / 2.205;
+    const hours = workoutDurationSecs / 3600;
+    const caloriesBurned = Math.round(3.5 * weightKg * hours); // MET 3.5 for weightlifting
     setWorkoutInProgress(false);
     setInProgressLiftId(null);
+    setWorkoutStartTime(null);
+    setWorkoutElapsed(0);
+    // Save duration and calories to session ledger
+    setSessionLedger(prev => {
+      const updated = [...prev];
+      if (updated[0] && updated[0].liftId === activeId) {
+        updated[0] = {...updated[0], durationSecs: workoutDurationSecs, calories: caloriesBurned};
+      }
+      return updated;
+    });
     // Post-workout completion in-app alert
     setFinishAlert({
       liftName: lift?.name || "",
@@ -932,7 +977,7 @@ export default function App() {
   async function startNewProgram() {
     // Save final maxes before archiving
     const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
-    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume, logs, liftWeeks, completedDays, programId, accList, runHistory, runDays, runWeek, runDay};
+    const archive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted: totalSessions, totalPossible, bestStreak: streak, totalVolume: programVolume, logs, liftWeeks, completedDays, programId, programName, accList, runHistory, runDays, runWeek, runDay};
     // Save to program_history table
     await saveProgramToHistory(uid, archive);
     // Reload history
@@ -1051,6 +1096,7 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Roboto:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
         html,body,#root{min-height:100%;}
         body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
         .theme-dark{--bg-primary:#000000;--bg-secondary:#0a0a0f;--bg-card:#0f0f1a;--bg-input:#1a1a2e;--text-primary:#f0f0f0;--text-muted:#555;--border:#1a1a1a;--border-input:#333;}
@@ -1283,7 +1329,7 @@ export default function App() {
                 // Only archive current program if it was actually started
                 if (programStarted && programId) {
                   const finalMaxes = Object.fromEntries(lifts.map(l=>[l.id, getEffMax(l.id, liftWeeks[l.id]||1)]));
-                  const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, accList, runHistory, runDays, runWeek, runDay};
+                  const curArchive = {startDate, lifts, endDate:todayISO(), finalMaxes, sessionsCompleted:totalSessions, totalPossible, bestStreak:streak, totalVolume:programVolume, logs, liftWeeks, completedDays, programId, programName, accList, runHistory, runDays, runWeek, runDay};
                   await saveProgramToHistory(uid, curArchive);
                 }
                 // Block saves during restore
@@ -1875,7 +1921,7 @@ export default function App() {
                       <div style={{marginBottom:12}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:4}}>USERNAME</div>
                         <div style={{color:"#f0f0f0",fontSize:16,fontFamily:"'DM Mono',monospace"}}>@{username}</div>
-                        <div style={{color:"#333",fontSize:10,marginTop:4}}>Username is permanent and cannot be changed</div>
+                        <div style={{color:"#333",fontSize:10,marginTop:4}}>Connections stay linked to your account, not your username.</div>
                       </div>
                       <div style={{marginBottom:14}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>PUBLIC PROFILE</div>
@@ -1912,11 +1958,11 @@ export default function App() {
                   ) : (
                     <>
                       <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>CHOOSE YOUR USERNAME</div>
-                      <div style={{color:"#444",fontSize:11,marginBottom:10}}>This cannot be changed once set.</div>
+                      <div style={{color:"#444",fontSize:11,marginBottom:10}}>You can change this anytime. Your connections stay the same.</div>
                       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14}}>
                         <span style={{color:"#555",fontSize:14}}>@</span>
-                        <input type="text" value={username} placeholder="yourname"
-                          onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                        <input type="text" value={usernameEntry} placeholder="yourname"
+                          onChange={e => setUsernameEntry(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
                           style={{flex:1,background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
                       </div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
@@ -2039,7 +2085,7 @@ export default function App() {
                   : "ENJOY THE RECOVERY";
               }
               return (
-                <div onClick={()=>{ if(todayPending.length>0) { setActiveId(todayPending[0].id); setWorkoutInProgress(true); setInProgressLiftId(todayPending[0].id); setView("workout"); } else if(isRunDay&&!runCompletedToday) { setView("run"); setRunView("today"); } }} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:(todayPending.length>0||(isRunDay&&!runCompletedToday))?"pointer":"default"}}>
+                <div onClick={()=>{ if(todayPending.length>0) { const now=new Date().toISOString(); setActiveId(todayPending[0].id); setWorkoutInProgress(true); setInProgressLiftId(todayPending[0].id); setWorkoutStartTime(now); setView("workout"); } else if(isRunDay&&!runCompletedToday) { setView("run"); setRunView("today"); } }} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:(todayPending.length>0||(isRunDay&&!runCompletedToday))?"pointer":"default"}}>
                   <div style={{fontSize:38}}>{bannerIcon}</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
@@ -2212,7 +2258,13 @@ export default function App() {
 
             {sessionLedger[0] && (
               <div style={{...card,borderLeft:"3px solid "+(sessionLedger[0].liftColor||"#555")}}>
-                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>LAST SESSION</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",letterSpacing:1}}>LAST SESSION</div>
+                  <div style={{display:"flex",gap:10}}>
+                    {sessionLedger[0].durationSecs > 0 && <span style={{fontSize:11,color:"#555"}}>⏱ {fmtDuration(sessionLedger[0].durationSecs)}</span>}
+                    {sessionLedger[0].calories > 0 && <span style={{fontSize:11,color:"#f7b731"}}>🔥 ~{sessionLedger[0].calories} cal</span>}
+                  </div>
+                </div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <div style={{color:sessionLedger[0].liftColor,fontFamily:"'Roboto Condensed',sans-serif",fontSize:18}}>{sessionLedger[0].liftName}</div>
                   <div style={{color:"#555",fontSize:11}}>{fmtDate(sessionLedger[0].date)} · Wk {sessionLedger[0].week}</div>
@@ -2273,6 +2325,11 @@ export default function App() {
             {!hasSetup && dataLoaded && (
               <>
                 <div style={{...card,borderLeft:"3px solid #fff"}}>
+                  <div style={{marginBottom:14}}>
+                    <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>PROGRAM NAME <span style={{color:"#333"}}>(optional)</span></div>
+                    <input type="text" value={programName} onChange={e=>setProgramName(e.target.value)} placeholder="e.g. Bulk 2026, Cut Season..."
+                      style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:8,padding:"10px 12px",fontFamily:"'Roboto',sans-serif",fontSize:14,outline:"none"}} />
+                  </div>
                   <div style={{color:"#555",fontSize:10,marginBottom:6}}>PROGRAM START DATE</div>
                   <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",fontSize:14,outline:"none",width:"100%",borderRadius:6,padding:"8px 10px"}} />
                 </div>
@@ -2467,6 +2524,15 @@ export default function App() {
           </div>
         )}
 
+        {view==="workout" && workoutInProgress && (
+          <div style={{background:"#0f0f1a",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #1a1a1a"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:"#06d6a0",animation:"pulse 1s infinite"}}></div>
+              <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#06d6a0",letterSpacing:1}}>WORKOUT IN PROGRESS</span>
+            </div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
+          </div>
+        )}
         {view==="workout" && !workoutInProgress && (()=>{
           const todayAbbr = DAY_ABBR[new Date().getDay()];
           const scheduledLifts = lifts.filter(l=>(l.trainingDays||[]).includes(todayAbbr));
@@ -2490,7 +2556,7 @@ export default function App() {
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:lift?.color||"#e85d04",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
                   <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:12}}>WEEK {liftWeeks[activeId]||1}</div>
                   <div style={{color:"#aaa",fontSize:13,marginBottom:24,fontStyle:"italic"}}>"{pumpMsg}"</div>
-                  <button onClick={()=>{setWorkoutInProgress(true);setInProgressLiftId(activeId);}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
+                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               ) : (
@@ -2505,7 +2571,7 @@ export default function App() {
                       <div style={{color:"#555",fontSize:11}}>{nextLift.daysAway === 1 ? "Tomorrow" : "In "+nextLift.daysAway+" days"} · {nextLift.day} · Week {liftWeeks[nextLift.lift.id]||1}</div>
                     </div>
                   )}
-                  <button onClick={()=>{setWorkoutInProgress(true);setInProgressLiftId(activeId);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
+                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#444",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               )}
@@ -2828,32 +2894,91 @@ export default function App() {
           <div style={{padding:16}}>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>WORKOUT LEDGER</div>
             {sessionLedger.length===0&&<div style={{color:"#333",fontSize:13,textAlign:"center",padding:40}}>No sessions logged yet</div>}
-            {sessionLedger.map((s,i)=>(
-              <div key={i} style={{...card,borderLeft:"3px solid "+(s.liftColor||"#555")}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:s.liftColor||"#f0f0f0"}}>{s.liftName}</div>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{color:"#555",fontSize:11}}>{fmtDate(s.date)} · Wk {s.week}</div>
-                    <button onClick={()=>setConfirmDeleteSession(i)} style={{background:"none",border:"1px solid #333",color:"#444",borderRadius:4,padding:"2px 6px",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>DEL</button>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:14,marginBottom:6,flexWrap:"wrap"}}>
-                  {s.sets?.map((set,j)=>(
-                    <div key={j} style={{textAlign:"center"}}>
-                      <div style={{color:"#555",fontSize:9}}>SET {j+1}</div>
-                      <div style={{color:s.liftColor,fontFamily:"'Roboto Condensed',sans-serif",fontSize:14}}>{set.weight}</div>
-                      <div style={{color:"#555",fontSize:10}}>×{set.reps}</div>
+            {(()=>{
+              // Group sessions by programId
+              const groups = [];
+              const seen = new Map();
+              sessionLedger.forEach((s,i) => {
+                const pid = s.programId || "unknown";
+                if (!seen.has(pid)) {
+                  seen.set(pid, groups.length);
+                  groups.push({
+                    programId: pid,
+                    programName: s.programName || "",
+                    sessions: [],
+                    indices: [],
+                    startDate: s.date,
+                    endDate: s.date,
+                  });
+                }
+                const g = groups[seen.get(pid)];
+                g.sessions.push(s);
+                g.indices.push(i);
+                if (s.date < g.startDate) g.startDate = s.date;
+                if (s.date > g.endDate) g.endDate = s.date;
+              });
+
+              return groups.map((g,gi) => {
+                const isActive = g.programId === programId;
+                const isExpanded = expandedProgramId === g.programId;
+                const totalVol = g.sessions.reduce((sum,s)=>sum+(s.volume||0),0);
+                const displayName = g.programName || (isActive ? "Current Program" : "Program " + (groups.length - gi));
+
+                return (
+                  <div key={g.programId} style={{marginBottom:12}}>
+                    {/* Program header */}
+                    <div onClick={()=>setExpandedProgramId(isExpanded?null:g.programId)}
+                      style={{background:"#0f0f1a",borderRadius:isExpanded?"10px 10px 0 0":10,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",border:"1px solid "+(isActive?"#e85d04":"#1a1a1a"),borderBottom:isExpanded?"none":"1px solid "+(isActive?"#e85d04":"#1a1a1a")}}>
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                          {isActive && <div style={{width:8,height:8,borderRadius:"50%",background:"#06d6a0",flexShrink:0}}></div>}
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:isActive?"#e85d04":"#f0f0f0",letterSpacing:1}}>{displayName}</div>
+                        </div>
+                        <div style={{color:"#555",fontSize:11}}>{fmtDate(g.startDate)}{!isActive?" → "+fmtDate(g.endDate):""} · {g.sessions.length} sessions · {Math.round(totalVol/1000)}k lbs</div>
+                      </div>
+                      <div style={{color:"#555",fontSize:20,transform:isExpanded?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</div>
                     </div>
-                  ))}
-                </div>
-                <div style={{color:"#555",fontSize:11}}>
-                  Vol: <span style={{color:"#aaa"}}>{s.volume?.toLocaleString()} lbs</span>
-                  {s.estMax&&<> · Est: <span style={{color:"#06d6a0"}}>{s.estMax} lbs</span></>}
-                </div>
-                {s.accessories?.length>0&&<div style={{color:"#444",fontSize:10,marginTop:3}}>+ {s.accessories.length} accessories</div>}
-                {s.notes&&<div style={{color:"#555",fontSize:11,marginTop:5,fontStyle:"italic"}}>"{s.notes}"</div>}
-              </div>
-            ))}
+
+                    {/* Expanded sessions */}
+                    {isExpanded && (
+                      <div style={{border:"1px solid "+(isActive?"#e85d04":"#1a1a1a"),borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
+                        {g.sessions.map((s,si) => (
+                          <div key={si} style={{padding:"12px 16px",borderBottom:si<g.sessions.length-1?"1px solid #111":"none",background:si%2===0?"#0a0a0f":"#0f0f1a"}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:s.liftColor||"#f0f0f0"}}>{s.liftName}</div>
+                              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                <div style={{color:"#555",fontSize:11}}>{fmtDate(s.date)} · Wk {s.week}</div>
+                                <button onClick={()=>setConfirmDeleteSession(g.indices[si])} style={{background:"none",border:"1px solid #333",color:"#444",borderRadius:4,padding:"2px 6px",fontSize:10,cursor:"pointer"}}>DEL</button>
+                              </div>
+                            </div>
+                            <div style={{display:"flex",gap:14,marginBottom:6,flexWrap:"wrap"}}>
+                              {s.sets?.map((set,j)=>(
+                                <div key={j} style={{textAlign:"center"}}>
+                                  <div style={{color:"#555",fontSize:9}}>SET {j+1}</div>
+                                  <div style={{color:s.liftColor,fontFamily:"'Roboto Condensed',sans-serif",fontSize:14}}>{set.weight}</div>
+                                  <div style={{color:"#555",fontSize:10}}>×{set.reps}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                              <div style={{color:"#555",fontSize:11}}>
+                                Vol: <span style={{color:"#aaa"}}>{s.volume?.toLocaleString()} lbs</span>
+                                {s.estMax&&<> · Est: <span style={{color:"#06d6a0"}}>{s.estMax} lbs</span></>}
+                              </div>
+                              <div style={{display:"flex",gap:8}}>
+                                {s.durationSecs>0&&<span style={{fontSize:10,color:"#555"}}>⏱ {fmtDuration(s.durationSecs)}</span>}
+                                {s.calories>0&&<span style={{fontSize:10,color:"#f7b731"}}>🔥 {s.calories}cal</span>}
+                              </div>
+                            </div>
+                            {s.accessories?.length>0&&<div style={{color:"#444",fontSize:10,marginTop:3}}>+ {s.accessories.length} accessories</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
       </div>
