@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.106
+// v5.109
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -362,7 +362,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.106";
+  const APP_VERSION = "v5.109";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -400,6 +400,7 @@ export default function App() {
   const [confirmContinue, setConfirmContinue] = useState(null);
   const [continueError, setContinueError] = useState(null);
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(null);
+  const [postWorkoutScreen, setPostWorkoutScreen] = useState(null); // {liftName, week, vol, estMax, color}
   const [expandedProgramId, setExpandedProgramId] = useState(null); // stores the program to continue
   const [programId, setProgramId] = useState("");
   const [programName, setProgramName] = useState("");
@@ -958,6 +959,14 @@ export default function App() {
       return updated;
     });
     // Post-workout completion in-app alert
+    setPostWorkoutScreen({
+      liftName: lift?.name || "",
+      week,
+      vol,
+      estMax: sessionEstMax,
+      color: lift?.color || "#e85d04",
+      nextWeek: Math.min(12, activeLiftWeek+1)
+    });
     setFinishAlert({
       liftName: lift?.name || "",
       week,
@@ -972,6 +981,10 @@ export default function App() {
     const nw=Math.min(12,activeLiftWeek+1);
     setLiftWeeks(prev=>({...prev,[activeId]:nw}));
     setViewingWeek(nw);
+    setWorkoutInProgress(false);
+    setInProgressLiftId(null);
+    setWorkoutStartTime(null);
+    setWorkoutElapsed(0);
   }
 
   async function startNewProgram() {
@@ -1065,24 +1078,28 @@ export default function App() {
   const uniqueTrainingDays = [...new Set(lifts.flatMap(l => l.trainingDays || []))].length;
   const totalPossible = uniqueTrainingDays * 12;
   const streak = (() => {
-    // Only count scheduled training days — rest days don't break streak
-    const programSessions = sessionLedger.filter(s => programId && s.programId === programId);
+    // Use all sessions if programId not set, otherwise filter by program
+    // Match sessions by programId, but also include sessions with no programId
+    const programSessions = programId
+      ? sessionLedger.filter(s => !s.programId || s.programId === programId)
+      : sessionLedger;
     if(!programSessions.length) return 0;
     const loggedDates = new Set(programSessions.map(s=>s.date));
     // Get all unique training days across all lifts
     const allTrainingDays = [...new Set(lifts.flatMap(l=>l.trainingDays||[]))];
+    if(!allTrainingDays.length) return 0;
     // Walk backwards through scheduled days from today
     let streak = 0;
     const today = new Date(todayISO());
-    for(let i=0; i<84; i++) { // max 12 weeks back
+    for(let i=0; i<84; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const abbr = DAY_ABBR[d.getDay()];
       const iso = d.toISOString().split("T")[0];
       if(!allTrainingDays.includes(abbr)) continue; // skip rest days
       if(loggedDates.has(iso)) { streak++; }
-      else if(iso === todayISO()) { continue; } // today not yet logged — don't break
-      else { break; } // missed a scheduled day — streak over
+      else if(iso === todayISO()) { continue; } // today pending — don't break
+      else { break; } // missed scheduled day — streak over
     }
     return streak;
   })();
@@ -1474,6 +1491,32 @@ export default function App() {
                 });
               });
             }} style={{flex:2,background:"#e85d04",border:"none",color:"#000",borderRadius:8,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1}}>SAVE TO PHOTOS</button>
+          </div>
+        </div>
+      )}
+
+      {postWorkoutScreen && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid "+postWorkoutScreen.color}}>
+            <div style={{fontSize:48,marginBottom:8}}>✅</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:postWorkoutScreen.color,letterSpacing:2,marginBottom:4}}>{postWorkoutScreen.liftName.toUpperCase()} DONE!</div>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:16,letterSpacing:1}}>WEEK {postWorkoutScreen.week} COMPLETE</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+              <div style={{background:"#111",borderRadius:10,padding:12}}>
+                <div style={{color:"#555",fontSize:10,marginBottom:4}}>VOLUME</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0"}}>{postWorkoutScreen.vol?.toLocaleString()}<span style={{fontSize:11,color:"#555"}}> lbs</span></div>
+              </div>
+              <div style={{background:"#111",borderRadius:10,padding:12}}>
+                <div style={{color:"#555",fontSize:10,marginBottom:4}}>EST MAX</div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#06d6a0"}}>{postWorkoutScreen.estMax||"—"}<span style={{fontSize:11,color:"#555"}}> lbs</span></div>
+              </div>
+            </div>
+            <div style={{background:"#111",borderRadius:8,padding:10,marginBottom:20,fontSize:11,color:"#555"}}>
+              Next up: <span style={{color:postWorkoutScreen.color}}>Week {postWorkoutScreen.nextWeek}</span> when you return
+            </div>
+            <button onClick={()=>{setPostWorkoutScreen(null);setView("dashboard");}} style={{width:"100%",background:postWorkoutScreen.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:2,cursor:"pointer",marginBottom:10}}>HOME</button>
+            <button onClick={()=>{setPostWorkoutScreen(null);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>VIEW THIS WORKOUT</button>
+            <button onClick={()=>{setPostWorkoutScreen(null);setEditingPastWeek(true);}} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>EDIT THIS WORKOUT</button>
           </div>
         </div>
       )}
@@ -2085,7 +2128,7 @@ export default function App() {
                   : "ENJOY THE RECOVERY";
               }
               return (
-                <div onClick={()=>{ if(todayPending.length>0) { const now=new Date().toISOString(); setActiveId(todayPending[0].id); setWorkoutInProgress(true); setInProgressLiftId(todayPending[0].id); setWorkoutStartTime(now); setView("workout"); } else if(isRunDay&&!runCompletedToday) { setView("run"); setRunView("today"); } }} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:(todayPending.length>0||(isRunDay&&!runCompletedToday))?"pointer":"default"}}>
+                <div onClick={()=>{ if(todayPending.length>0) { setActiveId(todayPending[0].id); setView("workout"); } else if(isRunDay&&!runCompletedToday) { setView("run"); setRunView("today"); } }} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:(todayPending.length>0||(isRunDay&&!runCompletedToday))?"pointer":"default"}}>
                   <div style={{fontSize:38}}>{bannerIcon}</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
