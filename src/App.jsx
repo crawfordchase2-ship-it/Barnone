@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.113
+// v5.117
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -362,7 +362,7 @@ export default function App() {
   const [restTimer, setRestTimer] = useState(null);
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.113";
+  const APP_VERSION = "v5.117";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -2578,14 +2578,18 @@ export default function App() {
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
           </div>
         )}
-        {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (
+        {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && (()=>{
+          const cd = completedDays?.[liftWeeks[activeId]-1]?.[activeId];
+          const completedRecently = cd?.done && cd?.date && (new Date(todayISO())-new Date(cd.date))/86400000 < 7;
+          return completedRecently;
+        })() && (
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
             <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
               <div style={{fontSize:40,marginBottom:8}}>✅</div>
               <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#06d6a0",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
               <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>TODAY'S WORKOUT COMPLETE</div>
               <button onClick={()=>{setView("dashboard");setReviewingCompletedWorkout(false);}} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>HOME</button>
-              <button onClick={()=>setReviewingCompletedWorkout(true)} style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>REVIEW WORKOUT</button>
+              <button onClick={()=>{setReviewingCompletedWorkout(true);setViewingWeek((liftWeeks[activeId]||1)-1||1);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>REVIEW WORKOUT</button>
               <button onClick={()=>{setReviewingCompletedWorkout(true);setEditingPastWeek(true);setViewingWeek((liftWeeks[activeId]||1)-1||1);}} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>EDIT WORKOUT</button>
             </div>
           </div>
@@ -2767,6 +2771,12 @@ export default function App() {
                 </div>
               )}
 
+              {reviewingCompletedWorkout && !editingPastWeek && (
+                <button className="bigbtn" onClick={()=>{setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0"}}>← DONE REVIEWING</button>
+              )}
+              {reviewingCompletedWorkout && editingPastWeek && (
+                <button className="bigbtn" onClick={()=>{setEditingPastWeek(false);setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{background:"#1a1a2e",border:"1px solid #555",color:"#555"}}>CANCEL EDIT</button>
+              )}
               {isPastWeek&&editingPastWeek&&<button className="bigbtn" onClick={()=>{
                 // Recalculate volume and estMax from edited logs
                 const editedSets = logs?.[week]?.[activeId] || {};
@@ -2788,6 +2798,7 @@ export default function App() {
                   return [...prev, updatedEntry];
                 });
                 setEditingPastWeek(false);
+                if(reviewingCompletedWorkout) setReviewingCompletedWorkout(false);
               }} style={{background:lift.color,color:"#000"}}>SAVE CHANGES</button>}
               {!isPastWeek && (
                 <>
