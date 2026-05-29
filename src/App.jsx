@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.117
+// v5.122
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -21,63 +21,80 @@ const DEFAULT_LIFTS = [
 ];
 const ACCESSORIES_BY_LIFT = {
   "Bench": [
-    // Primary Bench accessories
-    "Incline Bench","Decline Bench","Close Grip Bench","Floor Press","Paused Bench",
+    // Bench variations
+    "Incline Bench","Decline Bench","Close Grip Bench","Floor Press","Paused Bench","Reverse Grip Bench","Landmine Press",
     // Chest
-    "Dumbbell Flys","Cable Flys High","Cable Flys Low","Pec Deck","Dumbbell Press","Push Ups","Dips",
+    "Dumbbell Press","Incline Dumbbell Press","Dumbbell Flys","Incline Dumbbell Fly","High Cable Fly","Low Cable Fly","Cable Crossover","Pec Deck","Chest Fly Machine","Push Ups","Weighted Dips","Dips",
     // Triceps
-    "Skull Crushers","Cable Tricep Ext.","Overhead Tricep Ext.","Tricep Pushdown","JM Press","Tate Press","Sven Press","Diamond Push Ups","Dumbbell Kickbacks",
-    // Upper back/shoulders (for balance)
+    "Skull Crushers","Cable Tricep Extension","Overhead Tricep Extension","Tricep Pushdown","Tricep Rope Pushdown","Tricep Bar Pushdown","JM Press","Tate Press","Sven Press","Diamond Push Ups","Close Grip Push Up","Dumbbell Kickbacks",
+    // Upper back/balance
     "Face Pulls","Chest Supported Row","Band Pull Apart","Rear Delt Fly","Rear Delt Cable Pull",
   ],
   "Deadlift": [
-    // Primary Deadlift accessories
-    "Rack Pulls","Romanian Deadlift","Stiff Leg Deadlift","Good Mornings","Deficit Deadlift","Pause Deadlift",
+    // Deadlift variations
+    "Rack Pulls","Romanian Deadlift","Stiff Leg Deadlift","Good Mornings","Deficit Deadlift","Pause Deadlift","Sumo Deadlift","Trap Bar Deadlift",
     // Back
-    "Pullups","Weighted Pullups","Lat Pull-Down","Seated T-bar Row","Str. Arm Lat Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row",
+    "Pullups","Weighted Pullups","Lat Pull-Down","T-Bar Row","Dumbbell Row","Barbell Row","Seated Cable Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row","Meadows Row","Kroc Row","Straight Arm Pulldown",
     // Biceps
-    "Barbell Curls","Dumbbell Curls","Hammer Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls","Spider Curls","Concentration Curls",
-    // Core/grip
-    "Shrugs","Farmers Walk","Ab Roller","Planks","Hanging Leg Raises","Dead Hang","Reverse Hyper",
+    "Barbell Curls","Dumbbell Curls","Hammer Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls","Spider Curls","Concentration Curls","EZ Bar Curls","Reverse Curls","Wrist Curls",
+    // Core/grip/posterior chain
+    "Shrugs","Farmers Walk","Ab Roller","Ab Wheel","Planks","Hanging Leg Raises","Dead Hang","Reverse Hyper","Hyperextensions","Back Extensions","Cable Pull Through","Face Pulls",
   ],
   "Military Press": [
-    // Primary shoulder accessories
-    "Arnold Press","Dumbbell Shoulder Press","Push Press","Behind The Neck Press","Z Press","Seated Barbell Press",
-    // Lateral/front
-    "Lateral Raises","Front Raises","Cable Lateral Raise","Cable Front Raise","Plate Raises","45 Deg Y Raise",
-    // Rear delt
-    "Rear Delt Fly","Reverse Fly","Rear Delt Swing","Rear Delt Cable Pull","Face Pulls","Band Pull Apart",
-    // Traps/upper back
-    "Upright Row","Shrugs","Snatch","High Pull","Cable Upright Row",
+    // Press variations
+    "Arnold Press","Dumbbell Shoulder Press","Single Arm Dumbbell Press","Push Press","Behind The Neck Press","Z Press","Seated Barbell Press","Bradford Press","Machine Shoulder Press","Landmine Press",
+    // Lateral/front delts
+    "Lateral Raises","Leaning Lateral Raise","Front Raises","Barbell Front Raise","Cable Lateral Raise","Cable Front Raise","Plate Raises","45° Y Raise",
+    // Rear delts
+    "Rear Delt Fly","Cable Rear Delt Fly","Reverse Fly","Rear Delt Swing","Rear Delt Cable Pull","Face Pulls","Cable Face Pulls","Band Pull Apart",
+    // Traps
+    "Upright Row","Cable Upright Row","Shrugs","High Pull","Snatch",
     // Triceps
-    "Skull Crushers","Cable Tricep Ext.","Overhead Tricep Ext.","Tricep Pushdown","Dips",
+    "Skull Crushers","Cable Tricep Extension","Overhead Tricep Extension","Tricep Pushdown","Dips",
   ],
   "Squat": [
-    // Primary squat accessories
-    "Front Squat","Box Squat","Pause Squat","Safety Bar Squat","Goblet Squat","Bulgarian Split Squat","Hack Squat",
+    // Squat variations
+    "Front Squat","Box Squat","Pause Squat","Safety Bar Squat","Goblet Squat","Bulgarian Split Squat","Hack Squat","Zercher Squat","Split Squat","Sumo Squat","Sissy Squat",
     // Quad/hamstring
-    "Leg Press","Leg Extension","Prone Leg Curl","Seated Leg Curl","Nordic Curl","Stiff Leg Deadlift","Romanian Deadlift","Step Ups","Lunges","Walking Lunges","Smith Lunges","Box Jumps",
+    "Leg Press","Single Leg Press","Leg Extension","Lying Leg Curl","Seated Leg Curl","Single Leg Curl","Nordic Curl","Stiff Leg Deadlift","Romanian Deadlift","Step Ups","Lunges","Walking Lunges","Smith Machine Lunges","Box Jumps","Cable Pull Through","Kettlebell Swing",
     // Glutes/hips
-    "Hip Thrust","Glute Bridge","Cable Kickbacks","Donkey Kicks","Hip Abductor","Hip Adductor","Sumo Squat","Reverse Hyper",
+    "Hip Thrust","Glute Bridge","Cable Kickbacks","Donkey Kicks","Hip Abductor","Hip Adductor","Leg Abductor","Leg Adductor","Reverse Hyper",
     // Calves/core
-    "Calf Raises","Seated Calf Raises","Wall Sit","Planks","Ab Roller","Hanging Leg Raises",
+    "Calf Raises","Seated Calf Raises","Leg Press Calf Raise","Wall Sit","Planks","Ab Roller","Hanging Leg Raises",
   ],
   "Weighted Pull Up": [
-    "Lat Pull-Down","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-bar Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row",
-    "Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls",
-    "Face Pulls","Band Pull Apart","Rear Delt Fly","Dead Hang","Scapular Pull Up","Shrugs","Farmers Walk",
+    // Pull up variations
+    "Chin Up","Neutral Grip Pull Up","Scapular Pull Up","Negative Pull Ups","Assisted Pull Up",
+    // Pulldowns/rows
+    "Lat Pull-Down","Close Grip Pulldown","Wide Grip Pulldown","Neutral Grip Pulldown","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","Cable Row","T-Bar Row","Machine Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row",
+    // Biceps
+    "Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls","EZ Bar Curls","Rope Hammer Curls",
+    // Supporting
+    "Face Pulls","Band Pull Apart","Rear Delt Fly","Dead Hang","Shrugs","Farmers Walk",
   ],
   "Hip Thrust": [
-    "Glute Bridge","Cable Kickback","Donkey Kicks","Bulgarian Split Squat","Sumo Squat","Reverse Hyper",
-    "Calf Raises","Hip Abductor","Hip Adductor","Leg Press","Romanian Deadlift","Step Ups","Lunges","Nordic Curl",
+    // Glute variations
+    "Glute Bridge","Single Leg Hip Thrust","Cable Kickback","Donkey Kicks","Sumo Squat","Reverse Hyper",
+    // Legs
+    "Bulgarian Split Squat","Calf Raises","Hip Abductor","Hip Adductor","Leg Press","Romanian Deadlift","Step Ups","Lunges","Nordic Curl","Cable Pull Through",
+    // Core
     "Planks","Ab Roller","Hanging Leg Raises","Side Planks",
   ],
   "Assisted Pull Up": [
-    "Lat Pull-Down","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-bar Row",
-    "Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Cable Curls",
-    "Face Pulls","Band Pull Apart","Dead Hang","Scapular Pull Up","Negative Pull Ups","Inverted Row",
+    // Progression exercises
+    "Negative Pull Ups","Scapular Pull Up","Dead Hang","Inverted Row","Ring Rows","Banded Pull Up",
+    // Pulldowns/rows
+    "Lat Pull-Down","Close Grip Pulldown","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-Bar Row",
+    // Biceps
+    "Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Cable Curls","EZ Bar Curls",
+    // Supporting
+    "Face Pulls","Band Pull Apart",
   ],
-  "Custom":          ["Incline Bench","Pullups","Lat Pull-Down","Dumbbell Row","Dumbbell Curls","Arnold Press","Front Raises","Lateral Raises","Face Pulls","Romanian Deadlift","Leg Extension","Calf Raises","Hip Thrust","Leg Press","Ab Roller","Farmers Walk","Shrugs"],
+  "Custom": [
+    "Incline Bench","Pullups","Lat Pull-Down","Dumbbell Row","Dumbbell Curls","Arnold Press",
+    "Front Raises","Lateral Raises","Face Pulls","Romanian Deadlift","Leg Extension","Calf Raises",
+    "Hip Thrust","Leg Press","Ab Roller","Farmers Walk","Shrugs","Plank","Hanging Leg Raises",
+  ],
 };
 const HYPE = ["Time to move some weight!","Let's get after it!","No excuses. Let's go!","Your future self will thank you.","The bar is waiting.","Stronger than last week. Prove it."];
 const DAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -148,35 +165,48 @@ C25K_PLAN[3] = C25K_PLAN[2].map(week => ({
 
 let _audioCtx = null;
 function getAudioCtx() {
-  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
   return _audioCtx;
+}
+function playBeeps(ctx) {
+  [0, 0.3, 0.6].forEach(delay => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.6, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + 0.25);
+  });
 }
 function playTimerSound() {
   try {
     const ctx = getAudioCtx();
-    // Resume context if suspended (iOS requires this)
-    const play = () => {
-      [0, 0.25, 0.5].forEach(delay => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 880;
-        osc.type = "sine";
-        gain.gain.setValueAtTime(0.5, ctx.currentTime + delay);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + 0.2);
-      });
-    };
     if (ctx.state === "suspended") {
-      ctx.resume().then(play);
+      ctx.resume().then(() => playBeeps(ctx)).catch(()=>{});
     } else {
-      play();
+      playBeeps(ctx);
     }
   } catch(e) {}
 }
-// Prime audio context on first user tap (iOS requirement)
+// Prime AND keep audio alive - call on every user interaction
+function primeAudio() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === "suspended") ctx.resume();
+    // Play a silent buffer to keep context alive on iOS
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch(e) {}
+}
 function fmtDuration(secs) {
   if (!secs || secs <= 0) return "0:00";
   const h = Math.floor(secs/3600);
@@ -359,10 +389,11 @@ export default function App() {
   const [customAccInput, setCustomAccInput] = useState({});
   const [previewLift, setPreviewLift] = useState(null);
   const [sessionNotes, setSessionNotes] = useState("");
-  const [restTimer, setRestTimer] = useState(null);
+  const [restTimer, setRestTimer] = useState(null); // seconds remaining (display only)
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
-  const APP_VERSION = "v5.117";
+  const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
+  const APP_VERSION = "v5.122";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -629,8 +660,11 @@ export default function App() {
     }
     setDataLoaded(true);
     // Open to setup if program not started
+    // If workout in progress, go straight back to workout
     if (!d.program_started) {
       setView("setup");
+    } else if (d.workout_in_progress && d.in_progress_lift_id) {
+      setView("workout");
     } else {
       setView("dashboard");
     }
@@ -1110,7 +1144,7 @@ export default function App() {
   const card = { background:"var(--bg-card)", borderRadius:10, padding:"14px 16px", marginBottom:14 };
 
   return (
-    <div className={"theme-"+theme} style={{minHeight:"100vh",background:"var(--bg-primary)",color:"var(--text-primary)",fontFamily:"'Roboto',sans-serif",fontSize:14,paddingBottom:view==="workout"?160:100,paddingTop:"env(safe-area-inset-top)"}}>
+    <div className={"theme-"+theme} onTouchStart={primeAudio} style={{minHeight:"100vh",background:"var(--bg-primary)",color:"var(--text-primary)",fontFamily:"'Roboto',sans-serif",fontSize:14,paddingBottom:view==="workout"?160:100,paddingTop:"env(safe-area-inset-top)"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Roboto:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
@@ -2711,8 +2745,17 @@ export default function App() {
                     <div style={{display:"flex",gap:8,marginBottom:selectedAcc[activeId]==="__custom__"?8:0}}>
                       <select style={{flex:1}} value={selectedAcc[activeId]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId]:e.target.value}))}>
                         <option value="">— Select exercise —</option>
-                        {(ACCESSORIES_BY_LIFT[lift?.mainLiftOption]||ACCESSORIES_BY_LIFT["Custom"]).map(a=><option key={a} value={a}>{a}</option>)}
-                        {(customAccessories[lift?.mainLiftOption]||[]).map(a=><option key={a} value={a}>{a}</option>)}
+                        {/* Main lift accessories first */}
+                        <optgroup label={"── " + (lift?.mainLiftOption||"Main") + " ──"}>
+                          {(ACCESSORIES_BY_LIFT[lift?.mainLiftOption]||ACCESSORIES_BY_LIFT["Custom"]).map(a=><option key={a} value={a}>{a}</option>)}
+                          {(customAccessories[lift?.mainLiftOption]||[]).map(a=><option key={a} value={a}>{a}</option>)}
+                        </optgroup>
+                        {/* All other lift accessories */}
+                        {Object.entries(ACCESSORIES_BY_LIFT).filter(([k])=>k!==lift?.mainLiftOption&&k!=="Custom").map(([category, exercises])=>(
+                          <optgroup key={category} label={"── " + category + " ──"}>
+                            {exercises.filter(a=>!(ACCESSORIES_BY_LIFT[lift?.mainLiftOption]||[]).includes(a)).map(a=><option key={a} value={a}>{a}</option>)}
+                          </optgroup>
+                        ))}
                         <option value="__custom__">✏️ Custom...</option>
                       </select>
                       {selectedAcc[activeId]&&selectedAcc[activeId]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId]);setSelectedAcc(prev=>({...prev,[activeId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
@@ -3063,16 +3106,16 @@ export default function App() {
           {/* Presets */}
           <div style={{display:"flex",gap:4,flex:1}}>
             {[60,90,120,180].map(s=>(
-              <button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);}}
+              <button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);setRestStartTime(null);}}
                 style={{flex:1,background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:5,padding:"5px 0",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>
                 {s}s
               </button>
             ))}
           </div>
           {/* GO / RST */}
-          <button onClick={()=>{primeAudio();setRestTimer(restDuration);setRestRunning(true);}}
+          <button onClick={()=>{primeAudio();const now=new Date().toISOString();setRestStartTime(now);setRestTimer(restDuration);setRestRunning(true);}}
             style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:6,padding:"6px 14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,cursor:"pointer"}}>GO</button>
-          <button onClick={()=>{setRestTimer(null);setRestRunning(false);}}
+          <button onClick={()=>{setRestTimer(null);setRestRunning(false);setRestStartTime(null);}}
             style={{background:"none",border:"1px solid #333",color:"#555",borderRadius:6,padding:"6px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>RST</button>
         </div>
       )}
