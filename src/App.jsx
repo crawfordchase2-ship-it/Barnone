@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.137 - removed duplicate primeAudio, faster font loading
+// v5.138 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -217,6 +217,7 @@ export default function App() {
   const [viewingWeek, setViewingWeek] = useState(1);
   const [editingPastWeek, setEditingPastWeek] = useState(false);
   const [selectedAcc, setSelectedAcc] = useState({});
+  const [accSectionOpen, setAccSectionOpen] = useState({support:true, isolation:false, aux:false});
   const [customAccInput, setCustomAccInput] = useState({});
   const [previewLift, setPreviewLift] = useState(null);
   const [sessionNotes, setSessionNotes] = useState("");
@@ -224,7 +225,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.137";
+  const APP_VERSION = "v5.138";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
