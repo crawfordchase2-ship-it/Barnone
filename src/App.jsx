@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.135-stable - removed duplicate primeAudio, faster font loading
+// v5.134 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -383,7 +383,6 @@ export default function App() {
   const [viewingWeek, setViewingWeek] = useState(1);
   const [editingPastWeek, setEditingPastWeek] = useState(false);
   const [selectedAcc, setSelectedAcc] = useState({});
-  const [accSectionOpen, setAccSectionOpen] = useState({support:true, isolation:false, aux:false});
   const [customAccInput, setCustomAccInput] = useState({});
   const [previewLift, setPreviewLift] = useState(null);
   const [sessionNotes, setSessionNotes] = useState("");
@@ -391,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.135-stable";
+  const APP_VERSION = "v5.134";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -485,9 +484,10 @@ export default function App() {
   }, []);
 
   const uid = session?.user?.id;
-  const readyToStart = lifts.length > 0 &&
-    lifts.every(l=>l.startingMax>0) && 
+  const readyToStart = lifts.every(l=>l.startingMax>0) && 
     startDate && 
+    (heightFtEntry || bodyStats.heightIn) && 
+    (weightEntry || bodyStats.entries.length > 0) &&
     lifts.every(l=>(l.trainingDays||[]).length>0);
   const hasSetup = readyToStart && programStarted;
 
@@ -659,9 +659,7 @@ export default function App() {
     setDataLoaded(true);
     // Open to setup if program not started
     // If workout in progress, go straight back to workout
-    const wasStarted = d.program_started || 
-      (d.lifts && d.lifts.some(l=>l.startingMax>0) && d.start_date);
-    if (!wasStarted) {
+    if (!d.program_started) {
       setView("setup");
     } else if (d.workout_in_progress && d.in_progress_lift_id) {
       setView("workout");
@@ -944,18 +942,8 @@ export default function App() {
   }
 
   async function sendReaction(toId, sessionDate, liftName, emoji) {
-    if (!uid) return;
-    const fromName = (currentUser?.user_metadata?.name || currentUser?.email || "Someone").split(" ")[0];
-    // Update sentReactions immediately for instant visual feedback
-    setSentReactions(prev => {
-      const filtered = prev.filter(r => !(r.session_date === sessionDate && r.to_id === toId));
-      return [...filtered, {from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji, from_name: fromName, from_username: username||"", created_at: new Date().toISOString()}];
-    });
-    await supabase.from("reactions").upsert({
-      from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji,
-      from_name: fromName, from_username: username || ""
-    }, { onConflict: "from_id,to_id,session_date" });
-    loadSocialData(uid);
+    await supabase.from("reactions")
+      .insert({ from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji });
   }
 
   async function savePublicProfile() {
@@ -1112,11 +1100,11 @@ export default function App() {
   const latestWeight = bodyStats.entries[0]?.weightLbs ? +bodyStats.entries[0].weightLbs : null;
   const bmi = calcBMI(latestWeight, +bodyStats.heightIn);
   const totalSessions = sessionLedger.filter(s => {
-    return !s.programId || !programId || s.programId === programId;
+    return programId && s.programId === programId;
   }).length;
   const allTimeSessions = sessionLedger.length;
   const programVolume = sessionLedger
-    .filter(s => !s.programId || !programId || s.programId === programId)
+    .filter(s => programId && s.programId === programId)
     .reduce((sum, s) => sum + (s.volume || 0), 0);
   const programVolumeDisplay = programVolume >= 1000000 
     ? (programVolume/1000000).toFixed(1) + "M" 
@@ -2812,7 +2800,7 @@ export default function App() {
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
           </div>
         )}
-        {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && lifts.length > 0 && (()=>{
+        {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && (()=>{
           const cd = completedDays?.[liftWeeks[activeId]-1]?.[activeId];
           const completedRecently = cd?.done && cd?.date && (new Date(todayISO())-new Date(cd.date))/86400000 < 7;
           return completedRecently;
@@ -2828,7 +2816,7 @@ export default function App() {
             </div>
           </div>
         )}
-        {view==="workout" && !workoutInProgress && lifts.length > 0 && !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (()=>{
+        {view==="workout" && !workoutInProgress && !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (()=>{
           const todayAbbr = DAY_ABBR[new Date().getDay()];
           const scheduledLifts = lifts.filter(l=>(l.trainingDays||[]).includes(todayAbbr));
           const isScheduledToday = scheduledLifts.length > 0;
