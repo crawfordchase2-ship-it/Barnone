@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.136-debug - removed duplicate primeAudio, faster font loading
+// v5.136-final - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -83,6 +83,178 @@ function fmtDuration(secs) {
   const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
   return h>0?h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"):m+":"+String(s).padStart(2,"0");
 }
+const C25K_PLAN = {
+  2: [
+    {week:1,  goal:"START MOVING",          days:[
+      {day:1, intervals:[{type:"walk",duration:5,label:"Warm up walk"},{type:"repeat",reps:8,intervals:[{type:"jog",duration:1},{type:"walk",duration:1.5}]},{type:"walk",duration:5,label:"Cool down"}], totalMin:28},
+      {day:2, intervals:[{type:"walk",duration:5,label:"Warm up walk"},{type:"repeat",reps:8,intervals:[{type:"jog",duration:1},{type:"walk",duration:1.5}]},{type:"walk",duration:5,label:"Cool down"}], totalMin:28},
+    ]},
+    {week:2,  goal:"BUILD RHYTHM",          days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"repeat",reps:6,intervals:[{type:"jog",duration:1.5},{type:"walk",duration:2}]},{type:"walk",duration:5}], totalMin:30},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"repeat",reps:6,intervals:[{type:"jog",duration:1.5},{type:"walk",duration:2}]},{type:"walk",duration:5}], totalMin:30},
+    ]},
+    {week:3,  goal:"LONGER INTERVALS",      days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"repeat",reps:2,intervals:[{type:"jog",duration:1.5},{type:"walk",duration:1.5},{type:"jog",duration:3},{type:"walk",duration:3}]},{type:"walk",duration:5}], totalMin:30},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"repeat",reps:2,intervals:[{type:"jog",duration:1.5},{type:"walk",duration:1.5},{type:"jog",duration:3},{type:"walk",duration:3}]},{type:"walk",duration:5}], totalMin:30},
+    ]},
+    {week:4,  goal:"PUSH THROUGH",          days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:3},{type:"walk",duration:1.5},{type:"jog",duration:5},{type:"walk",duration:2.5},{type:"jog",duration:3},{type:"walk",duration:1.5},{type:"jog",duration:5},{type:"walk",duration:5}], totalMin:31},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:3},{type:"walk",duration:1.5},{type:"jog",duration:5},{type:"walk",duration:2.5},{type:"jog",duration:3},{type:"walk",duration:1.5},{type:"jog",duration:5},{type:"walk",duration:5}], totalMin:31},
+    ]},
+    {week:5,  goal:"FIRST CONTINUOUS RUN",  days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:5},{type:"walk",duration:3},{type:"jog",duration:5},{type:"walk",duration:3},{type:"jog",duration:5},{type:"walk",duration:5}], totalMin:31},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:20,label:"Continuous run!"},{type:"walk",duration:5}], totalMin:30},
+    ]},
+    {week:6,  goal:"EXTEND RUNS",           days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:5},{type:"walk",duration:3},{type:"jog",duration:8},{type:"walk",duration:3},{type:"jog",duration:5},{type:"walk",duration:5}], totalMin:34},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:22,label:"Continuous run"},{type:"walk",duration:5}], totalMin:32},
+    ]},
+    {week:7,  goal:"25 MIN CONTINUOUS",     days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:25,label:"Continuous run"},{type:"walk",duration:5}], totalMin:35},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:25,label:"Continuous run"},{type:"walk",duration:5}], totalMin:35},
+    ]},
+    {week:8,  goal:"28 MIN CONTINUOUS",     days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:28,label:"Continuous run"},{type:"walk",duration:5}], totalMin:38},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:28,label:"Continuous run"},{type:"walk",duration:5}], totalMin:38},
+    ]},
+    {week:9,  goal:"30 MIN / 5K!",          days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:30,label:"You got this!"},{type:"walk",duration:5}], totalMin:40},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:30,label:"You got this!"},{type:"walk",duration:5}], totalMin:40},
+    ]},
+    {week:10, goal:"BUILD DISTANCE",        days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:32},{type:"walk",duration:5}], totalMin:42},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:32},{type:"walk",duration:5}], totalMin:42},
+    ]},
+    {week:11, goal:"FIND YOUR PACE",        days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:35},{type:"walk",duration:5}], totalMin:45},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:35},{type:"walk",duration:5}], totalMin:45},
+    ]},
+    {week:12, goal:"RACE DAY!",             days:[
+      {day:1, intervals:[{type:"walk",duration:5},{type:"jog",duration:38},{type:"walk",duration:5}], totalMin:48},
+      {day:2, intervals:[{type:"walk",duration:5},{type:"jog",duration:0,label:"🏁 5K RACE DAY! Run 5 kilometers!"}], totalMin:35},
+    ]},
+  ]
+};
+// 3-day plan = 2-day plan + extra easy day
+C25K_PLAN[3] = C25K_PLAN[2].map(week => ({
+  ...week,
+  days: [...week.days, {
+    day:3,
+    intervals:[{type:"walk",duration:5},{type:"jog",duration: week.week < 5 ? 20 : week.week < 9 ? 25 : 30, label:"Easy recovery run"},{type:"walk",duration:5}],
+    totalMin: week.week < 5 ? 30 : 35,
+    isEasy: true
+  }]
+}));
+
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+function playTimerSound() {
+  try {
+    const ctx = getAudioCtx();
+    // Resume context if suspended (iOS requires this)
+    const play = () => {
+      [0, 0.25, 0.5].forEach(delay => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.5, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.2);
+      });
+    };
+    if (ctx.state === "suspended") {
+      ctx.resume().then(play);
+    } else {
+      play();
+    }
+  } catch(e) {}
+}
+// Prime audio context on first user tap (iOS requirement)
+function primeAudio() {
+  try { getAudioCtx(); } catch(e) {}
+}
+const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
+
+function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
+
+// For assisted pullups, working weights are assistance amounts that decrease
+// Starting max = assistance weight (e.g. 50 lbs)
+// Each set uses less assistance, encouraging more bodyweight strength
+function calcAssistedWeights(assistanceMax) {
+  // Sets go from most assistance to least — hardest set last
+  // Always round to nearest 5, minimum 5 lbs
+  const r = v => Math.max(5, Math.round(v / 5) * 5);
+  return [
+    r(assistanceMax * 0.75),
+    r(assistanceMax * 0.60),
+    r(assistanceMax * 0.45),
+    r(assistanceMax * 0.30),
+  ];
+}
+
+// Reverse progression — assistance goes DOWN over time
+function calcNextAssistedMax(currentAssist, reps, isLower) {
+  if (+reps <= 10) return currentAssist; // 10 reps = stay same
+  const drop = +reps >= 15 ? 10 : 5; // >15 reps = drop 10 lbs, else 5
+  return Math.max(0, currentAssist - drop);
+}
+
+function calcCurrentMax(s) { return Math.round(s * 0.9 / 5) * 5; }
+function calcTrueMax(s) { return s; } // The actual max the user entered
+function calcWorkingWeights(m) {
+  return [Math.round(m*.50/5)*5, Math.round(m*.5833/5)*5, Math.round(m*.6667/5)*5, Math.round(m*.75/5)*5];
+}
+function calcEstMax(w, r) {
+  if (+r <= 10) return null;
+  return Math.round((w*1.1*r*0.0333 + w*1.1)/5)*5;
+}
+function calcNextMax(cur, em, isLower) {
+  if (!em) return cur;
+  const d = em - cur;
+  return isLower ? (d>=20?cur+15:d>=10?cur+10:cur) : (d>=20?cur+10:d>=10?cur+5:cur);
+}
+function calcBMI(wlbs, hin) {
+  if (!wlbs || !hin) return null;
+  return ((wlbs / (hin * hin)) * 703).toFixed(1);
+}
+function bmiCat(b) { b=+b; return b<18.5?"Underweight":b<25?"Normal":b<30?"Overweight":"Obese"; }
+function bmiCol(b) { b=+b; return b<18.5?"#3a86ff":b<25?"#06d6a0":b<30?"#f7b731":"#e85d04"; }
+function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}) : ""; }
+function todayISO() { return new Date().toISOString().split("T")[0]; }
+
+// Supabase data functions
+async function loadUD(userId) {
+  const { data } = await supabase.from("user_data").select("*").eq("user_id", userId).single();
+  return data;
+}
+async function saveProgramToHistory(userId, archive) {
+  console.log("Saving program to history for user:", userId);
+  const { error } = await supabase.from("program_history").insert({
+    user_id: userId,
+    start_date: archive.startDate || "",
+    end_date: archive.endDate || "",
+    program_id: archive.programId || "",
+    lifts: archive.lifts || [],
+    final_maxes: archive.finalMaxes || {},
+    sessions_completed: archive.sessionsCompleted || 0,
+    total_possible: archive.totalPossible || 0,
+    best_streak: archive.bestStreak || 0,
+    total_volume: archive.totalVolume || 0,
+    logs: archive.logs || {},
+    lift_weeks: archive.liftWeeks || {},
+    completed_days: archive.completedDays || {},
+    acc_list: archive.accList || {},
+  });
+  if (error) console.error("Error saving program history:", error);
+}
+
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
 function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
@@ -258,7 +430,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.136-debug";
+  const APP_VERSION = "v5.136-final";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
