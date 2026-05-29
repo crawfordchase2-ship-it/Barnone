@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.124 - removed duplicate primeAudio, faster font loading
+// v5.125 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -390,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.124";
+  const APP_VERSION = "v5.125";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -441,7 +441,7 @@ export default function App() {
   const [displayName, setDisplayName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [lastSeenReaction, setLastSeenReaction] = useState("");
-  const [socialTab, setSocialTab] = useState("friends");
+  const [socialTab, setSocialTab] = useState("feed");
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
   const [myReactions, setMyReactions] = useState([]);
@@ -703,7 +703,7 @@ export default function App() {
       const friendIds = accepted.map(r => r.from_id === userId ? r.to_id : r.from_id);
       if (friendIds.length > 0) {
         const { data: friendData } = await supabase
-          .from("user_data").select("user_id, lifts, lift_weeks, session_ledger")
+          .from("user_data").select("user_id, lifts, lift_weeks, session_ledger, run_history")
           .in("user_id", friendIds);
         const { data: friendProfiles } = await supabase
           .from("public_profiles").select("id, name, username")
@@ -1886,13 +1886,146 @@ export default function App() {
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>SOCIAL</div>
           </div>
           <div style={{display:"flex",borderBottom:"1px solid #1a1a1a"}}>
-            {[{id:"friends",label:"FRIENDS"},{id:"requests",label:friendRequests.length > 0 ? "REQUESTS (" + friendRequests.length + ")" : "REQUESTS"},{id:"profile",label:"MY PROFILE"}].map(t => (
+            {[{id:"feed",label:"FEED"},{id:"friends",label:"FRIENDS"},{id:"requests",label:friendRequests.length > 0 ? "REQUESTS (" + friendRequests.length + ")" : "REQUESTS"},{id:"profile",label:"MY PROFILE"}].map(t => (
               <button key={t.id} onClick={()=>{setSocialTab(t.id);if(t.id==="profile"){localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewReactionCount(0);}}} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
                 {t.label}
               </button>
             ))}
           </div>
           <div style={{padding:16,flex:1}}>
+            {socialTab === "feed" && (
+              <div>
+                {(()=>{
+                  // Build feed from own sessions + friends sessions
+                  const myPosts = sessionLedger.slice(0,30).map(s=>({
+                    ...s,
+                    authorId: uid,
+                    authorName: (currentUser?.user_metadata?.name || currentUser?.email || "You").split(" ")[0],
+                    authorUsername: username,
+                    isMe: true,
+                    type: "lift"
+                  }));
+                  const runPosts = runHistory.slice(0,10).map(r=>({
+                    date: r.date,
+                    authorId: uid,
+                    authorName: (currentUser?.user_metadata?.name || currentUser?.email || "You").split(" ")[0],
+                    authorUsername: username,
+                    isMe: true,
+                    type: "run",
+                    week: r.week, day: r.day, dist: r.dist, pace: r.pace, totalSecs: r.totalSecs,
+                    liftColor: "#3a86ff",
+                  }));
+                  const friendPosts = friends.flatMap(f => [
+                    ...(f.session_ledger||[]).slice(0,10).map(s=>({
+                      ...s,
+                      authorId: f.id,
+                      authorName: f.name || "Friend",
+                      authorUsername: f.username || "",
+                      isMe: false,
+                      type: "lift"
+                    })),
+                    ...(f.run_history||[]).slice(0,5).map(r=>({
+                      date: r.date,
+                      authorId: f.id,
+                      authorName: f.name || "Friend",
+                      authorUsername: f.username || "",
+                      isMe: false,
+                      type: "run",
+                      week: r.week, day: r.day, dist: r.dist, pace: r.pace,
+                      liftColor: "#3a86ff",
+                    })),
+                  ]);
+                  const allPosts = [...myPosts, ...runPosts, ...friendPosts]
+                    .sort((a,b) => new Date(b.date) - new Date(a.date))
+                    .slice(0,50);
+
+                  if (allPosts.length === 0) return (
+                    <div style={{textAlign:"center",padding:40,color:"#444"}}>
+                      <div style={{fontSize:40,marginBottom:12}}>🏋️</div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:1,marginBottom:8}}>NO ACTIVITY YET</div>
+                      <div style={{fontSize:12}}>Complete a workout or add friends to see activity here</div>
+                    </div>
+                  );
+
+                  return allPosts.map((post, i) => {
+                    // Get reactions for this post
+                    const postKey = post.authorId + "_" + post.date + "_" + (post.liftName||"run");
+                    const postReactions = myReactions.filter(r => r.from_id !== uid && r.session_date === post.date && r.to_id === post.authorId);
+                    const myReaction = myReactions.find(r => r.from_id === uid && r.session_date === post.date && r.to_id === post.authorId);
+                    
+                    // Time since
+                    const daysSince = Math.floor((new Date() - new Date(post.date)) / 86400000);
+                    const timeStr = daysSince === 0 ? "Today" : daysSince === 1 ? "Yesterday" : daysSince + "d ago";
+
+                    return (
+                      <div key={i} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:10,borderLeft:"3px solid "+(post.liftColor||"#555")}}>
+                        {/* Header */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                          <div>
+                            <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#f0f0f0"}}>{post.isMe ? "You" : post.authorName}</span>
+                            {post.authorUsername ? <span style={{color:"#555",fontSize:11}}> @{post.authorUsername}</span> : null}
+                          </div>
+                          <span style={{color:"#555",fontSize:11}}>{timeStr}</span>
+                        </div>
+
+                        {/* Lift post */}
+                        {post.type === "lift" && (
+                          <div>
+                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:post.liftColor||"#f0f0f0",marginBottom:4}}>
+                              {post.liftName} · Week {post.week}
+                            </div>
+                            <div style={{display:"flex",gap:16,fontSize:11,color:"#555",marginBottom:8}}>
+                              {post.volume > 0 && <span>Vol: <span style={{color:"#aaa"}}>{post.volume?.toLocaleString()} lbs</span></span>}
+                              {post.estMax > 0 && <span>Est max: <span style={{color:"#06d6a0"}}>{post.estMax} lbs</span></span>}
+                              {post.durationSecs > 0 && <span>⏱ {fmtDuration(post.durationSecs)}</span>}
+                              {post.calories > 0 && <span>🔥 {post.calories} cal</span>}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Run post */}
+                        {post.type === "run" && (
+                          <div>
+                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:"#3a86ff",marginBottom:4}}>
+                              🏃 C25K · Week {post.week} Day {post.day}
+                            </div>
+                            <div style={{display:"flex",gap:16,fontSize:11,color:"#555",marginBottom:8}}>
+                              {post.dist && <span>Dist: <span style={{color:"#aaa"}}>{post.dist} mi</span></span>}
+                              {post.pace && <span>Pace: <span style={{color:"#06d6a0"}}>{post.pace}/mi</span></span>}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Reactions */}
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {["💪","🔥","⚡","🏆","👏","😤","🚀","💯"].map(emoji => {
+                              const reactionCount = postReactions.filter(r=>r.emoji===emoji).length + (myReaction?.emoji===emoji?1:0);
+                              const isSelected = myReaction?.emoji === emoji;
+                              return (
+                                <button key={emoji} onClick={()=>{
+                                  if(!post.isMe) sendReaction(post.authorId, post.date, post.liftName||"run", emoji);
+                                }}
+                                  style={{background:isSelected?"#1a1a2e":"transparent",border:"1px solid "+(isSelected?"#e85d04":"#1a1a1a"),borderRadius:20,padding:"3px 8px",fontSize:15,cursor:post.isMe?"default":"pointer",opacity:post.isMe?0.5:1,display:"flex",alignItems:"center",gap:4}}>
+                                  {emoji}{reactionCount>0&&<span style={{fontSize:10,color:isSelected?"#e85d04":"#555"}}>{reactionCount}</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {/* Show who reacted on your posts */}
+                        {post.isMe && postReactions.length > 0 && (
+                          <div style={{marginTop:6,fontSize:10,color:"#555"}}>
+                            {[...new Set(postReactions.map(r=>r.from_name||"Someone"))].join(", ")} reacted
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
+
             {socialTab === "friends" && (
               <div>
                 <div style={{marginBottom:16}}>
