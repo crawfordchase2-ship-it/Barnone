@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.122
+// v5.123 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -216,9 +216,6 @@ function fmtDuration(secs) {
   return m+":"+String(s).padStart(2,"0");
 }
 
-function primeAudio() {
-  try { getAudioCtx(); } catch(e) {}
-}
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
 function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
@@ -393,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.122";
+  const APP_VERSION = "v5.123";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1146,7 +1143,7 @@ export default function App() {
   return (
     <div className={"theme-"+theme} onTouchStart={primeAudio} style={{minHeight:"100vh",background:"var(--bg-primary)",color:"var(--text-primary)",fontFamily:"'Roboto',sans-serif",fontSize:14,paddingBottom:view==="workout"?160:100,paddingTop:"env(safe-area-inset-top)"}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Roboto:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Roboto:wght@400;500&display=swap&font-display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
         html,body,#root{min-height:100%;}
