@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.126 - removed duplicate primeAudio, faster font loading
+// v5.127 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -390,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.126";
+  const APP_VERSION = "v5.127";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1619,7 +1619,7 @@ export default function App() {
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
         </div>
         <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",textAlign:"center"}}>
-          <div style={{display:"flex",alignItems:"center",gap:4"}}>
+          <div style={{display:"flex",alignItems:"center",gap:4}}>
             <span>{(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}</span>
             <span style={{fontSize:9}}>⚙️</span>
           </div>
