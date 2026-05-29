@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.136-stable - removed duplicate primeAudio, faster font loading
+// v5.136-debug - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -258,7 +258,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.136-stable";
+  const APP_VERSION = "v5.136-debug";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
