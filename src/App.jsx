@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.127 - removed duplicate primeAudio, faster font loading
+// v5.132 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -390,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.127";
+  const APP_VERSION = "v5.132";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1977,22 +1977,35 @@ export default function App() {
                             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:post.liftColor||"#f0f0f0",marginBottom:4}}>
                               {post.liftName} · Week {post.week}
                             </div>
-                            <div style={{display:"flex",gap:12,fontSize:11,color:"#555",marginBottom:8,flexWrap:"wrap"}}>
-                              {post.volume > 0 && <span>Vol: <span style={{color:"#aaa"}}>{post.volume?.toLocaleString()} lbs</span></span>}
-                              {post.estMax > 0 && <span>Est: <span style={{color:"#06d6a0"}}>{post.estMax} lbs</span></span>}
-                              {post.durationSecs > 0 && <span>⏱ {fmtDuration(post.durationSecs)}</span>}
-                              {post.calories > 0 && <span>🔥 {post.calories} cal</span>}
-                            </div>
-                            {/* PR badge if est max > starting max */}
-                            {post.estMax > 0 && post.sets?.[3]?.weight > 0 && (()=>{
+                            {(()=>{
                               const lift = (post.isMe ? lifts : (friends.find(f=>f.id===post.authorId)?.lifts||[])).find(l=>l.id===post.liftId);
                               const startMax = lift?.startingMax || 0;
-                              if(post.estMax > startMax && startMax > 0) return (
-                                <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#0a2a1a",border:"1px solid #06d6a0",borderRadius:6,padding:"2px 8px",fontSize:10,color:"#06d6a0",marginBottom:6}}>
-                                  📈 +{post.estMax - startMax} lbs from start
+                              const round5 = n => Math.round(n/5)*5;
+                              // New max = next week's working max from est max
+                              const newMax = post.estMax > 0 ? round5(post.estMax * 0.9) : 0;
+                              const prevMax = post.week > 1 ? round5(startMax * 0.9) : 0;
+                              const maxIncreased = newMax > prevMax && prevMax > 0;
+                              const gainFromStart = post.estMax > 0 && startMax > 0 ? post.estMax - startMax : 0;
+                              return (
+                                <div>
+                                  <div style={{display:"flex",gap:12,fontSize:11,color:"#555",marginBottom:8,flexWrap:"wrap"}}>
+                                    {post.volume > 0 && <span>Vol: <span style={{color:"#aaa"}}>{post.volume?.toLocaleString()} lbs</span></span>}
+                                    {newMax > 0 && (
+                                      <span style={{display:"flex",alignItems:"center",gap:3}}>
+                                        {maxIncreased && <span style={{color:"#06d6a0",fontSize:13}}>↑</span>}
+                                        <span style={{color:maxIncreased?"#06d6a0":"#aaa"}}>New Max: {newMax} lbs</span>
+                                      </span>
+                                    )}
+                                    {post.durationSecs > 0 && <span>⏱ {fmtDuration(post.durationSecs)}</span>}
+                                    {post.calories > 0 && <span>🔥 {post.calories} cal</span>}
+                                  </div>
+                                  {post.estMax > 0 && gainFromStart > 0 && (
+                                    <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#0a2a1a",border:"1px solid #06d6a0",borderRadius:6,padding:"3px 10px",fontSize:11,color:"#06d6a0",marginBottom:8}}>
+                                      📈 Est Max {post.estMax} lbs · +{gainFromStart} from start
+                                    </div>
+                                  )}
                                 </div>
                               );
-                              return null;
                             })()}
                           </div>
                         )}
@@ -2028,19 +2041,22 @@ export default function App() {
                                 <button key={emoji} onClick={()=>{
                                   if(!post.isMe) sendReaction(post.authorId, post.date, post.liftName||"run", emoji);
                                 }}
-                                  style={{background:isSelected?"#2a1a0a":"#1a1a1a",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:20,padding:"3px 10px",fontSize:15,cursor:post.isMe?"default":"pointer",display:"flex",alignItems:"center",gap:4,transition:"all 0.15s",transform:isSelected?"scale(1.1)":"scale(1)"}}>
-                                  {emoji}<span style={{fontSize:11,color:isSelected?"#e85d04":"#888",fontFamily:"'Roboto Condensed',sans-serif"}}>{reactionCount}</span>
+                                  style={{background:isSelected?"#2a1a0a":"#1a1a1a",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:20,padding:"3px 10px",fontSize:15,cursor:post.isMe?"default":"pointer",display:"flex",alignItems:"center",gap:4,transition:"all 0.2s",transform:isSelected?"scale(1.15)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none"}}>
+                                  {emoji}<span style={{fontSize:11,color:isSelected?"#e85d04":"#888",fontFamily:"'Roboto Condensed',sans-serif",fontWeight:isSelected?"700":"400"}}>{reactionCount}</span>
                                 </button>
                               );
                             })}
                           </div>
                           {/* Who reacted */}
-                          {postReactions.length > 0 && (
+                          {(postReactions.length > 0 || myReaction) && (
                             <div style={{fontSize:10,color:"#555",marginTop:2}}>
                               {(()=>{
-                                const names = [...new Set(postReactions.map(r=>r.from_name||"Someone"))];
+                                const names = [];
+                                if(myReaction && post.isMe) names.push("You");
+                                postReactions.forEach(r => { if(r.from_name && r.from_name !== "Someone") names.push(r.from_name); else if(!r.from_name) names.push("Someone"); });
+                                if(names.length===0) return null;
                                 if(names.length<=2) return names.join(" & ") + " reacted";
-                                return names.slice(0,2).join(", ") + " +" + (names.length-2) + " reacted";
+                                return names.slice(0,2).join(", ") + " +" + (names.length-2) + " more reacted";
                               })()}
                             </div>
                           )}
