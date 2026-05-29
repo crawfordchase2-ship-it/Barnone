@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.145 - removed duplicate primeAudio, faster font loading
+// v5.136-stable - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -50,39 +50,6 @@ const AUX_LIFTS = {
 };
 
 
-let _audioCtx = null;
-function getAudioCtx() {
-  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return _audioCtx;
-}
-function playBeeps(ctx) {
-  [0, 0.3, 0.6].forEach(delay => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 880; osc.type = "sine";
-    gain.gain.setValueAtTime(0.6, ctx.currentTime + delay);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
-    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.25);
-  });
-}
-function playTimerSound() {
-  try { const ctx = getAudioCtx(); if(ctx.state==="suspended") ctx.resume().then(()=>playBeeps(ctx)).catch(()=>{}); else playBeeps(ctx); } catch(e) {}
-}
-function primeAudio() {
-  try {
-    const ctx = getAudioCtx();
-    if(ctx.state==="suspended") ctx.resume();
-    const buf = ctx.createBuffer(1,1,22050);
-    const src = ctx.createBufferSource();
-    src.buffer = buf; src.connect(ctx.destination); src.start(0);
-  } catch(e) {}
-}
-function fmtDuration(secs) {
-  if(!secs||secs<=0) return "0:00";
-  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
-  return h>0?h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"):m+":"+String(s).padStart(2,"0");
-}
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
 function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
@@ -250,7 +217,6 @@ export default function App() {
   const [viewingWeek, setViewingWeek] = useState(1);
   const [editingPastWeek, setEditingPastWeek] = useState(false);
   const [selectedAcc, setSelectedAcc] = useState({});
-  const [accSectionOpen, setAccSectionOpen] = useState({support:true, isolation:false, aux:false});
   const [customAccInput, setCustomAccInput] = useState({});
   const [previewLift, setPreviewLift] = useState(null);
   const [sessionNotes, setSessionNotes] = useState("");
@@ -258,7 +224,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.145";
+  const APP_VERSION = "v5.136-stable";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -490,7 +456,6 @@ export default function App() {
       setWeightAdjust(d.weight_adjust || {});
       const loadedLiftWeeks = d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1]));
       setLiftWeeks(loadedLiftWeeks);
-      // Make sure activeId is valid
       if (d.active_id && loadedLifts.find(l=>l.id===d.active_id)) {
         setActiveId(d.active_id);
       } else if (loadedLifts.length > 0) {
@@ -533,10 +498,8 @@ export default function App() {
     setDataLoaded(true);
     // Open to setup if program not started
     // If workout in progress, go straight back to workout
-    // If program was started before, always go to dashboard/workout
-    // Only go to setup if truly never started
     const wasStarted = d.program_started || 
-      (d.lifts && d.lifts.some(l => l.startingMax > 0) && d.start_date);
+      (d.lifts && d.lifts.some(l=>l.startingMax>0) && d.start_date);
     if (!wasStarted) {
       setView("setup");
     } else if (d.workout_in_progress && d.in_progress_lift_id) {
@@ -698,7 +661,7 @@ export default function App() {
   function calcVolume(liftId, w) {
     const wts = calcWorkingWeights(getEffMax(liftId, w));
     let vol = wts[0]*10 + wts[1]*10 + wts[2]*10 + wts[3]*(+(logs?.[w]?.[liftId]?.[3]?.reps)||10);
-    (accList?.[w]?.[liftId]||[]).forEach(a => { vol += (+a.weight||0)*(+a.reps||10)*3; }); // all sections
+    (accList?.[w]?.[liftId]||[]).forEach(a => { vol += (+a.weight||0)*(+a.reps||10)*3; });
     return vol;
   }
 
@@ -746,22 +709,23 @@ export default function App() {
       n[w][id][i].reps=val; return n;
     });
   }
-  function getAccList(w,id,section) { if(section) return (accList?.[w]?.[id]||[]).filter(a=>a.section===section); return accList?.[w]?.[id]||[]; }
-  function addAcc(w,id,name,section) {
+  function getAccList(w,id) { return accList?.[w]?.[id]||[]; }
+  function addAcc(w,id,name) {
     if(!name)return;
-    const hist = exerciseHistory[name];
-    const newAcc = {id: Date.now()+Math.random(), name, weight: hist||"", reps:"10", section: section||"support"};
-    setAccList(prev => {
-      const cur = prev?.[w]?.[id]||[];
-      if(cur.some(a=>a.name===name&&a.section===section)) return prev;
-      return {...prev, [w]:{...prev?.[w], [id]:[...cur, newAcc]}};
+    setAccList(prev=>{
+      const n=JSON.parse(JSON.stringify(prev));
+      if(!n[w])n[w]={};if(!n[w][id])n[w][id]=[];
+      n[w][id].push({id:Date.now(),name,weight:exerciseHistory[name]||"",reps:"10"}); return n;
     });
   }
-  function updateAcc(w,id,aid,field,val,section) {
-    setAccList(prev => ({...prev, [w]:{...prev?.[w], [id]:(prev?.[w]?.[id]||[]).map(a=>a.id===aid?{...a,[field]:val}:a)}}));
-    if(field==="weight"&&val) { const acc=(accList?.[w]?.[id]||[]).find(a=>a.id===aid); if(acc) setExerciseHistory(h=>({...h,[acc.name]:val})); }
+  function updateAcc(w,id,aid,field,val) {
+    setAccList(prev=>{
+      const n=JSON.parse(JSON.stringify(prev));
+      const item=n?.[w]?.[id]?.find(a=>a.id===aid);
+      if(item){item[field]=val;if(field==="weight"&&val)setExerciseHistory(h=>({...h,[item.name]:val}));}
+      return n;
+    });
   }
-
   function removeAcc(w,id,aid) {
     setAccList(prev=>{const n=JSON.parse(JSON.stringify(prev));if(n?.[w]?.[id])n[w][id]=n[w][id].filter(a=>a.id!==aid);return n;});
   }
@@ -3216,7 +3180,7 @@ export default function App() {
               });
 
               return groups.map((g,gi) => {
-                const isActive = !g.programId || !programId || g.programId === programId;
+                const isActive = g.programId === programId;
                 const isExpanded = expandedProgramId === g.programId;
                 const totalVol = g.sessions.reduce((sum,s)=>sum+(s.volume||0),0);
                 const displayName = g.programName || (isActive ? "Current Program" : "Program " + (groups.length - gi));
@@ -3267,7 +3231,7 @@ export default function App() {
                                 {s.calories>0&&<span style={{fontSize:10,color:"#f7b731"}}>🔥 {s.calories}cal</span>}
                               </div>
                             </div>
-                            {s.accessories?.length>0&&<div style={{color:"#444",fontSize:10,marginTop:3}}>+ {s.accessories.length} support/isolation/aux</div>}
+                            {s.accessories?.length>0&&<div style={{color:"#444",fontSize:10,marginTop:3}}>+ {s.accessories.length} accessories</div>}
                           </div>
                         ))}
                       </div>
