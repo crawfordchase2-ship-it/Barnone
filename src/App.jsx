@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.136-final - removed duplicate primeAudio, faster font loading
+// v5.135-stable - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -19,70 +19,87 @@ const DEFAULT_LIFTS = [
   { id:"lift_3", name:"Military Press", mainLiftOption:"Military Press", color:"#8338ec", startingMax:0, trainingDays:[], isLower:false },
   { id:"lift_4", name:"Squat",          mainLiftOption:"Squat",          color:"#06d6a0", startingMax:0, trainingDays:[], isLower:true  },
 ];
-const SUPPORT_LIFTS = {
-  "Bench":          ["Incline Bench","Decline Bench","Close Grip Bench","Floor Press","Paused Bench","Reverse Grip Bench","Dumbbell Press","Incline Dumbbell Press","Weighted Dips","Dips","Push Ups","Landmine Press"],
-  "Deadlift":       ["Romanian Deadlift","Stiff Leg Deadlift","Rack Pulls","Deficit Deadlift","Pause Deadlift","Sumo Deadlift","Trap Bar Deadlift","Good Mornings","Back Extensions","Hyperextensions","Cable Pull Through"],
-  "Military Press": ["Arnold Press","Dumbbell Shoulder Press","Single Arm Dumbbell Press","Push Press","Behind The Neck Press","Z Press","Seated Barbell Press","Bradford Press","Machine Shoulder Press"],
-  "Squat":          ["Front Squat","Box Squat","Pause Squat","Safety Bar Squat","Goblet Squat","Bulgarian Split Squat","Hack Squat","Zercher Squat","Leg Press","Split Squat","Sissy Squat","Step Ups"],
-  "Weighted Pull Up":  ["Chin Up","Neutral Grip Pull Up","Scapular Pull Up","Negative Pull Ups","Assisted Pull Up","Lat Pull-Down","Close Grip Pulldown","Wide Grip Pulldown","Neutral Grip Pulldown","Inverted Row","Ring Rows"],
-  "Hip Thrust":     ["Glute Bridge","Single Leg Hip Thrust","Cable Kickback","Donkey Kicks","Sumo Squat","Reverse Hyper","Bulgarian Split Squat"],
-  "Assisted Pull Up": ["Negative Pull Ups","Scapular Pull Up","Dead Hang","Inverted Row","Ring Rows","Banded Pull Up","Lat Pull-Down","Straight Arm Pulldown"],
-  "Custom":         ["Incline Bench","Romanian Deadlift","Dumbbell Press","Arnold Press","Front Squat","Lat Pull-Down"],
+const ACCESSORIES_BY_LIFT = {
+  "Bench": [
+    // Bench variations
+    "Incline Bench","Decline Bench","Close Grip Bench","Floor Press","Paused Bench","Reverse Grip Bench","Landmine Press",
+    // Chest
+    "Dumbbell Press","Incline Dumbbell Press","Dumbbell Flys","Incline Dumbbell Fly","High Cable Fly","Low Cable Fly","Cable Crossover","Pec Deck","Chest Fly Machine","Push Ups","Weighted Dips","Dips",
+    // Triceps
+    "Skull Crushers","Cable Tricep Extension","Overhead Tricep Extension","Tricep Pushdown","Tricep Rope Pushdown","Tricep Bar Pushdown","JM Press","Tate Press","Sven Press","Diamond Push Ups","Close Grip Push Up","Dumbbell Kickbacks",
+    // Upper back/balance
+    "Face Pulls","Chest Supported Row","Band Pull Apart","Rear Delt Fly","Rear Delt Cable Pull",
+  ],
+  "Deadlift": [
+    // Deadlift variations
+    "Rack Pulls","Romanian Deadlift","Stiff Leg Deadlift","Good Mornings","Deficit Deadlift","Pause Deadlift","Sumo Deadlift","Trap Bar Deadlift",
+    // Back
+    "Pullups","Weighted Pullups","Lat Pull-Down","T-Bar Row","Dumbbell Row","Barbell Row","Seated Cable Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row","Meadows Row","Kroc Row","Straight Arm Pulldown",
+    // Biceps
+    "Barbell Curls","Dumbbell Curls","Hammer Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls","Spider Curls","Concentration Curls","EZ Bar Curls","Reverse Curls","Wrist Curls",
+    // Core/grip/posterior chain
+    "Shrugs","Farmers Walk","Ab Roller","Ab Wheel","Planks","Hanging Leg Raises","Dead Hang","Reverse Hyper","Hyperextensions","Back Extensions","Cable Pull Through","Face Pulls",
+  ],
+  "Military Press": [
+    // Press variations
+    "Arnold Press","Dumbbell Shoulder Press","Single Arm Dumbbell Press","Push Press","Behind The Neck Press","Z Press","Seated Barbell Press","Bradford Press","Machine Shoulder Press","Landmine Press",
+    // Lateral/front delts
+    "Lateral Raises","Leaning Lateral Raise","Front Raises","Barbell Front Raise","Cable Lateral Raise","Cable Front Raise","Plate Raises","45° Y Raise",
+    // Rear delts
+    "Rear Delt Fly","Cable Rear Delt Fly","Reverse Fly","Rear Delt Swing","Rear Delt Cable Pull","Face Pulls","Cable Face Pulls","Band Pull Apart",
+    // Traps
+    "Upright Row","Cable Upright Row","Shrugs","High Pull","Snatch",
+    // Triceps
+    "Skull Crushers","Cable Tricep Extension","Overhead Tricep Extension","Tricep Pushdown","Dips",
+  ],
+  "Squat": [
+    // Squat variations
+    "Front Squat","Box Squat","Pause Squat","Safety Bar Squat","Goblet Squat","Bulgarian Split Squat","Hack Squat","Zercher Squat","Split Squat","Sumo Squat","Sissy Squat",
+    // Quad/hamstring
+    "Leg Press","Single Leg Press","Leg Extension","Lying Leg Curl","Seated Leg Curl","Single Leg Curl","Nordic Curl","Stiff Leg Deadlift","Romanian Deadlift","Step Ups","Lunges","Walking Lunges","Smith Machine Lunges","Box Jumps","Cable Pull Through","Kettlebell Swing",
+    // Glutes/hips
+    "Hip Thrust","Glute Bridge","Cable Kickbacks","Donkey Kicks","Hip Abductor","Hip Adductor","Leg Abductor","Leg Adductor","Reverse Hyper",
+    // Calves/core
+    "Calf Raises","Seated Calf Raises","Leg Press Calf Raise","Wall Sit","Planks","Ab Roller","Hanging Leg Raises",
+  ],
+  "Weighted Pull Up": [
+    // Pull up variations
+    "Chin Up","Neutral Grip Pull Up","Scapular Pull Up","Negative Pull Ups","Assisted Pull Up",
+    // Pulldowns/rows
+    "Lat Pull-Down","Close Grip Pulldown","Wide Grip Pulldown","Neutral Grip Pulldown","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","Cable Row","T-Bar Row","Machine Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row",
+    // Biceps
+    "Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls","EZ Bar Curls","Rope Hammer Curls",
+    // Supporting
+    "Face Pulls","Band Pull Apart","Rear Delt Fly","Dead Hang","Shrugs","Farmers Walk",
+  ],
+  "Hip Thrust": [
+    // Glute variations
+    "Glute Bridge","Single Leg Hip Thrust","Cable Kickback","Donkey Kicks","Sumo Squat","Reverse Hyper",
+    // Legs
+    "Bulgarian Split Squat","Calf Raises","Hip Abductor","Hip Adductor","Leg Press","Romanian Deadlift","Step Ups","Lunges","Nordic Curl","Cable Pull Through",
+    // Core
+    "Planks","Ab Roller","Hanging Leg Raises","Side Planks",
+  ],
+  "Assisted Pull Up": [
+    // Progression exercises
+    "Negative Pull Ups","Scapular Pull Up","Dead Hang","Inverted Row","Ring Rows","Banded Pull Up",
+    // Pulldowns/rows
+    "Lat Pull-Down","Close Grip Pulldown","Straight Arm Pulldown","Dumbbell Row","Barbell Row","Seated Cable Row","T-Bar Row",
+    // Biceps
+    "Hammer Curls","Barbell Curls","Dumbbell Curls","Preacher Curls","Cable Curls","EZ Bar Curls",
+    // Supporting
+    "Face Pulls","Band Pull Apart",
+  ],
+  "Custom": [
+    "Incline Bench","Pullups","Lat Pull-Down","Dumbbell Row","Dumbbell Curls","Arnold Press",
+    "Front Raises","Lateral Raises","Face Pulls","Romanian Deadlift","Leg Extension","Calf Raises",
+    "Hip Thrust","Leg Press","Ab Roller","Farmers Walk","Shrugs","Plank","Hanging Leg Raises",
+  ],
 };
+const HYPE = ["Time to move some weight!","Let's get after it!","No excuses. Let's go!","Your future self will thank you.","The bar is waiting.","Stronger than last week. Prove it."];
+const DAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-// Isolation lifts grouped by body part
-const ISOLATION_LIFTS = {
-  "Chest":     ["Dumbbell Flys","Incline Dumbbell Fly","High Cable Fly","Low Cable Fly","Cable Crossover","Pec Deck","Chest Fly Machine"],
-  "Back":      ["Dumbbell Row","Barbell Row","Seated Cable Row","T-Bar Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row","Meadows Row","Straight Arm Pulldown","Cable Row","Machine Row"],
-  "Biceps":    ["Barbell Curls","Dumbbell Curls","Hammer Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls","Spider Curls","Concentration Curls","EZ Bar Curls","Reverse Curls","Rope Hammer Curls"],
-  "Triceps":   ["Skull Crushers","Cable Tricep Extension","Overhead Tricep Extension","Tricep Pushdown","Tricep Rope Pushdown","Tricep Bar Pushdown","JM Press","Tate Press","Sven Press","Diamond Push Ups","Close Grip Push Up","Dumbbell Kickbacks"],
-  "Shoulders": ["Lateral Raises","Leaning Lateral Raise","Front Raises","Barbell Front Raise","Cable Lateral Raise","Cable Front Raise","Plate Raises","45° Y Raise","Rear Delt Fly","Cable Rear Delt Fly","Reverse Fly","Rear Delt Cable Pull","Face Pulls","Band Pull Apart","Upright Row","Cable Upright Row"],
-  "Legs":      ["Leg Extension","Lying Leg Curl","Seated Leg Curl","Single Leg Curl","Nordic Curl","Calf Raises","Seated Calf Raises","Leg Press Calf Raise","Hip Abductor","Hip Adductor","Leg Abductor","Leg Adductor","Walking Lunges","Lunges","Smith Machine Lunges","Box Jumps","Kettlebell Swing"],
-  "Glutes":    ["Hip Thrust","Glute Bridge","Cable Kickbacks","Donkey Kicks","Reverse Hyper","Hip Abductor","Hip Adductor"],
-};
-
-// Aux lifts - core, conditioning, general
-const AUX_LIFTS = {
-  "Core":         ["Planks","Side Planks","Ab Roller","Ab Wheel","Hanging Leg Raises","Hanging Knee Raises","Cable Crunch","Decline Sit Ups","Russian Twists","Hollow Body Hold","L-Sit","Dragon Flag","Toes To Bar","Windshield Wipers","Pallof Press"],
-  "Conditioning": ["Farmers Walk","Sled Push","Sled Pull","Battle Ropes","Box Jumps","Burpees","Jumping Jacks","Jump Rope","Rowing Machine","Assault Bike","Tire Flip","Sandbag Carry","Prowler Push","KB Swings","Bear Crawl"],
-  "Mobility":     ["Dead Hang","Band Pull Apart","Face Pulls","Shoulder Dislocates","Hip Flexor Stretch","Pigeon Pose","World's Greatest Stretch","Cat Cow","Thoracic Rotation","Ankle Circles","Foam Rolling"],
-  "Olympic":      ["Power Clean","Hang Clean","Power Snatch","Hang Snatch","Clean & Jerk","Push Jerk","Split Jerk","High Pull","Muscle Snatch","Romanian Deadlift"],
-};
-
-
-let _audioCtx = null;
-function getAudioCtx() {
-  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return _audioCtx;
-}
-function playBeeps(ctx) {
-  [0, 0.3, 0.6].forEach(delay => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 880; osc.type = "sine";
-    gain.gain.setValueAtTime(0.6, ctx.currentTime + delay);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
-    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.25);
-  });
-}
-function playTimerSound() {
-  try { const ctx = getAudioCtx(); if(ctx.state==="suspended") ctx.resume().then(()=>playBeeps(ctx)).catch(()=>{}); else playBeeps(ctx); } catch(e) {}
-}
-function primeAudio() {
-  try {
-    const ctx = getAudioCtx();
-    if(ctx.state==="suspended") ctx.resume();
-    const buf = ctx.createBuffer(1,1,22050);
-    const src = ctx.createBufferSource();
-    src.buffer = buf; src.connect(ctx.destination); src.start(0);
-  } catch(e) {}
-}
-function fmtDuration(secs) {
-  if(!secs||secs<=0) return "0:00";
-  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
-  return h>0?h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"):m+":"+String(s).padStart(2,"0");
-}
+// C25K Plan - keyed by number of days per week (2 or 3)
 const C25K_PLAN = {
   2: [
     {week:1,  goal:"START MOVING",          days:[
@@ -148,111 +165,55 @@ C25K_PLAN[3] = C25K_PLAN[2].map(week => ({
 
 let _audioCtx = null;
 function getAudioCtx() {
-  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
   return _audioCtx;
+}
+function playBeeps(ctx) {
+  [0, 0.3, 0.6].forEach(delay => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.6, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + 0.25);
+  });
 }
 function playTimerSound() {
   try {
     const ctx = getAudioCtx();
-    // Resume context if suspended (iOS requires this)
-    const play = () => {
-      [0, 0.25, 0.5].forEach(delay => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 880;
-        osc.type = "sine";
-        gain.gain.setValueAtTime(0.5, ctx.currentTime + delay);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + 0.2);
-      });
-    };
     if (ctx.state === "suspended") {
-      ctx.resume().then(play);
+      ctx.resume().then(() => playBeeps(ctx)).catch(()=>{});
     } else {
-      play();
+      playBeeps(ctx);
     }
   } catch(e) {}
 }
-// Prime audio context on first user tap (iOS requirement)
+// Prime AND keep audio alive - call on every user interaction
 function primeAudio() {
-  try { getAudioCtx(); } catch(e) {}
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === "suspended") ctx.resume();
+    // Play a silent buffer to keep context alive on iOS
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch(e) {}
 }
-const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
-
-function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
-
-// For assisted pullups, working weights are assistance amounts that decrease
-// Starting max = assistance weight (e.g. 50 lbs)
-// Each set uses less assistance, encouraging more bodyweight strength
-function calcAssistedWeights(assistanceMax) {
-  // Sets go from most assistance to least — hardest set last
-  // Always round to nearest 5, minimum 5 lbs
-  const r = v => Math.max(5, Math.round(v / 5) * 5);
-  return [
-    r(assistanceMax * 0.75),
-    r(assistanceMax * 0.60),
-    r(assistanceMax * 0.45),
-    r(assistanceMax * 0.30),
-  ];
-}
-
-// Reverse progression — assistance goes DOWN over time
-function calcNextAssistedMax(currentAssist, reps, isLower) {
-  if (+reps <= 10) return currentAssist; // 10 reps = stay same
-  const drop = +reps >= 15 ? 10 : 5; // >15 reps = drop 10 lbs, else 5
-  return Math.max(0, currentAssist - drop);
-}
-
-function calcCurrentMax(s) { return Math.round(s * 0.9 / 5) * 5; }
-function calcTrueMax(s) { return s; } // The actual max the user entered
-function calcWorkingWeights(m) {
-  return [Math.round(m*.50/5)*5, Math.round(m*.5833/5)*5, Math.round(m*.6667/5)*5, Math.round(m*.75/5)*5];
-}
-function calcEstMax(w, r) {
-  if (+r <= 10) return null;
-  return Math.round((w*1.1*r*0.0333 + w*1.1)/5)*5;
-}
-function calcNextMax(cur, em, isLower) {
-  if (!em) return cur;
-  const d = em - cur;
-  return isLower ? (d>=20?cur+15:d>=10?cur+10:cur) : (d>=20?cur+10:d>=10?cur+5:cur);
-}
-function calcBMI(wlbs, hin) {
-  if (!wlbs || !hin) return null;
-  return ((wlbs / (hin * hin)) * 703).toFixed(1);
-}
-function bmiCat(b) { b=+b; return b<18.5?"Underweight":b<25?"Normal":b<30?"Overweight":"Obese"; }
-function bmiCol(b) { b=+b; return b<18.5?"#3a86ff":b<25?"#06d6a0":b<30?"#f7b731":"#e85d04"; }
-function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}) : ""; }
-function todayISO() { return new Date().toISOString().split("T")[0]; }
-
-// Supabase data functions
-async function loadUD(userId) {
-  const { data } = await supabase.from("user_data").select("*").eq("user_id", userId).single();
-  return data;
-}
-async function saveProgramToHistory(userId, archive) {
-  console.log("Saving program to history for user:", userId);
-  const { error } = await supabase.from("program_history").insert({
-    user_id: userId,
-    start_date: archive.startDate || "",
-    end_date: archive.endDate || "",
-    program_id: archive.programId || "",
-    lifts: archive.lifts || [],
-    final_maxes: archive.finalMaxes || {},
-    sessions_completed: archive.sessionsCompleted || 0,
-    total_possible: archive.totalPossible || 0,
-    best_streak: archive.bestStreak || 0,
-    total_volume: archive.totalVolume || 0,
-    logs: archive.logs || {},
-    lift_weeks: archive.liftWeeks || {},
-    completed_days: archive.completedDays || {},
-    acc_list: archive.accList || {},
-  });
-  if (error) console.error("Error saving program history:", error);
+function fmtDuration(secs) {
+  if (!secs || secs <= 0) return "0:00";
+  const h = Math.floor(secs/3600);
+  const m = Math.floor((secs%3600)/60);
+  const s = secs%60;
+  if (h > 0) return h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+  return m+":"+String(s).padStart(2,"0");
 }
 
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
@@ -430,7 +391,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.136-final";
+  const APP_VERSION = "v5.135-stable";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -660,13 +621,7 @@ export default function App() {
       setAccList(d.acc_list || {});
       setExerciseHistory(d.exercise_history || {});
       setWeightAdjust(d.weight_adjust || {});
-      const loadedLiftWeeks = d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1]));
-      setLiftWeeks(loadedLiftWeeks);
-      if (d.active_id && loadedLifts.find(l=>l.id===d.active_id)) {
-        setActiveId(d.active_id);
-      } else if (loadedLifts.length > 0) {
-        setActiveId(loadedLifts[0].id);
-      }
+      setLiftWeeks(d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1])));
       setCustomAccessories(d.custom_accessories || {});
       setSessionLedger(d.session_ledger || []);
       const loadedStats = d.body_stats || { heightIn:"", entries:[] };
@@ -2016,14 +1971,9 @@ export default function App() {
                     // Get reactions for this post
                     const postKey = post.authorId + "_" + post.date + "_" + (post.liftName||"run");
                     // Reactions others sent on this post (for posts I own = received, for friend posts = from reactions table)
-                    // Deduplicate by from_id - one reaction per person per post
-                    const dedup = (arr) => {
-                      const seen = new Set();
-                      return arr.filter(r => { if(seen.has(r.from_id)) return false; seen.add(r.from_id); return true; });
-                    };
                     const postReactions = post.isMe
-                      ? dedup(myReactions.filter(r => r.session_date === post.date && r.to_id === uid))
-                      : dedup(myReactions.filter(r => r.session_date === post.date && r.to_id === post.authorId && r.from_id !== uid));
+                      ? myReactions.filter(r => r.session_date === post.date && r.to_id === uid)
+                      : myReactions.filter(r => r.session_date === post.date && r.to_id === post.authorId && r.from_id !== uid);
                     // My reaction on this post (what I sent)
                     const myReaction = sentReactions.find(r => r.session_date === post.date && r.to_id === post.authorId);
                     
@@ -2123,13 +2073,15 @@ export default function App() {
                             <div style={{fontSize:10,color:"#555",marginTop:2}}>
                               {(()=>{
                                 const names = [];
-                                const seenNames = new Set();
                                 postReactions.forEach(r => {
-                                  if(r.from_id === uid) return; // skip own reactions
+                                  if(r.from_id === uid) { names.push("You"); return; }
+                                  // Look up name from friends list first
                                   const friend = friends.find(f => f.id === r.from_id);
-                                  const name = friend?.name || r.from_name || r.from_username || "Someone";
-                                  if(!seenNames.has(r.from_id)) { seenNames.add(r.from_id); names.push(name); }
+                                  const name = friend?.name || r.from_name || r.from_username;
+                                  if(name && name !== "Someone") names.push(name);
+                                  else names.push("Someone");
                                 });
+                                if(myReaction && !post.isMe) { /* my reaction is in sentReactions not postReactions */ }
                                 if(names.length===0) return null;
                                 if(names.length<=2) return names.join(" & ") + " reacted";
                                 return names.slice(0,2).join(", ") + " +" + (names.length-2) + " more reacted";
@@ -2986,176 +2938,74 @@ export default function App() {
                 ))}
               </div>
 
-              {/* ── SUPPORT LIFTS ── */}
-              {(()=>{
-                const sectionKey = "support";
-                const isOpen = accSectionOpen[sectionKey];
-                const sectionId = activeId + "_support";
-                const supportList = SUPPORT_LIFTS[lift?.mainLiftOption] || SUPPORT_LIFTS["Custom"];
-                return (
+              <div style={{marginBottom:20}}>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:19,letterSpacing:2,color:"#888",marginBottom:10}}>ACCESSORIES</div>
+                {!isReadOnly && (
                   <div style={{marginBottom:12}}>
-                    <button onClick={()=>setAccSectionOpen(p=>({...p,[sectionKey]:!p[sectionKey]}))}
-                      style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:isOpen?8:0}}>
-                      <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:2,color:"#888"}}>SUPPORT LIFTS</span>
-                      <span style={{color:"#555",fontSize:18,transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
-                    </button>
-                    {isOpen && (
-                      <div>
-                        {!isReadOnly && (
-                          <div style={{display:"flex",gap:8,marginBottom:8}}>
-                            <select style={{flex:1}} value={selectedAcc[sectionId]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[sectionId]:e.target.value}))}>
-                              <option value="">— Select support lift —</option>
-                              {supportList.map(a=><option key={a} value={a}>{a}</option>)}
-                              <option value="__custom__">✏️ Custom...</option>
-                            </select>
-                            {selectedAcc[sectionId]&&selectedAcc[sectionId]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[sectionId],"support");setSelectedAcc(prev=>({...prev,[sectionId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
-                          </div>
-                        )}
-                        {selectedAcc[sectionId]==="__custom__" && (
-                          <div style={{display:"flex",gap:8,marginBottom:8}}>
-                            <input type="text" value={customAccInput[sectionId]||""} placeholder="Exercise name..." autoFocus onChange={e=>setCustomAccInput(prev=>({...prev,[sectionId]:e.target.value}))} style={{flex:1,borderColor:lift.color,color:lift.color}} />
-                            <button onClick={()=>{const n=customAccInput[sectionId]?.trim();if(!n)return;addAcc(week,activeId,n,"support");setCustomAccInput(prev=>({...prev,[sectionId]:""}));setSelectedAcc(prev=>({...prev,[sectionId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>
-                          </div>
-                        )}
-                        {getAccList(week,activeId,"support").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No support lifts added</div>}
-                        {getAccList(week,activeId,"support").map(acc=>(
-                          <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                              <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{color:"#555",fontSize:11}}>3 × 10</span>
-                                {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id,"support")} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4}}>DEL</button>}
-                              </div>
-                            </div>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){updateAcc(week,activeId,acc.id,"weight",e.target.value,"support");if(e.target.value)setExerciseHistory(h=>({...h,[acc.name]:e.target.value}));}}} />
-                              <span style={{color:"#555",fontSize:11}}>lbs</span>
-                              <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value,"support")} />
-                              <span style={{color:"#555",fontSize:11}}>reps</span>
-                            </div>
-                          </div>
+                    <div style={{display:"flex",gap:8,marginBottom:selectedAcc[activeId]==="__custom__"?8:0}}>
+                      <select style={{flex:1}} value={selectedAcc[activeId]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId]:e.target.value}))}>
+                        <option value="">— Select exercise —</option>
+                        {/* Main lift accessories first */}
+                        <optgroup label={"── " + (lift?.mainLiftOption||"Main") + " ──"}>
+                          {(ACCESSORIES_BY_LIFT[lift?.mainLiftOption]||ACCESSORIES_BY_LIFT["Custom"]).map(a=><option key={a} value={a}>{a}</option>)}
+                          {(customAccessories[lift?.mainLiftOption]||[]).map(a=><option key={a} value={a}>{a}</option>)}
+                        </optgroup>
+                        {/* All other lift accessories */}
+                        {Object.entries(ACCESSORIES_BY_LIFT).filter(([k])=>k!==lift?.mainLiftOption&&k!=="Custom").map(([category, exercises])=>(
+                          <optgroup key={category} label={"── " + category + " ──"}>
+                            {exercises.filter(a=>!(ACCESSORIES_BY_LIFT[lift?.mainLiftOption]||[]).includes(a)).map(a=><option key={a} value={a}>{a}</option>)}
+                          </optgroup>
                         ))}
+                        <option value="__custom__">✏️ Custom...</option>
+                      </select>
+                      {selectedAcc[activeId]&&selectedAcc[activeId]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId]);setSelectedAcc(prev=>({...prev,[activeId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
+                    </div>
+                    {selectedAcc[activeId]==="__custom__" && (
+                      <div style={{display:"flex",gap:8}}>
+                        <input type="text" value={customAccInput[activeId]||""} placeholder="Exercise name..." autoFocus onChange={e=>setCustomAccInput(prev=>({...prev,[activeId]:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){const n=customAccInput[activeId]?.trim();if(!n)return;addAcc(week,activeId,n);const k=lift?.mainLiftOption||"Custom";setCustomAccessories(prev=>({...prev,[k]:[...new Set([...(prev[k]||[]),n])]}));setCustomAccInput(prev=>({...prev,[activeId]:""}));setSelectedAcc(prev=>({...prev,[activeId]:""}));}}} style={{flex:1,borderColor:lift.color,color:lift.color}} />
+                        <button onClick={()=>{const n=customAccInput[activeId]?.trim();if(!n)return;addAcc(week,activeId,n);const k=lift?.mainLiftOption||"Custom";setCustomAccessories(prev=>({...prev,[k]:[...new Set([...(prev[k]||[]),n])]}));setCustomAccInput(prev=>({...prev,[activeId]:""}));setSelectedAcc(prev=>({...prev,[activeId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>
                       </div>
                     )}
                   </div>
-                );
-              })()}
-
-              {/* ── ISOLATION ── */}
-              {(()=>{
-                const sectionKey = "isolation";
-                const isOpen = accSectionOpen[sectionKey];
-                const sectionId = activeId + "_isolation";
-                return (
-                  <div style={{marginBottom:12}}>
-                    <button onClick={()=>setAccSectionOpen(p=>({...p,[sectionKey]:!p[sectionKey]}))}
-                      style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:isOpen?8:0}}>
-                      <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:2,color:"#888"}}>ISOLATION</span>
-                      <span style={{color:"#555",fontSize:18,transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
-                    </button>
-                    {isOpen && (
-                      <div>
-                        {!isReadOnly && (
-                          <div style={{display:"flex",gap:8,marginBottom:8}}>
-                            <select style={{flex:1}} value={selectedAcc[sectionId]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[sectionId]:e.target.value}))}>
-                              <option value="">— Select isolation lift —</option>
-                              {Object.entries(ISOLATION_LIFTS).map(([group, exercises])=>(
-                                <optgroup key={group} label={"── "+group+" ──"}>
-                                  {exercises.map(a=><option key={a} value={a}>{a}</option>)}
-                                </optgroup>
-                              ))}
-                              <option value="__custom__">✏️ Custom...</option>
-                            </select>
-                            {selectedAcc[sectionId]&&selectedAcc[sectionId]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[sectionId],"isolation");setSelectedAcc(prev=>({...prev,[sectionId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
-                          </div>
-                        )}
-                        {selectedAcc[sectionId]==="__custom__" && (
-                          <div style={{display:"flex",gap:8,marginBottom:8}}>
-                            <input type="text" value={customAccInput[sectionId]||""} placeholder="Exercise name..." autoFocus onChange={e=>setCustomAccInput(prev=>({...prev,[sectionId]:e.target.value}))} style={{flex:1,borderColor:lift.color,color:lift.color}} />
-                            <button onClick={()=>{const n=customAccInput[sectionId]?.trim();if(!n)return;addAcc(week,activeId,n,"isolation");setCustomAccInput(prev=>({...prev,[sectionId]:""}));setSelectedAcc(prev=>({...prev,[sectionId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>
-                          </div>
-                        )}
-                        {getAccList(week,activeId,"isolation").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No isolation lifts added</div>}
-                        {getAccList(week,activeId,"isolation").map(acc=>(
-                          <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                              <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{color:"#555",fontSize:11}}>3 × 10</span>
-                                {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id,"isolation")} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4}}>DEL</button>}
-                              </div>
-                            </div>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){updateAcc(week,activeId,acc.id,"weight",e.target.value,"isolation");if(e.target.value)setExerciseHistory(h=>({...h,[acc.name]:e.target.value}));}}} />
-                              <span style={{color:"#555",fontSize:11}}>lbs</span>
-                              <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value,"isolation")} />
-                              <span style={{color:"#555",fontSize:11}}>reps</span>
-                            </div>
-                          </div>
-                        ))}
+                )}
+                {getAccList(week,activeId).length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"12px 0"}}>No accessories added</div>}
+                {getAccList(week,activeId).map(acc=>{
+                  const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
+                  return (
+                    <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                        <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{color:"#555",fontSize:11,fontFamily:"'Roboto Condensed',sans-serif"}}>3 × 10</span>
+                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>DEL</button>}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* ── AUX ── */}
-              {(()=>{
-                const sectionKey = "aux";
-                const isOpen = accSectionOpen[sectionKey];
-                const sectionId = activeId + "_aux";
-                return (
-                  <div style={{marginBottom:20}}>
-                    <button onClick={()=>setAccSectionOpen(p=>({...p,[sectionKey]:!p[sectionKey]}))}
-                      style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:isOpen?8:0}}>
-                      <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:2,color:"#888"}}>AUX</span>
-                      <span style={{color:"#555",fontSize:18,transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
-                    </button>
-                    {isOpen && (
-                      <div>
-                        {!isReadOnly && (
-                          <div style={{display:"flex",gap:8,marginBottom:8}}>
-                            <select style={{flex:1}} value={selectedAcc[sectionId]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[sectionId]:e.target.value}))}>
-                              <option value="">— Select aux lift —</option>
-                              {Object.entries(AUX_LIFTS).map(([group, exercises])=>(
-                                <optgroup key={group} label={"── "+group+" ──"}>
-                                  {exercises.map(a=><option key={a} value={a}>{a}</option>)}
-                                </optgroup>
-                              ))}
-                              <option value="__custom__">✏️ Custom...</option>
-                            </select>
-                            {selectedAcc[sectionId]&&selectedAcc[sectionId]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[sectionId],"aux");setSelectedAcc(prev=>({...prev,[sectionId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
-                          </div>
-                        )}
-                        {selectedAcc[sectionId]==="__custom__" && (
-                          <div style={{display:"flex",gap:8,marginBottom:8}}>
-                            <input type="text" value={customAccInput[sectionId]||""} placeholder="Exercise name..." autoFocus onChange={e=>setCustomAccInput(prev=>({...prev,[sectionId]:e.target.value}))} style={{flex:1,borderColor:lift.color,color:lift.color}} />
-                            <button onClick={()=>{const n=customAccInput[sectionId]?.trim();if(!n)return;addAcc(week,activeId,n,"aux");setCustomAccInput(prev=>({...prev,[sectionId]:""}));setSelectedAcc(prev=>({...prev,[sectionId]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>
-                          </div>
-                        )}
-                        {getAccList(week,activeId,"aux").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No aux lifts added</div>}
-                        {getAccList(week,activeId,"aux").map(acc=>(
-                          <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                              <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{color:"#555",fontSize:11}}>3 × 10</span>
-                                {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id,"aux")} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4}}>DEL</button>}
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){updateAcc(week,activeId,acc.id,"weight",e.target.value);if(e.target.value)setExerciseHistory(h=>({...h,[acc.name]:e.target.value}));}}} />
+                        <span style={{color:"#555",fontSize:11}}>lbs</span>
+                        <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value)} />
+                        <span style={{color:"#555",fontSize:11}}>reps</span>
+                        {!isReadOnly&&(
+                          <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                            <div style={{display:"flex",gap:4}}>
+                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
+                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
+                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+                            </div>
+                            {adj && acc.weight && (
+                              <div style={{fontSize:10,color:"#555"}}>
+                                next: <span style={{color:adj==="up"?"#06d6a0":adj==="down"?"#e85d04":"#3a86ff"}}>
+                                  {adj==="up"?+acc.weight+5:adj==="down"?Math.max(0,+acc.weight-5):+acc.weight} lbs
+                                </span>
                               </div>
-                            </div>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){updateAcc(week,activeId,acc.id,"weight",e.target.value,"aux");if(e.target.value)setExerciseHistory(h=>({...h,[acc.name]:e.target.value}));}}} />
-                              <span style={{color:"#555",fontSize:11}}>lbs</span>
-                              <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value,"aux")} />
-                              <span style={{color:"#555",fontSize:11}}>reps</span>
-                            </div>
+                            )}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })()}
+                    </div>
+                  );
+                })}
+              </div>
 
               {!isReadOnly && (
                 <div style={{marginBottom:14}}>
