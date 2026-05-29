@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.144 - removed duplicate primeAudio, faster font loading
+// v5.145 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -258,7 +258,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.144";
+  const APP_VERSION = "v5.145";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -491,7 +491,6 @@ export default function App() {
       const loadedLiftWeeks = d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1]));
       setLiftWeeks(loadedLiftWeeks);
       // Make sure activeId is valid
-      const loadedLifts = d.lifts || DEFAULT_LIFTS;
       if (d.active_id && loadedLifts.find(l=>l.id===d.active_id)) {
         setActiveId(d.active_id);
       } else if (loadedLifts.length > 0) {
