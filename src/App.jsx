@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.140 - removed duplicate primeAudio, faster font loading
+// v5.141 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -258,7 +258,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.140";
+  const APP_VERSION = "v5.141";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -977,11 +977,11 @@ export default function App() {
   const latestWeight = bodyStats.entries[0]?.weightLbs ? +bodyStats.entries[0].weightLbs : null;
   const bmi = calcBMI(latestWeight, +bodyStats.heightIn);
   const totalSessions = sessionLedger.filter(s => {
-    return programId && s.programId === programId;
+    return !s.programId || !programId || s.programId === programId;
   }).length;
   const allTimeSessions = sessionLedger.length;
   const programVolume = sessionLedger
-    .filter(s => programId && s.programId === programId)
+    .filter(s => !s.programId || !programId || s.programId === programId)
     .reduce((sum, s) => sum + (s.volume || 0), 0);
   const programVolumeDisplay = programVolume >= 1000000 
     ? (programVolume/1000000).toFixed(1) + "M" 
@@ -3206,7 +3206,7 @@ export default function App() {
               });
 
               return groups.map((g,gi) => {
-                const isActive = g.programId === programId;
+                const isActive = !g.programId || !programId || g.programId === programId;
                 const isExpanded = expandedProgramId === g.programId;
                 const totalVol = g.sessions.reduce((sum,s)=>sum+(s.volume||0),0);
                 const displayName = g.programName || (isActive ? "Current Program" : "Program " + (groups.length - gi));
