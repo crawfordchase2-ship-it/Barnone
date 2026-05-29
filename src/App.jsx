@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.141 - removed duplicate primeAudio, faster font loading
+// v5.142 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -258,7 +258,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.141";
+  const APP_VERSION = "v5.142";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -354,8 +354,6 @@ export default function App() {
   const uid = session?.user?.id;
   const readyToStart = lifts.every(l=>l.startingMax>0) && 
     startDate && 
-    (heightFtEntry || bodyStats.heightIn) && 
-    (weightEntry || bodyStats.entries.length > 0) &&
     lifts.every(l=>(l.trainingDays||[]).length>0);
   const hasSetup = readyToStart && programStarted;
 
@@ -527,7 +525,11 @@ export default function App() {
     setDataLoaded(true);
     // Open to setup if program not started
     // If workout in progress, go straight back to workout
-    if (!d.program_started) {
+    // If program was started before, always go to dashboard/workout
+    // Only go to setup if truly never started
+    const wasStarted = d.program_started || 
+      (d.lifts && d.lifts.some(l => l.startingMax > 0) && d.start_date);
+    if (!wasStarted) {
       setView("setup");
     } else if (d.workout_in_progress && d.in_progress_lift_id) {
       setView("workout");
