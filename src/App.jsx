@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.142 - removed duplicate primeAudio, faster font loading
+// v5.144 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -258,7 +258,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.142";
+  const APP_VERSION = "v5.144";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -352,7 +352,8 @@ export default function App() {
   }, []);
 
   const uid = session?.user?.id;
-  const readyToStart = lifts.every(l=>l.startingMax>0) && 
+  const readyToStart = lifts.length > 0 &&
+    lifts.every(l=>l.startingMax>0) && 
     startDate && 
     lifts.every(l=>(l.trainingDays||[]).length>0);
   const hasSetup = readyToStart && programStarted;
@@ -487,7 +488,15 @@ export default function App() {
       setAccList(d.acc_list || {});
       setExerciseHistory(d.exercise_history || {});
       setWeightAdjust(d.weight_adjust || {});
-      setLiftWeeks(d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1])));
+      const loadedLiftWeeks = d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1]));
+      setLiftWeeks(loadedLiftWeeks);
+      // Make sure activeId is valid
+      const loadedLifts = d.lifts || DEFAULT_LIFTS;
+      if (d.active_id && loadedLifts.find(l=>l.id===d.active_id)) {
+        setActiveId(d.active_id);
+      } else if (loadedLifts.length > 0) {
+        setActiveId(loadedLifts[0].id);
+      }
       setCustomAccessories(d.custom_accessories || {});
       setSessionLedger(d.session_ledger || []);
       const loadedStats = d.body_stats || { heightIn:"", entries:[] };
@@ -2682,7 +2691,7 @@ export default function App() {
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
           </div>
         )}
-        {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && (()=>{
+        {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && lifts.length > 0 && (()=>{
           const cd = completedDays?.[liftWeeks[activeId]-1]?.[activeId];
           const completedRecently = cd?.done && cd?.date && (new Date(todayISO())-new Date(cd.date))/86400000 < 7;
           return completedRecently;
@@ -2698,7 +2707,7 @@ export default function App() {
             </div>
           </div>
         )}
-        {view==="workout" && !workoutInProgress && !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (()=>{
+        {view==="workout" && !workoutInProgress && lifts.length > 0 && !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (()=>{
           const todayAbbr = DAY_ABBR[new Date().getDay()];
           const scheduledLifts = lifts.filter(l=>(l.trainingDays||[]).includes(todayAbbr));
           const isScheduledToday = scheduledLifts.length > 0;
