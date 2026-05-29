@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.123 - removed duplicate primeAudio, faster font loading
+// v5.124 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -390,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.123";
+  const APP_VERSION = "v5.124";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -2812,7 +2812,13 @@ export default function App() {
               )}
 
               {reviewingCompletedWorkout && !editingPastWeek && (
-                <button className="bigbtn" onClick={()=>{setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0"}}>← DONE REVIEWING</button>
+                <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:8}}>
+                  <div style={{display:"flex",gap:8}}>
+                    <button className="bigbtn" onClick={()=>{setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{flex:1,background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",marginBottom:0}}>← BACK</button>
+                    <button className="bigbtn" onClick={()=>{setEditingPastWeek(true);}} style={{flex:1,background:"#1a1a2e",border:"1px solid #f7b731",color:"#f7b731",marginBottom:0}}>EDIT</button>
+                  </div>
+                  <button className="bigbtn" onClick={()=>{setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);setView("dashboard");}} style={{background:"none",border:"1px solid #333",color:"#555"}}>HOME</button>
+                </div>
               )}
               {reviewingCompletedWorkout && editingPastWeek && (
                 <button className="bigbtn" onClick={()=>{setEditingPastWeek(false);setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{background:"#1a1a2e",border:"1px solid #555",color:"#555"}}>CANCEL EDIT</button>
