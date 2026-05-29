@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.125 - removed duplicate primeAudio, faster font loading
+// v5.126 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -390,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.125";
+  const APP_VERSION = "v5.126";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1619,7 +1619,10 @@ export default function App() {
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
         </div>
         <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",textAlign:"center"}}>
-          <div>{(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}</div>
+          <div style={{display:"flex",alignItems:"center",gap:4"}}>
+            <span>{(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}</span>
+            <span style={{fontSize:9}}>⚙️</span>
+          </div>
           <div style={{fontSize:9,color:"#333",letterSpacing:1}}>{APP_VERSION}</div>
         </button>
       </div>
@@ -1887,7 +1890,7 @@ export default function App() {
           </div>
           <div style={{display:"flex",borderBottom:"1px solid #1a1a1a"}}>
             {[{id:"feed",label:"FEED"},{id:"friends",label:"FRIENDS"},{id:"requests",label:friendRequests.length > 0 ? "REQUESTS (" + friendRequests.length + ")" : "REQUESTS"},{id:"profile",label:"MY PROFILE"}].map(t => (
-              <button key={t.id} onClick={()=>{setSocialTab(t.id);if(t.id==="profile"){localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewReactionCount(0);}}} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
+              <button key={t.id} onClick={()=>{setSocialTab(t.id);if(t.id==="profile"||t.id==="feed"){localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewReactionCount(0);setNewFriendSessions(0);localStorage.setItem("barnone_social_check_"+uid, new Date().toISOString());}}} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
                 {t.label}
               </button>
             ))}
@@ -1974,12 +1977,23 @@ export default function App() {
                             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:post.liftColor||"#f0f0f0",marginBottom:4}}>
                               {post.liftName} · Week {post.week}
                             </div>
-                            <div style={{display:"flex",gap:16,fontSize:11,color:"#555",marginBottom:8}}>
+                            <div style={{display:"flex",gap:12,fontSize:11,color:"#555",marginBottom:8,flexWrap:"wrap"}}>
                               {post.volume > 0 && <span>Vol: <span style={{color:"#aaa"}}>{post.volume?.toLocaleString()} lbs</span></span>}
-                              {post.estMax > 0 && <span>Est max: <span style={{color:"#06d6a0"}}>{post.estMax} lbs</span></span>}
+                              {post.estMax > 0 && <span>Est: <span style={{color:"#06d6a0"}}>{post.estMax} lbs</span></span>}
                               {post.durationSecs > 0 && <span>⏱ {fmtDuration(post.durationSecs)}</span>}
                               {post.calories > 0 && <span>🔥 {post.calories} cal</span>}
                             </div>
+                            {/* PR badge if est max > starting max */}
+                            {post.estMax > 0 && post.sets?.[3]?.weight > 0 && (()=>{
+                              const lift = (post.isMe ? lifts : (friends.find(f=>f.id===post.authorId)?.lifts||[])).find(l=>l.id===post.liftId);
+                              const startMax = lift?.startingMax || 0;
+                              if(post.estMax > startMax && startMax > 0) return (
+                                <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#0a2a1a",border:"1px solid #06d6a0",borderRadius:6,padding:"2px 8px",fontSize:10,color:"#06d6a0",marginBottom:6}}>
+                                  📈 +{post.estMax - startMax} lbs from start
+                                </div>
+                              );
+                              return null;
+                            })()}
                           </div>
                         )}
 
@@ -1997,28 +2011,40 @@ export default function App() {
                         )}
 
                         {/* Reactions */}
-                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <div style={{marginTop:8}}>
+                          <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
                             {["💪","🔥","⚡","🏆","👏","😤","🚀","💯"].map(emoji => {
-                              const reactionCount = postReactions.filter(r=>r.emoji===emoji).length + (myReaction?.emoji===emoji?1:0);
+                              const reactorsForEmoji = postReactions.filter(r=>r.emoji===emoji);
+                              const reactionCount = reactorsForEmoji.length + (myReaction?.emoji===emoji?1:0);
                               const isSelected = myReaction?.emoji === emoji;
+                              if(!post.isMe && reactionCount===0) return (
+                                <button key={emoji} onClick={()=>sendReaction(post.authorId, post.date, post.liftName||"run", emoji)}
+                                  style={{background:"transparent",border:"1px solid #1a1a1a",borderRadius:20,padding:"3px 8px",fontSize:15,cursor:"pointer",transition:"all 0.15s"}}>
+                                  {emoji}
+                                </button>
+                              );
+                              if(reactionCount===0) return null;
                               return (
                                 <button key={emoji} onClick={()=>{
                                   if(!post.isMe) sendReaction(post.authorId, post.date, post.liftName||"run", emoji);
                                 }}
-                                  style={{background:isSelected?"#1a1a2e":"transparent",border:"1px solid "+(isSelected?"#e85d04":"#1a1a1a"),borderRadius:20,padding:"3px 8px",fontSize:15,cursor:post.isMe?"default":"pointer",opacity:post.isMe?0.5:1,display:"flex",alignItems:"center",gap:4}}>
-                                  {emoji}{reactionCount>0&&<span style={{fontSize:10,color:isSelected?"#e85d04":"#555"}}>{reactionCount}</span>}
+                                  style={{background:isSelected?"#2a1a0a":"#1a1a1a",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:20,padding:"3px 10px",fontSize:15,cursor:post.isMe?"default":"pointer",display:"flex",alignItems:"center",gap:4,transition:"all 0.15s",transform:isSelected?"scale(1.1)":"scale(1)"}}>
+                                  {emoji}<span style={{fontSize:11,color:isSelected?"#e85d04":"#888",fontFamily:"'Roboto Condensed',sans-serif"}}>{reactionCount}</span>
                                 </button>
                               );
                             })}
                           </div>
+                          {/* Who reacted */}
+                          {postReactions.length > 0 && (
+                            <div style={{fontSize:10,color:"#555",marginTop:2}}>
+                              {(()=>{
+                                const names = [...new Set(postReactions.map(r=>r.from_name||"Someone"))];
+                                if(names.length<=2) return names.join(" & ") + " reacted";
+                                return names.slice(0,2).join(", ") + " +" + (names.length-2) + " reacted";
+                              })()}
+                            </div>
+                          )}
                         </div>
-                        {/* Show who reacted on your posts */}
-                        {post.isMe && postReactions.length > 0 && (
-                          <div style={{marginTop:6,fontSize:10,color:"#555"}}>
-                            {[...new Set(postReactions.map(r=>r.from_name||"Someone"))].join(", ")} reacted
-                          </div>
-                        )}
                       </div>
                     );
                   });
