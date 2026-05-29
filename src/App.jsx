@@ -50,6 +50,39 @@ const AUX_LIFTS = {
 };
 
 
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+function playBeeps(ctx) {
+  [0, 0.3, 0.6].forEach(delay => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880; osc.type = "sine";
+    gain.gain.setValueAtTime(0.6, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.25);
+  });
+}
+function playTimerSound() {
+  try { const ctx = getAudioCtx(); if(ctx.state==="suspended") ctx.resume().then(()=>playBeeps(ctx)).catch(()=>{}); else playBeeps(ctx); } catch(e) {}
+}
+function primeAudio() {
+  try {
+    const ctx = getAudioCtx();
+    if(ctx.state==="suspended") ctx.resume();
+    const buf = ctx.createBuffer(1,1,22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf; src.connect(ctx.destination); src.start(0);
+  } catch(e) {}
+}
+function fmtDuration(secs) {
+  if(!secs||secs<=0) return "0:00";
+  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
+  return h>0?h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"):m+":"+String(s).padStart(2,"0");
+}
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
 function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
@@ -217,6 +250,7 @@ export default function App() {
   const [viewingWeek, setViewingWeek] = useState(1);
   const [editingPastWeek, setEditingPastWeek] = useState(false);
   const [selectedAcc, setSelectedAcc] = useState({});
+  const [accSectionOpen, setAccSectionOpen] = useState({support:true, isolation:false, aux:false});
   const [customAccInput, setCustomAccInput] = useState({});
   const [previewLift, setPreviewLift] = useState(null);
   const [sessionNotes, setSessionNotes] = useState("");
