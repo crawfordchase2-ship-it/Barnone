@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.138 - removed duplicate primeAudio, faster font loading
+// v5.140 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -50,6 +50,39 @@ const AUX_LIFTS = {
 };
 
 
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+function playBeeps(ctx) {
+  [0, 0.3, 0.6].forEach(delay => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880; osc.type = "sine";
+    gain.gain.setValueAtTime(0.6, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.25);
+  });
+}
+function playTimerSound() {
+  try { const ctx = getAudioCtx(); if(ctx.state==="suspended") ctx.resume().then(()=>playBeeps(ctx)).catch(()=>{}); else playBeeps(ctx); } catch(e) {}
+}
+function primeAudio() {
+  try {
+    const ctx = getAudioCtx();
+    if(ctx.state==="suspended") ctx.resume();
+    const buf = ctx.createBuffer(1,1,22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf; src.connect(ctx.destination); src.start(0);
+  } catch(e) {}
+}
+function fmtDuration(secs) {
+  if(!secs||secs<=0) return "0:00";
+  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
+  return h>0?h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"):m+":"+String(s).padStart(2,"0");
+}
 const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
 function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
@@ -225,7 +258,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.138";
+  const APP_VERSION = "v5.140";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -704,22 +737,21 @@ export default function App() {
     });
   }
   function getAccList(w,id,section) { if(section) return (accList?.[w]?.[id]||[]).filter(a=>a.section===section); return accList?.[w]?.[id]||[]; }
-  function addAcc(w,id,name) {
+  function addAcc(w,id,name,section) {
     if(!name)return;
-    setAccList(prev=>{
-      const n=JSON.parse(JSON.stringify(prev));
-      if(!n[w])n[w]={};if(!n[w][id])n[w][id]=[];
-      n[w][id].push({id:Date.now(),name,weight:exerciseHistory[name]||"",reps:"10"}); return n;
+    const hist = exerciseHistory[name];
+    const newAcc = {id: Date.now()+Math.random(), name, weight: hist||"", reps:"10", section: section||"support"};
+    setAccList(prev => {
+      const cur = prev?.[w]?.[id]||[];
+      if(cur.some(a=>a.name===name&&a.section===section)) return prev;
+      return {...prev, [w]:{...prev?.[w], [id]:[...cur, newAcc]}};
     });
   }
-  function updateAcc(w,id,aid,field,val) {
-    setAccList(prev=>{
-      const n=JSON.parse(JSON.stringify(prev));
-      const item=n?.[w]?.[id]?.find(a=>a.id===aid);
-      if(item){item[field]=val;if(field==="weight"&&val)setExerciseHistory(h=>({...h,[item.name]:val}));}
-      return n;
-    });
+  function updateAcc(w,id,aid,field,val,section) {
+    setAccList(prev => ({...prev, [w]:{...prev?.[w], [id]:(prev?.[w]?.[id]||[]).map(a=>a.id===aid?{...a,[field]:val}:a)}}));
+    if(field==="weight"&&val) { const acc=(accList?.[w]?.[id]||[]).find(a=>a.id===aid); if(acc) setExerciseHistory(h=>({...h,[acc.name]:val})); }
   }
+
   function removeAcc(w,id,aid) {
     setAccList(prev=>{const n=JSON.parse(JSON.stringify(prev));if(n?.[w]?.[id])n[w][id]=n[w][id].filter(a=>a.id!==aid);return n;});
   }
