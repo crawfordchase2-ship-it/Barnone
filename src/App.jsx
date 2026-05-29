@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.132 - removed duplicate primeAudio, faster font loading
+// v5.134 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -390,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.132";
+  const APP_VERSION = "v5.134";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -444,7 +444,8 @@ export default function App() {
   const [socialTab, setSocialTab] = useState("feed");
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
-  const [myReactions, setMyReactions] = useState([]);
+  const [myReactions, setMyReactions] = useState([]); // reactions I received
+  const [sentReactions, setSentReactions] = useState([]); // reactions I sent
   const [friendSearch, setFriendSearch] = useState("");
   const [friendSearchResults, setFriendSearchResults] = useState([]);
   const [username, setUsername] = useState("");
@@ -727,15 +728,19 @@ export default function App() {
     }
     const { data: reactions } = await supabase
       .from("reactions").select("*").eq("to_id", userId)
-      .order("created_at", { ascending: false }).limit(20);
+      .order("created_at", { ascending: false }).limit(50);
     if (reactions) {
       setMyReactions(reactions);
-      // Count reactions newer than last seen
       const lastSeen = localStorage.getItem("barnone_last_reaction_" + userId) || "";
       const newCount = reactions.filter(r => r.created_at > lastSeen).length;
       setNewReactionCount(newCount);
       setLastSeenReaction(reactions[0]?.created_at || "");
     }
+    // Load reactions I sent so we can show selected state
+    const { data: sentR } = await supabase
+      .from("reactions").select("*").eq("from_id", userId)
+      .order("created_at", { ascending: false }).limit(100);
+    if (sentR) setSentReactions(sentR);
   }
 
 
@@ -1953,8 +1958,12 @@ export default function App() {
                   return allPosts.map((post, i) => {
                     // Get reactions for this post
                     const postKey = post.authorId + "_" + post.date + "_" + (post.liftName||"run");
-                    const postReactions = myReactions.filter(r => r.from_id !== uid && r.session_date === post.date && r.to_id === post.authorId);
-                    const myReaction = myReactions.find(r => r.from_id === uid && r.session_date === post.date && r.to_id === post.authorId);
+                    // Reactions others sent on this post (for posts I own = received, for friend posts = from reactions table)
+                    const postReactions = post.isMe
+                      ? myReactions.filter(r => r.session_date === post.date && r.to_id === uid)
+                      : myReactions.filter(r => r.session_date === post.date && r.to_id === post.authorId && r.from_id !== uid);
+                    // My reaction on this post (what I sent)
+                    const myReaction = sentReactions.find(r => r.session_date === post.date && r.to_id === post.authorId);
                     
                     // Time since
                     const daysSince = Math.floor((new Date() - new Date(post.date)) / 86400000);
@@ -2052,8 +2061,15 @@ export default function App() {
                             <div style={{fontSize:10,color:"#555",marginTop:2}}>
                               {(()=>{
                                 const names = [];
-                                if(myReaction && post.isMe) names.push("You");
-                                postReactions.forEach(r => { if(r.from_name && r.from_name !== "Someone") names.push(r.from_name); else if(!r.from_name) names.push("Someone"); });
+                                postReactions.forEach(r => {
+                                  if(r.from_id === uid) { names.push("You"); return; }
+                                  // Look up name from friends list first
+                                  const friend = friends.find(f => f.id === r.from_id);
+                                  const name = friend?.name || r.from_name || r.from_username;
+                                  if(name && name !== "Someone") names.push(name);
+                                  else names.push("Someone");
+                                });
+                                if(myReaction && !post.isMe) { /* my reaction is in sentReactions not postReactions */ }
                                 if(names.length===0) return null;
                                 if(names.length<=2) return names.join(" & ") + " reacted";
                                 return names.slice(0,2).join(", ") + " +" + (names.length-2) + " more reacted";
@@ -3308,7 +3324,7 @@ export default function App() {
           {id:"ledger",    label:"LEDGER",   color:"#06d6a0", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>},
           {id:"setup",     label:hasSetup?"PROGRAM":"SETUP", color:"#f7b731", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>},
         ].map(t=>(
-          <button key={t.id} onClick={()=>{setView(t.id);if(t.id==="social"){localStorage.setItem("barnone_social_check_"+uid, todayISO());setNewFriendSessions(0);}}} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id?t.color:"#444",position:"relative"}}>
+          <button key={t.id} onClick={()=>{setView(t.id);if(t.id==="social"){localStorage.setItem("barnone_social_check_"+uid, new Date().toISOString());localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewFriendSessions(0);setNewReactionCount(0);setSocialTab("feed");}}} style={{flex:1,background:"none",border:"none",padding:"8px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:view===t.id?t.color:"#444",position:"relative"}}>
             {t.svg}
             <span style={{fontSize:9,letterSpacing:1,fontFamily:"'DM Mono',monospace"}}>{t.label}</span>
             <div style={{width:4,height:4,borderRadius:"50%",background:view===t.id?t.color:"transparent"}}></div>
