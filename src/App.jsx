@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.134 - removed duplicate primeAudio, faster font loading
+// v5.136 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -390,7 +390,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.134";
+  const APP_VERSION = "v5.136";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -942,8 +942,18 @@ export default function App() {
   }
 
   async function sendReaction(toId, sessionDate, liftName, emoji) {
-    await supabase.from("reactions")
-      .insert({ from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji });
+    if (!uid) return;
+    const fromName = (currentUser?.user_metadata?.name || currentUser?.email || "Someone").split(" ")[0];
+    // Update sentReactions immediately for instant visual feedback
+    setSentReactions(prev => {
+      const filtered = prev.filter(r => !(r.session_date === sessionDate && r.to_id === toId));
+      return [...filtered, {from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji, from_name: fromName, from_username: username||"", created_at: new Date().toISOString()}];
+    });
+    await supabase.from("reactions").upsert({
+      from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji,
+      from_name: fromName, from_username: username || ""
+    }, { onConflict: "from_id,to_id,session_date" });
+    loadSocialData(uid);
   }
 
   async function savePublicProfile() {
@@ -1959,9 +1969,14 @@ export default function App() {
                     // Get reactions for this post
                     const postKey = post.authorId + "_" + post.date + "_" + (post.liftName||"run");
                     // Reactions others sent on this post (for posts I own = received, for friend posts = from reactions table)
+                    // Deduplicate by from_id - one reaction per person per post
+                    const dedup = (arr) => {
+                      const seen = new Set();
+                      return arr.filter(r => { if(seen.has(r.from_id)) return false; seen.add(r.from_id); return true; });
+                    };
                     const postReactions = post.isMe
-                      ? myReactions.filter(r => r.session_date === post.date && r.to_id === uid)
-                      : myReactions.filter(r => r.session_date === post.date && r.to_id === post.authorId && r.from_id !== uid);
+                      ? dedup(myReactions.filter(r => r.session_date === post.date && r.to_id === uid))
+                      : dedup(myReactions.filter(r => r.session_date === post.date && r.to_id === post.authorId && r.from_id !== uid));
                     // My reaction on this post (what I sent)
                     const myReaction = sentReactions.find(r => r.session_date === post.date && r.to_id === post.authorId);
                     
@@ -2061,15 +2076,13 @@ export default function App() {
                             <div style={{fontSize:10,color:"#555",marginTop:2}}>
                               {(()=>{
                                 const names = [];
+                                const seenNames = new Set();
                                 postReactions.forEach(r => {
-                                  if(r.from_id === uid) { names.push("You"); return; }
-                                  // Look up name from friends list first
+                                  if(r.from_id === uid) return; // skip own reactions
                                   const friend = friends.find(f => f.id === r.from_id);
-                                  const name = friend?.name || r.from_name || r.from_username;
-                                  if(name && name !== "Someone") names.push(name);
-                                  else names.push("Someone");
+                                  const name = friend?.name || r.from_name || r.from_username || "Someone";
+                                  if(!seenNames.has(r.from_id)) { seenNames.add(r.from_id); names.push(name); }
                                 });
-                                if(myReaction && !post.isMe) { /* my reaction is in sentReactions not postReactions */ }
                                 if(names.length===0) return null;
                                 if(names.length<=2) return names.join(" & ") + " reacted";
                                 return names.slice(0,2).join(", ") + " +" + (names.length-2) + " more reacted";
