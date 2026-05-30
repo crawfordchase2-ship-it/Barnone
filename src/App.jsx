@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.7 - header, footer, and rest bar always render in dark-mode colors (scoped to theme-dark) regardless of selected theme
+// v6.8 - removed stray closing brace that was rendering as a "}" text node above the header (also cleared the extra whitespace it created)
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.7";
+  const APP_VERSION = "v6.8";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1603,9 +1603,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-}
-
 
       <div className="theme-dark" style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg-secondary)",zIndex:10}}>
         <div>
