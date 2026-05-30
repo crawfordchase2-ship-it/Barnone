@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.6 - light theme overhaul: wired ~240 hardcoded dark colors to theme CSS variables (bg-card/input/sunken/secondary/border/text). dark mode pixel-identical; light retuned for contrast. share card stays dark.
+// v6.7 - header, footer, and rest bar always render in dark-mode colors (scoped to theme-dark) regardless of selected theme
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.6";
+  const APP_VERSION = "v6.7";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1607,7 +1607,7 @@ export default function App() {
 }
 
 
-      <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg-secondary)",zIndex:10}}>
+      <div className="theme-dark" style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg-secondary)",zIndex:10}}>
         <div>
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
         </div>
@@ -3509,7 +3509,7 @@ export default function App() {
       </div>
 
       {view==="workout" && (
-        <div style={{position:"fixed",bottom:70,left:0,right:0,background:"var(--bg-secondary)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",zIndex:9,display:"flex",alignItems:"center",gap:10,padding:"8px 12px"}}>
+        <div className="theme-dark" style={{position:"fixed",bottom:70,left:0,right:0,background:"var(--bg-secondary)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",zIndex:9,display:"flex",alignItems:"center",gap:10,padding:"8px 12px"}}>
           {/* Timer display */}
           <div style={{textAlign:"center",minWidth:60}}>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"var(--text-primary)",lineHeight:1}}>
@@ -3534,7 +3534,7 @@ export default function App() {
         </div>
       )}
 
-      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"var(--bg-secondary)",borderTop:"1px solid var(--border)",display:"flex",zIndex:10,padding:"4px"}}>
+      <div className="theme-dark" style={{position:"fixed",bottom:0,left:0,right:0,background:"var(--bg-secondary)",borderTop:"1px solid var(--border)",display:"flex",zIndex:10,padding:"4px"}}>
         {[
           {id:"dashboard", label:"HOME", color:"#e85d04", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
           {id:"workout",   label:"LIFT",     color:"#3a86ff", svg:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><circle cx="4" cy="12" r="2"/><circle cx="20" cy="12" r="2"/><rect x="7" y="8" width="2" height="8" rx="1"/><rect x="15" y="8" width="2" height="8" rx="1"/></svg>},
