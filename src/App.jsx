@@ -880,11 +880,10 @@ export default function App() {
   }
 
   async function sendFriendRequest(toId) {
-    // Delete any existing declined/pending request first
+    // Delete ANY existing request in either direction (pending or declined) before inserting
     await supabase.from("friend_requests")
       .delete()
-      .or("and(from_id.eq." + uid + ",to_id.eq." + toId + "),and(from_id.eq." + toId + ",to_id.eq." + uid + ")")
-      .eq("status", "declined");
+      .or("and(from_id.eq." + uid + ",to_id.eq." + toId + "),and(from_id.eq." + toId + ",to_id.eq." + uid + ")");
     const { error } = await supabase.from("friend_requests")
       .insert({ from_id: uid, to_id: toId, status: "pending" });
     if (!error) {
@@ -892,7 +891,7 @@ export default function App() {
       setFriendSearch("");
       alert("Friend request sent to " + (friendSearchResults.find(u=>u.id===toId)?.name || "user") + "!");
     } else {
-      alert("Already sent — waiting for them to accept.");
+      alert("Error sending request: " + error.message);
     }
   }
 
