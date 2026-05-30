@@ -670,7 +670,7 @@ export default function App() {
       const friendIds = accepted.map(r => r.from_id === userId ? r.to_id : r.from_id);
       if (friendIds.length > 0) {
         const { data: friendData } = await supabase
-          .from("user_data").select("user_id, lifts, lift_weeks, session_ledger, run_history")
+          .from("user_data").select("user_id, lifts, lift_weeks, logs, session_ledger, run_history")
           .in("user_id", friendIds);
         const { data: friendProfiles } = await supabase
           .from("public_profiles").select("id, name, username")
@@ -880,12 +880,14 @@ export default function App() {
   }
 
   async function sendFriendRequest(toId) {
-    // Delete ANY existing request in either direction (pending or declined) before inserting
-    await supabase.from("friend_requests")
+    // Step 1: delete ALL existing requests between these two users in either direction
+    const { error: delErr } = await supabase.from("friend_requests")
       .delete()
       .or("and(from_id.eq." + uid + ",to_id.eq." + toId + "),and(from_id.eq." + toId + ",to_id.eq." + uid + ")");
+    if (delErr) { alert("Error clearing old request: " + delErr.message); return; }
+    // Step 2: upsert instead of insert to handle any race condition
     const { error } = await supabase.from("friend_requests")
-      .insert({ from_id: uid, to_id: toId, status: "pending" });
+      .upsert({ from_id: uid, to_id: toId, status: "pending" }, { onConflict: "from_id,to_id" });
     if (!error) {
       setFriendSearchResults([]);
       setFriendSearch("");
@@ -2079,9 +2081,37 @@ export default function App() {
                   ))}
                 </div>
                 {friends.length === 0 && <div style={{color:"#333",fontSize:12,textAlign:"center",padding:30}}>No friends yet — search above to add some!</div>}
-                {friends.map(f => {
+                {[...friends].sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(f => {
                   const fLifts = f.lifts || DEFAULT_LIFTS;
                   const lastSession = (f.session_ledger || [])[0];
+                  const daysSince = lastSession ? Math.floor((new Date(todayISO()) - new Date(lastSession.date)) / 86400000) : null;
+                  const lastSeenStr = daysSince === null ? "never" : daysSince === 0 ? "today" : daysSince === 1 ? "yesterday" : daysSince + "d ago";
+                  const lastSeenColor = daysSince === null ? "#444" : daysSince <= 1 ? "#06d6a0" : daysSince <= 4 ? "#f7b731" : "#e85d04";
+                  // Compute real current max using their logs + lift_weeks
+                  function getFriendEffMax(lift) {
+                    const fLiftWeeks = f.lift_weeks || {};
+                    const fLogs = f.logs || {};
+                    const targetWeek = fLiftWeeks[lift.id] || 1;
+                    if (lift.mainLiftOption === "Assisted Pull Up") {
+                      let assist = lift.startingMax || 0;
+                      for (let w = 1; w < targetWeek; w++) {
+                        const log = fLogs?.[w]?.[lift.id]?.[3];
+                        if (log?.reps) assist = Math.max(0, assist - (+log.reps >= 15 ? 10 : 5));
+                      }
+                      return assist;
+                    }
+                    let wm = Math.round((lift.startingMax || 0) * 0.9 / 5) * 5;
+                    for (let w = 1; w < targetWeek; w++) {
+                      const log = fLogs?.[w]?.[lift.id]?.[3];
+                      if (log?.reps && +log.reps > 10) {
+                        const set4w = Math.round(wm * 0.75 / 5) * 5;
+                        const em = Math.round((set4w * 1.1 * +log.reps * 0.0333 + set4w * 1.1) / 5) * 5;
+                        const d = em - wm;
+                        wm = lift.isLower ? (d >= 20 ? wm + 15 : d >= 10 ? wm + 10 : wm) : (d >= 20 ? wm + 10 : d >= 10 ? wm + 5 : wm);
+                      }
+                    }
+                    return Math.round(wm / 0.9 / 5) * 5;
+                  }
                   return (
                     <div key={f.id} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:12}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -2089,16 +2119,21 @@ export default function App() {
                           <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f0f0f0"}}>{f.name}</div>
                           {f.username && <div style={{color:"#555",fontSize:11}}>{"@" + f.username}</div>}
                         </div>
-                        {lastSession && <div style={{color:"#555",fontSize:11}}>{fmtDate(lastSession.date)}</div>}
+                        <div style={{textAlign:"right"}}>
+                          <div style={{color:lastSeenColor,fontSize:12,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>{lastSeenStr}</div>
+                          {lastSession && <div style={{color:"#333",fontSize:10}}>{fmtDate(lastSession.date)}</div>}
+                        </div>
                       </div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:lastSession ? 10 : 0}}>
                         {fLifts.filter(l => l.startingMax > 0).map(l => {
+                          const curMax = getFriendEffMax(l);
+                          const gained = curMax - (l.startingMax || 0);
                           const cardStyle = {background:"#1a1a2e",borderRadius:6,padding:"6px 10px",borderLeft:"2px solid " + l.color};
-                          const nameStyle = {color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:13};
                           return (
                             <div key={l.id} style={cardStyle}>
-                              <div style={nameStyle}>{l.name}</div>
-                              <div style={{color:"#aaa",fontSize:12}}>{l.startingMax} lbs</div>
+                              <div style={{color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:13}}>{l.name}</div>
+                              <div style={{color:"#f0f0f0",fontSize:13,fontFamily:"'Roboto Condensed',sans-serif"}}>{curMax} lbs</div>
+                              {gained > 0 && <div style={{color:"#06d6a0",fontSize:10}}>+{gained} from start</div>}
                             </div>
                           );
                         })}
