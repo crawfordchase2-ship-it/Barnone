@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.3 - reactions: fix persistence (delete+insert instead of failing upsert), dedupe reactors, "Name and N others" with tap-to-expand list
+// v6.4 - mid-program editor: toggle lifts/C25K on-off (reversible, history kept), edit training days, running status shown in active program. active flag in lifts jsonb, runActive in body_stats jsonb (no schema change)
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -357,7 +357,8 @@ export default function App() {
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
-  const APP_VERSION = "v6.3";
+  const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
+  const APP_VERSION = "v6.4";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -457,6 +458,8 @@ export default function App() {
     (weightEntry || bodyStats.entries.length > 0) &&
     lifts.every(l=>(l.trainingDays||[]).length>0);
   const hasSetup = readyToStart && programStarted;
+  // Running on/off lives inside bodyStats jsonb (no schema change). Defaults to on for existing data.
+  const runActive = bodyStats?.runActive !== false;
 
   // Workout elapsed timer
   useEffect(() => {
@@ -508,7 +511,7 @@ export default function App() {
       const w = liftWeeks[l.id] || 1;
       if (w <= 1) return;
       // Only notify on a day this lift is scheduled
-      if (!(l.trainingDays||[]).includes(todayAbbr)) return;
+      if (l.active===false || !(l.trainingDays||[]).includes(todayAbbr)) return;
       // Don't notify if this lift was completed in the previous week (just finished)
       // completedDays is keyed by week number, w is already advanced to next week
       const justCompleted = completedDays?.[w-1]?.[l.id];
@@ -569,7 +572,7 @@ export default function App() {
         setActiveId(d.in_progress_lift_id);
       } else {
         const todayAbbr = DAY_ABBR[new Date().getDay()];
-        const todayLift = loadedLifts.find(l => (l.trainingDays||[]).includes(todayAbbr));
+        const todayLift = loadedLifts.find(l => l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
         setActiveId(todayLift?.id || d.activeId || loadedLifts[0]?.id || DEFAULT_LIFTS[0].id);
       }
       setLogs(d.logs || {});
@@ -1097,7 +1100,7 @@ export default function App() {
     ? Math.round(programVolume/1000) + "k" 
     : programVolume;
   // Total possible sessions = unique training days per week × 12
-  const uniqueTrainingDays = [...new Set(lifts.flatMap(l => l.trainingDays || []))].length;
+  const uniqueTrainingDays = [...new Set(lifts.flatMap(l => l.active!==false ? (l.trainingDays || []) : []))].length;
   const totalPossible = uniqueTrainingDays * 12;
   const streak = (() => {
     // Use all sessions if programId not set, otherwise filter by program
@@ -1108,7 +1111,7 @@ export default function App() {
     if(!programSessions.length) return 0;
     const loggedDates = new Set(programSessions.map(s=>s.date));
     // Get all unique training days across all lifts
-    const allTrainingDays = [...new Set(lifts.flatMap(l=>l.trainingDays||[]))];
+    const allTrainingDays = [...new Set(lifts.flatMap(l=>l.active!==false ? (l.trainingDays||[]) : []))];
     if(!allTrainingDays.length) return 0;
     // Walk backwards through scheduled days from today
     let streak = 0;
@@ -1621,11 +1624,11 @@ export default function App() {
 
       {view==="run" && (
         <div style={{padding:16,paddingBottom:100}}>
-          {runDays.length < 2 ? (
+          {(!runActive || runDays.length < 2) ? (
             <div style={{textAlign:"center",padding:40}}>
               <div style={{fontSize:48,marginBottom:12}}>🏃</div>
-              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#555",letterSpacing:2,marginBottom:8}}>C25K NOT SET UP</div>
-              <div style={{color:"#444",fontSize:12,marginBottom:20}}>Go to SETUP and pick at least 2 running days to start the Couch to 5K program.</div>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#555",letterSpacing:2,marginBottom:8}}>{!runActive && runDays.length>=2 ? "C25K PAUSED" : "C25K NOT SET UP"}</div>
+              <div style={{color:"#444",fontSize:12,marginBottom:20}}>{!runActive && runDays.length>=2 ? "Running is turned off for this program. Turn it back on in Setup → Edit Program." : "Go to SETUP and pick at least 2 running days to start the Couch to 5K program."}</div>
               <button onClick={()=>setView("setup")} style={{background:"#3a86ff",border:"none",color:"#000",borderRadius:8,padding:"12px 24px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1}}>GO TO SETUP</button>
             </div>
           ) : (
@@ -2309,8 +2312,8 @@ export default function App() {
             {hasSetup && dataLoaded && (()=>{
               const todayAbbr = DAY_ABBR[new Date().getDay()];
               // Find lifts scheduled today that haven't been completed yet
-              const todayScheduled = lifts.filter(l => (l.trainingDays||[]).includes(todayAbbr));
-              const isRunDay = runDays.includes(todayAbbr);
+              const todayScheduled = lifts.filter(l => l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
+              const isRunDay = runActive && runDays.includes(todayAbbr);
               const runCompletedToday = runHistory.some(r => r.date === todayISO());
               const isCompletedThisWeek = (l) => {
                 // liftWeeks advances after finish so check current AND previous week
@@ -2331,6 +2334,7 @@ export default function App() {
                 for(let i=1; i<=7; i++){
                   const nextDay = DAY_ABBR[(new Date().getDay()+i)%7];
                   const found = lifts.find(l => {
+                    if (l.active===false) return false;
                     if (!(l.trainingDays||[]).includes(nextDay)) return false;
                     const cw = liftWeeks[l.id] || 1;
                     const cd = completedDays?.[cw]?.[l.id] || completedDays?.[cw-1]?.[l.id];
@@ -2371,7 +2375,7 @@ export default function App() {
                 let nextRunInfo = null;
                 for(let i=1;i<=7;i++){
                   const d=DAY_ABBR[(new Date().getDay()+i)%7];
-                  if(runDays.includes(d)) { nextRunInfo={day:d,daysAway:i}; break; }
+                  if(runActive && runDays.includes(d)) { nextRunInfo={day:d,daysAway:i}; break; }
                 }
                 // Compare next lift vs next run and show whichever is sooner
                 const nextLiftDays = nextLift ? nextLift.daysAway : 99;
@@ -2605,13 +2609,61 @@ export default function App() {
                 <div style={{...card,borderLeft:"3px solid #06d6a0"}}>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:8}}>PROGRAM ACTIVE</div>
                   <div style={{color:"#555",fontSize:11,marginBottom:4}}>Started: <span style={{color:"#aaa"}}>{fmtDate(startDate)}</span></div>
-                  {lifts.map(l=>(
-                    <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
-                      <span style={{color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:15}}>{l.name}</span>
-                      <span style={{color:"#555",fontSize:11}}>Week {liftWeeks[l.id]||1} · {l.startingMax} lbs</span>
+                  {lifts.map(l=>{
+                    const on = l.active!==false;
+                    return (
+                    <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a",opacity:on?1:0.45}}>
+                      <span style={{color:on?l.color:"#666",fontFamily:"'Roboto Condensed',sans-serif",fontSize:15}}>{l.name}{on?"":" · NOT ACTIVE"}</span>
+                      <span style={{color:"#555",fontSize:11}}>{on?("Week "+(liftWeeks[l.id]||1)+" · "+l.startingMax+" lbs"):"off"}</span>
                     </div>
-                  ))}
+                    );
+                  })}
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",marginTop:2,opacity:runActive?1:0.45}}>
+                    <span style={{color:runActive?"#3a86ff":"#666",fontFamily:"'Roboto Condensed',sans-serif",fontSize:15}}>🏃 Couch to 5K{runActive?"":" · NOT ACTIVE"}</span>
+                    <span style={{color:"#555",fontSize:11}}>{runActive && runDays.length>=2 ? (runDays.length+" days/wk · Wk "+runWeek) : "off"}</span>
+                  </div>
                 </div>
+                <div style={{marginTop:14}}>
+                  <button onClick={()=>setEditingProgram(v=>!v)} style={{width:"100%",background:"#1a1a2e",border:"1px solid #444",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,cursor:"pointer"}}>{editingProgram ? "✕ CLOSE EDITOR" : "✎ EDIT PROGRAM"}</button>
+                </div>
+                {editingProgram && (
+                  <div style={{...card,marginTop:10,borderLeft:"3px solid #888"}}>
+                    <div style={{color:"#888",fontSize:11,marginBottom:12,lineHeight:1.5}}>Turn a lift or running off to drop it from your schedule. Nothing is deleted — logged history stays in your Ledger and Progress, and you can switch it back on anytime. Maxes stay locked.</div>
+                    {lifts.map(l=>{
+                      const on = l.active!==false;
+                      return (
+                        <div key={l.id} style={{background:"#0f0f1a",borderRadius:10,padding:12,marginBottom:10,opacity:on?1:0.55,borderLeft:"3px solid "+(on?l.color:"#333")}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                            <span style={{color:on?l.color:"#666",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1}}>{l.name}{on?"":" · NOT ACTIVE"}</span>
+                            <button onClick={()=>updateLift(l.id,"active",!on)} style={{background:on?"#1a1a2e":"#06d6a0",border:"1px solid "+(on?"#555":"#06d6a0"),color:on?"#888":"#000",borderRadius:6,padding:"5px 12px",fontSize:12,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1,cursor:"pointer"}}>{on?"TURN OFF":"TURN ON"}</button>
+                          </div>
+                          <div style={{color:"#555",fontSize:10,marginBottom:6}}>TRAINING DAYS</div>
+                          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                            {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>{
+                              const sel=(l.trainingDays||[]).includes(d);
+                              return <button key={d} disabled={!on} onClick={()=>{const cur=l.trainingDays||[];const next=sel?cur.filter(x=>x!==d):[...cur,d];if(next.length===0)return;updateLift(l.id,"trainingDays",next);}} style={{background:sel?l.color:"#111",color:sel?"#000":"#555",border:"1px solid "+(sel?l.color:"#333"),borderRadius:4,padding:"4px 9px",fontSize:11,cursor:on?"pointer":"not-allowed",opacity:on?1:0.6}}>{d}</button>;
+                            })}
+                          </div>
+                          {on && (l.trainingDays||[]).length===1 && <div style={{color:"#555",fontSize:9,marginTop:5}}>An active lift needs at least one day — turn it off instead to remove it.</div>}
+                        </div>
+                      );
+                    })}
+                    <div style={{background:"#0f0f1a",borderRadius:10,padding:12,opacity:runActive?1:0.55,borderLeft:"3px solid "+(runActive?"#3a86ff":"#333")}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                        <span style={{color:runActive?"#3a86ff":"#666",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1}}>🏃 COUCH TO 5K{runActive?"":" · NOT ACTIVE"}</span>
+                        <button onClick={()=>setBodyStats(prev=>({...prev,runActive:!runActive}))} style={{background:runActive?"#1a1a2e":"#06d6a0",border:"1px solid "+(runActive?"#555":"#06d6a0"),color:runActive?"#888":"#000",borderRadius:6,padding:"5px 12px",fontSize:12,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1,cursor:"pointer"}}>{runActive?"TURN OFF":"TURN ON"}</button>
+                      </div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:6}}>RUNNING DAYS (pick 2–3)</div>
+                      <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                        {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>{
+                          const sel=runDays.includes(d);
+                          return <button key={d} disabled={!runActive} onClick={()=>setRunDays(prev=>prev.includes(d)?prev.filter(x=>x!==d):prev.length<3?[...prev,d]:prev)} style={{background:sel?"#1a1a2e":"#111",color:sel?"#3a86ff":"#555",border:"1px solid "+(sel?"#3a86ff":"#333"),borderRadius:4,padding:"4px 9px",fontSize:11,cursor:runActive?"pointer":"not-allowed",opacity:runActive?1:0.6}}>{d}</button>;
+                        })}
+                      </div>
+                      {runActive && runDays.length<2 && <div style={{color:"#e85d04",fontSize:9,marginTop:5}}>Pick at least 2 days or turn running off.</div>}
+                    </div>
+                  </div>
+                )}
                 <div style={{marginTop:20}}>
                   {!confirmStart && (
                   <button onClick={()=>{setSetupSnapshot({lifts:[...lifts],startDate});setConfirmStart(true);}} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04"}}>START NEW 12-WEEK PROGRAM</button>
@@ -2859,7 +2911,7 @@ export default function App() {
         )}
         {view==="workout" && !workoutInProgress && !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (()=>{
           const todayAbbr = DAY_ABBR[new Date().getDay()];
-          const scheduledLifts = lifts.filter(l=>(l.trainingDays||[]).includes(todayAbbr));
+          const scheduledLifts = lifts.filter(l=>l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
           const isScheduledToday = scheduledLifts.length > 0;
           const pumpUps = ["Time to get after it! 💪","No excuses. Just reps. 🔥","Your future self will thank you.","Champions train. Everyone else wishes. 🏆","Make today count. 💯","Pain is temporary. PRs are forever. 🎯","You didn't come this far to only come this far.","Beast mode: ON. 🦁"];
           const pumpMsg = pumpUps[new Date().getDay() % pumpUps.length];
@@ -2867,7 +2919,7 @@ export default function App() {
           const nextLift = !isScheduledToday ? (()=>{
             for(let i=1; i<=7; i++){
               const nextDay = DAY_ABBR[(new Date().getDay()+i)%7];
-              const found = lifts.find(l=>(l.trainingDays||[]).includes(nextDay));
+              const found = lifts.find(l=>l.active!==false && (l.trainingDays||[]).includes(nextDay));
               if(found) return {lift:found, day:nextDay, daysAway:i};
             }
             return null;
