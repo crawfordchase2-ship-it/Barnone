@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.147 - removed duplicate primeAudio, faster font loading
+// v5.148-final - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -19,38 +19,31 @@ const DEFAULT_LIFTS = [
   { id:"lift_3", name:"Military Press", mainLiftOption:"Military Press", color:"#8338ec", startingMax:0, trainingDays:[], isLower:false },
   { id:"lift_4", name:"Squat",          mainLiftOption:"Squat",          color:"#06d6a0", startingMax:0, trainingDays:[], isLower:true  },
 ];
-// Support lifts per main lift (compound movements that directly support main lift)
 const SUPPORT_LIFTS = {
   "Bench":          ["Incline Bench","Decline Bench","Close Grip Bench","Floor Press","Paused Bench","Reverse Grip Bench","Landmine Press","Dumbbell Press","Incline Dumbbell Press","Weighted Dips","Dips","Push Ups"],
   "Deadlift":       ["Romanian Deadlift","Stiff Leg Deadlift","Rack Pulls","Deficit Deadlift","Pause Deadlift","Sumo Deadlift","Trap Bar Deadlift","Good Mornings","Back Extensions","Hyperextensions","Cable Pull Through"],
-  "Military Press": ["Arnold Press","Dumbbell Shoulder Press","Single Arm Dumbbell Press","Push Press","Behind The Neck Press","Z Press","Seated Barbell Press","Bradford Press","Machine Shoulder Press","Landmine Press"],
+  "Military Press": ["Arnold Press","Dumbbell Shoulder Press","Single Arm Dumbbell Press","Push Press","Behind The Neck Press","Z Press","Seated Barbell Press","Bradford Press","Machine Shoulder Press"],
   "Squat":          ["Front Squat","Box Squat","Pause Squat","Safety Bar Squat","Goblet Squat","Bulgarian Split Squat","Hack Squat","Zercher Squat","Split Squat","Sumo Squat","Sissy Squat","Leg Press","Step Ups"],
   "Weighted Pull Up":  ["Chin Up","Neutral Grip Pull Up","Scapular Pull Up","Negative Pull Ups","Lat Pull-Down","Close Grip Pulldown","Wide Grip Pulldown","Neutral Grip Pulldown","Inverted Row","Ring Rows"],
-  "Hip Thrust":     ["Glute Bridge","Single Leg Hip Thrust","Cable Kickback","Donkey Kicks","Sumo Squat","Reverse Hyper","Bulgarian Split Squat","Romanian Deadlift"],
-  "Assisted Pull Up": ["Negative Pull Ups","Scapular Pull Up","Dead Hang","Inverted Row","Ring Rows","Banded Pull Up","Lat Pull-Down","Straight Arm Pulldown"],
+  "Hip Thrust":     ["Glute Bridge","Single Leg Hip Thrust","Cable Kickback","Donkey Kicks","Sumo Squat","Reverse Hyper","Bulgarian Split Squat"],
+  "Assisted Pull Up": ["Negative Pull Ups","Scapular Pull Up","Dead Hang","Inverted Row","Ring Rows","Banded Pull Up","Lat Pull-Down"],
   "Custom":         ["Incline Bench","Romanian Deadlift","Dumbbell Press","Arnold Press","Front Squat","Lat Pull-Down"],
 };
-
-// Isolation lifts by body part
 const ISOLATION_LIFTS = {
   "Chest":     ["Dumbbell Flys","Incline Dumbbell Fly","High Cable Fly","Low Cable Fly","Cable Crossover","Pec Deck","Chest Fly Machine"],
   "Back":      ["Dumbbell Row","Barbell Row","Seated Cable Row","T-Bar Row","Chest Supported Row","Single Arm Cable Row","Pendlay Row","Meadows Row","Kroc Row","Straight Arm Pulldown","Cable Row","Machine Row"],
   "Biceps":    ["Barbell Curls","Dumbbell Curls","Hammer Curls","Preacher Curls","Cable Curls","Incline Dumbbell Curls","Spider Curls","Concentration Curls","EZ Bar Curls","Reverse Curls","Rope Hammer Curls","Wrist Curls"],
   "Triceps":   ["Skull Crushers","Cable Tricep Extension","Overhead Tricep Extension","Tricep Pushdown","Tricep Rope Pushdown","Tricep Bar Pushdown","JM Press","Tate Press","Sven Press","Diamond Push Ups","Close Grip Push Up","Dumbbell Kickbacks"],
-  "Shoulders": ["Lateral Raises","Leaning Lateral Raise","Front Raises","Barbell Front Raise","Cable Lateral Raise","Cable Front Raise","Plate Raises","45° Y Raise","Rear Delt Fly","Cable Rear Delt Fly","Reverse Fly","Rear Delt Swing","Rear Delt Cable Pull","Face Pulls","Cable Face Pulls","Band Pull Apart","Upright Row","Cable Upright Row","Shrugs","High Pull"],
-  "Legs":      ["Leg Extension","Lying Leg Curl","Seated Leg Curl","Single Leg Curl","Nordic Curl","Calf Raises","Seated Calf Raises","Leg Press Calf Raise","Hip Abductor","Hip Adductor","Walking Lunges","Lunges","Smith Machine Lunges","Box Jumps","Kettlebell Swing"],
-  "Glutes":    ["Hip Thrust","Glute Bridge","Cable Kickbacks","Donkey Kicks","Reverse Hyper","Hip Abductor","Hip Adductor"],
+  "Shoulders": ["Lateral Raises","Leaning Lateral Raise","Front Raises","Barbell Front Raise","Cable Lateral Raise","Cable Front Raise","Plate Raises","Rear Delt Fly","Cable Rear Delt Fly","Reverse Fly","Face Pulls","Band Pull Apart","Upright Row","Shrugs"],
+  "Legs":      ["Leg Extension","Lying Leg Curl","Seated Leg Curl","Single Leg Curl","Nordic Curl","Calf Raises","Seated Calf Raises","Leg Press Calf Raise","Hip Abductor","Hip Adductor","Walking Lunges","Lunges","Box Jumps"],
+  "Glutes":    ["Hip Thrust","Glute Bridge","Cable Kickbacks","Donkey Kicks","Reverse Hyper"],
 };
-
-// Aux lifts - core, conditioning, mobility
 const AUX_LIFTS = {
-  "Core":         ["Planks","Side Planks","Ab Roller","Ab Wheel","Hanging Leg Raises","Hanging Knee Raises","Cable Crunch","Decline Sit Ups","Russian Twists","Hollow Body Hold","L-Sit","Dragon Flag","Toes To Bar","Windshield Wipers","Pallof Press"],
+  "Core":         ["Planks","Side Planks","Ab Roller","Ab Wheel","Hanging Leg Raises","Hanging Knee Raises","Cable Crunch","Decline Sit Ups","Russian Twists","Hollow Body Hold","Dragon Flag","Toes To Bar","Pallof Press"],
   "Conditioning": ["Farmers Walk","Sled Push","Sled Pull","Battle Ropes","Box Jumps","Burpees","Jump Rope","Rowing Machine","Assault Bike","Tire Flip","Sandbag Carry","KB Swings","Bear Crawl","Prowler Push"],
-  "Mobility":     ["Dead Hang","Band Pull Apart","Face Pulls","Shoulder Dislocates","Hip Flexor Stretch","Pigeon Pose","Thoracic Rotation","Foam Rolling","Cat Cow","World's Greatest Stretch"],
+  "Mobility":     ["Dead Hang","Band Pull Apart","Face Pulls","Shoulder Dislocates","Hip Flexor Stretch","Pigeon Pose","Thoracic Rotation","Foam Rolling","Cat Cow"],
   "Olympic":      ["Power Clean","Hang Clean","Power Snatch","Hang Snatch","Clean & Jerk","Push Jerk","High Pull","Muscle Snatch"],
 };
-
-co;
 
 const C25K_PLAN = {
   2: [
@@ -104,9 +97,8 @@ const C25K_PLAN = {
     ]},
   ]
 };
-// 3-day plan = 2-day plan + extra easy day
+// 3-day plan = 2-day plan + extra easy day;
 
-// 3-day plan = 2-day plan + extra easy day
 C25K_PLAN[3] = C25K_PLAN[2].map(week => ({
   ...week,
   days: [...week.days, {
@@ -308,6 +300,38 @@ async function saveUD(userId, d) {
   }, { onConflict: "user_id" });
 }
 
+function AccItem({acc, adj, lift, isReadOnly, onRemove, onUpdate, onAdj, onHistUpdate}) {
+  return (
+    <div style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{color:"#555",fontSize:11,fontFamily:"'Roboto Condensed',sans-serif"}}>3 × 10</span>
+          {!isReadOnly&&<button onClick={onRemove} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>DEL</button>}
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){onUpdate("weight",e.target.value);if(e.target.value)onHistUpdate(acc.name,e.target.value);}}} />
+        <span style={{color:"#555",fontSize:11}}>lbs</span>
+        <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&onUpdate("reps",e.target.value)} />
+        <span style={{color:"#555",fontSize:11}}>reps</span>
+        {!isReadOnly&&(
+          <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+            <div style={{display:"flex",gap:4}}>
+              <button onClick={()=>onAdj("up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
+              <button onClick={()=>onAdj("same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
+              <button onClick={()=>onAdj("down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+            </div>
+            {adj&&acc.weight&&(
+              <div style={{fontSize:10,color:"#555"}}>next: <span style={{color:adj==="up"?"#06d6a0":adj==="down"?"#e85d04":"#3a86ff"}}>{adj==="up"?+acc.weight+5:adj==="down"?Math.max(0,+acc.weight-5):+acc.weight} lbs</span></div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -345,7 +369,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.147";
+  const APP_VERSION = "v5.148";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -898,8 +922,18 @@ export default function App() {
   }
 
   async function sendReaction(toId, sessionDate, liftName, emoji) {
-    await supabase.from("reactions")
-      .insert({ from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji });
+    if (!uid) return;
+    const fromName = (currentUser?.user_metadata?.name || currentUser?.email || "Someone").split(" ")[0];
+    // Update sentReactions immediately for instant visual feedback
+    setSentReactions(prev => {
+      const filtered = prev.filter(r => !(r.session_date === sessionDate && r.to_id === toId));
+      return [...filtered, {from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji, from_name: fromName, from_username: username||"", created_at: new Date().toISOString()}];
+    });
+    await supabase.from("reactions").upsert({
+      from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji,
+      from_name: fromName, from_username: username || ""
+    }, { onConflict: "from_id,to_id,session_date" });
+    loadSocialData(uid);
   }
 
   async function savePublicProfile() {
@@ -2882,218 +2916,87 @@ export default function App() {
                 ))}
               </div>
 
-              {/* ── SUPPORT LIFTS ── */}
+              {/* SUPPORT LIFTS */}
               <div style={{marginBottom:10}}>
-                <button onClick={()=>setAccSectionOpen(p=>({...p,support:!p.support}))}
-                  style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.support?8:0}}>
+                <button onClick={()=>setAccSectionOpen(p=>({...p,support:!p.support}))} style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.support?8:0}}>
                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:2,color:"#888"}}>SUPPORT LIFTS</span>
-                  <span style={{color:"#555",fontSize:18,display:"inline-block",transform:accSectionOpen.support?"rotate(90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>›</span>
+                  <span style={{color:"#555",fontSize:18,display:"inline-block",transform:accSectionOpen.support?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
                 </button>
                 {accSectionOpen.support && (
                   <div>
                     {!isReadOnly && (
-                      <div style={{marginBottom:8}}>
-                        <div style={{display:"flex",gap:8,marginBottom:selectedAcc[activeId+"_s"]==="__custom__"?8:0}}>
-                          <select style={{flex:1}} value={selectedAcc[activeId+"_s"]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId+"_s"]:e.target.value}))}>
-                            <option value="">— Select support lift —</option>
-                            {(SUPPORT_LIFTS[lift?.mainLiftOption]||SUPPORT_LIFTS["Custom"]).map(a=><option key={a} value={a}>{a}</option>)}
-                            <option value="__custom__">✏️ Custom...</option>
-                          </select>
-                          {selectedAcc[activeId+"_s"]&&selectedAcc[activeId+"_s"]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId+"_s"],"support");setSelectedAcc(prev=>({...prev,[activeId+"_s"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
-                        </div>
-                        {selectedAcc[activeId+"_s"]==="__custom__" && (
-                          <div style={{display:"flex",gap:8}}>
-                            <input type="text" value={customAccInput[activeId+"_s"]||""} placeholder="Exercise name..." autoFocus onChange={e=>setCustomAccInput(prev=>({...prev,[activeId+"_s"]:e.target.value}))} style={{flex:1,borderColor:lift.color,color:lift.color}} />
-                            <button onClick={()=>{const n=customAccInput[activeId+"_s"]?.trim();if(!n)return;addAcc(week,activeId,n,"support");setCustomAccInput(prev=>({...prev,[activeId+"_s"]:""}));setSelectedAcc(prev=>({...prev,[activeId+"_s"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>
-                          </div>
-                        )}
+                      <div style={{display:"flex",gap:8,marginBottom:8}}>
+                        <select style={{flex:1}} value={selectedAcc[activeId+"_s"]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId+"_s"]:e.target.value}))}>
+                          <option value="">— Select support lift —</option>
+                          {(SUPPORT_LIFTS[lift?.mainLiftOption]||SUPPORT_LIFTS["Custom"]).map(a=><option key={a} value={a}>{a}</option>)}
+                          <option value="__custom__">✏️ Custom...</option>
+                        </select>
+                        {selectedAcc[activeId+"_s"]&&selectedAcc[activeId+"_s"]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId+"_s"],"support");setSelectedAcc(prev=>({...prev,[activeId+"_s"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
                       </div>
                     )}
                     {getAccList(week,activeId,"support").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No support lifts added</div>}
                     {getAccList(week,activeId,"support").map(acc=>{
                       const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
-                      return (
-                    <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                        <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{color:"#555",fontSize:11,fontFamily:"'Roboto Condensed',sans-serif"}}>3 × 10</span>
-                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>DEL</button>}
-                        </div>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){updateAcc(week,activeId,acc.id,"weight",e.target.value);if(e.target.value)setExerciseHistory(h=>({...h,[acc.name]:e.target.value}));}}} />
-                        <span style={{color:"#555",fontSize:11}}>lbs</span>
-                        <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value)} />
-                        <span style={{color:"#555",fontSize:11}}>reps</span>
-                        {!isReadOnly&&(
-                          <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                            <div style={{display:"flex",gap:4}}>
-                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
-                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
-                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
-                            </div>
-                            {adj && acc.weight && (
-                              <div style={{fontSize:10,color:"#555"}}>
-                                next: <span style={{color:adj==="up"?"#06d6a0":adj==="down"?"#e85d04":"#3a86ff"}}>
-                                  {adj==="up"?+acc.weight+5:adj==="down"?Math.max(0,+acc.weight-5):+acc.weight} lbs
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                      return (<AccItem key={acc.id} acc={acc} adj={adj} lift={lift} isReadOnly={isReadOnly} onRemove={()=>removeAcc(week,activeId,acc.id)} onUpdate={(f,v)=>updateAcc(week,activeId,acc.id,f,v)} onAdj={(v)=>setAdj(acc.id,v)} onHistUpdate={(n,v)=>setExerciseHistory(h=>({...h,[n]:v}))} />);
+                    })}
                   </div>
                 )}
               </div>
 
-              {/* ── ISOLATION ── */}
+              {/* ISOLATION */}
               <div style={{marginBottom:10}}>
-                <button onClick={()=>setAccSectionOpen(p=>({...p,isolation:!p.isolation}))}
-                  style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.isolation?8:0}}>
+                <button onClick={()=>setAccSectionOpen(p=>({...p,isolation:!p.isolation}))} style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.isolation?8:0}}>
                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:2,color:"#888"}}>ISOLATION</span>
-                  <span style={{color:"#555",fontSize:18,display:"inline-block",transform:accSectionOpen.isolation?"rotate(90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>›</span>
+                  <span style={{color:"#555",fontSize:18,display:"inline-block",transform:accSectionOpen.isolation?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
                 </button>
                 {accSectionOpen.isolation && (
                   <div>
                     {!isReadOnly && (
-                      <div style={{marginBottom:8}}>
-                        <div style={{display:"flex",gap:8,marginBottom:selectedAcc[activeId+"_i"]==="__custom__"?8:0}}>
-                          <select style={{flex:1}} value={selectedAcc[activeId+"_i"]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId+"_i"]:e.target.value}))}>
-                            <option value="">— Select isolation lift —</option>
-                            {Object.entries(ISOLATION_LIFTS).map(([group,exercises])=>(
-                              <optgroup key={group} label={"── "+group+" ──"}>
-                                {exercises.map(a=><option key={a} value={a}>{a}</option>)}
-                              </optgroup>
-                            ))}
-                            <option value="__custom__">✏️ Custom...</option>
-                          </select>
-                          {selectedAcc[activeId+"_i"]&&selectedAcc[activeId+"_i"]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId+"_i"],"isolation");setSelectedAcc(prev=>({...prev,[activeId+"_i"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
-                        </div>
-                        {selectedAcc[activeId+"_i"]==="__custom__" && (
-                          <div style={{display:"flex",gap:8}}>
-                            <input type="text" value={customAccInput[activeId+"_i"]||""} placeholder="Exercise name..." autoFocus onChange={e=>setCustomAccInput(prev=>({...prev,[activeId+"_i"]:e.target.value}))} style={{flex:1,borderColor:lift.color,color:lift.color}} />
-                            <button onClick={()=>{const n=customAccInput[activeId+"_i"]?.trim();if(!n)return;addAcc(week,activeId,n,"isolation");setCustomAccInput(prev=>({...prev,[activeId+"_i"]:""}));setSelectedAcc(prev=>({...prev,[activeId+"_i"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>
-                          </div>
-                        )}
+                      <div style={{display:"flex",gap:8,marginBottom:8}}>
+                        <select style={{flex:1}} value={selectedAcc[activeId+"_i"]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId+"_i"]:e.target.value}))}>
+                          <option value="">— Select isolation lift —</option>
+                          {Object.entries(ISOLATION_LIFTS).map(([g,ex])=>(<optgroup key={g} label={"── "+g+" ──"}>{ex.map(a=><option key={a} value={a}>{a}</option>)}</optgroup>))}
+                          <option value="__custom__">✏️ Custom...</option>
+                        </select>
+                        {selectedAcc[activeId+"_i"]&&selectedAcc[activeId+"_i"]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId+"_i"],"isolation");setSelectedAcc(prev=>({...prev,[activeId+"_i"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
                       </div>
                     )}
                     {getAccList(week,activeId,"isolation").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No isolation lifts added</div>}
                     {getAccList(week,activeId,"isolation").map(acc=>{
                       const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
-                      return (
-                    <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                        <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{color:"#555",fontSize:11,fontFamily:"'Roboto Condensed',sans-serif"}}>3 × 10</span>
-                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>DEL</button>}
-                        </div>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){updateAcc(week,activeId,acc.id,"weight",e.target.value);if(e.target.value)setExerciseHistory(h=>({...h,[acc.name]:e.target.value}));}}} />
-                        <span style={{color:"#555",fontSize:11}}>lbs</span>
-                        <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value)} />
-                        <span style={{color:"#555",fontSize:11}}>reps</span>
-                        {!isReadOnly&&(
-                          <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                            <div style={{display:"flex",gap:4}}>
-                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
-                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
-                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
-                            </div>
-                            {adj && acc.weight && (
-                              <div style={{fontSize:10,color:"#555"}}>
-                                next: <span style={{color:adj==="up"?"#06d6a0":adj==="down"?"#e85d04":"#3a86ff"}}>
-                                  {adj==="up"?+acc.weight+5:adj==="down"?Math.max(0,+acc.weight-5):+acc.weight} lbs
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                      return (<AccItem key={acc.id} acc={acc} adj={adj} lift={lift} isReadOnly={isReadOnly} onRemove={()=>removeAcc(week,activeId,acc.id)} onUpdate={(f,v)=>updateAcc(week,activeId,acc.id,f,v)} onAdj={(v)=>setAdj(acc.id,v)} onHistUpdate={(n,v)=>setExerciseHistory(h=>({...h,[n]:v}))} />);
+                    })}
                   </div>
                 )}
               </div>
 
-              {/* ── AUX ── */}
+              {/* AUX */}
               <div style={{marginBottom:20}}>
-                <button onClick={()=>setAccSectionOpen(p=>({...p,aux:!p.aux}))}
-                  style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.aux?8:0}}>
+                <button onClick={()=>setAccSectionOpen(p=>({...p,aux:!p.aux}))} style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.aux?8:0}}>
                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:2,color:"#888"}}>AUX</span>
-                  <span style={{color:"#555",fontSize:18,display:"inline-block",transform:accSectionOpen.aux?"rotate(90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>›</span>
+                  <span style={{color:"#555",fontSize:18,display:"inline-block",transform:accSectionOpen.aux?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
                 </button>
                 {accSectionOpen.aux && (
                   <div>
                     {!isReadOnly && (
-                      <div style={{marginBottom:8}}>
-                        <div style={{display:"flex",gap:8,marginBottom:selectedAcc[activeId+"_a"]==="__custom__"?8:0}}>
-                          <select style={{flex:1}} value={selectedAcc[activeId+"_a"]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId+"_a"]:e.target.value}))}>
-                            <option value="">— Select aux lift —</option>
-                            {Object.entries(AUX_LIFTS).map(([group,exercises])=>(
-                              <optgroup key={group} label={"── "+group+" ──"}>
-                                {exercises.map(a=><option key={a} value={a}>{a}</option>)}
-                              </optgroup>
-                            ))}
-                            <option value="__custom__">✏️ Custom...</option>
-                          </select>
-                          {selectedAcc[activeId+"_a"]&&selectedAcc[activeId+"_a"]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId+"_a"],"aux");setSelectedAcc(prev=>({...prev,[activeId+"_a"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
-                        </div>
-                        {selectedAcc[activeId+"_a"]==="__custom__" && (
-                          <div style={{display:"flex",gap:8}}>
-                            <input type="text" value={customAccInput[activeId+"_a"]||""} placeholder="Exercise name..." autoFocus onChange={e=>setCustomAccInput(prev=>({...prev,[activeId+"_a"]:e.target.value}))} style={{flex:1,borderColor:lift.color,color:lift.color}} />
-                            <button onClick={()=>{const n=customAccInput[activeId+"_a"]?.trim();if(!n)return;addAcc(week,activeId,n,"aux");setCustomAccInput(prev=>({...prev,[activeId+"_a"]:""}));setSelectedAcc(prev=>({...prev,[activeId+"_a"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>
-                          </div>
-                        )}
+                      <div style={{display:"flex",gap:8,marginBottom:8}}>
+                        <select style={{flex:1}} value={selectedAcc[activeId+"_a"]||""} onChange={e=>setSelectedAcc(prev=>({...prev,[activeId+"_a"]:e.target.value}))}>
+                          <option value="">— Select aux lift —</option>
+                          {Object.entries(AUX_LIFTS).map(([g,ex])=>(<optgroup key={g} label={"── "+g+" ──"}>{ex.map(a=><option key={a} value={a}>{a}</option>)}</optgroup>))}
+                          <option value="__custom__">✏️ Custom...</option>
+                        </select>
+                        {selectedAcc[activeId+"_a"]&&selectedAcc[activeId+"_a"]!=="__custom__"&&<button onClick={()=>{addAcc(week,activeId,selectedAcc[activeId+"_a"],"aux");setSelectedAcc(prev=>({...prev,[activeId+"_a"]:""}));}} className="bn" style={{background:lift.color,color:"#000",fontSize:13,padding:"4px 10px"}}>+ ADD</button>}
                       </div>
                     )}
                     {getAccList(week,activeId,"aux").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No aux lifts added</div>}
                     {getAccList(week,activeId,"aux").map(acc=>{
                       const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
-                      return (
-                    <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                        <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{color:"#555",fontSize:11,fontFamily:"'Roboto Condensed',sans-serif"}}>3 × 10</span>
-                          {!isReadOnly&&<button onClick={()=>removeAcc(week,activeId,acc.id)} style={{background:"#2a1a1a",border:"1px solid #e85d04",color:"#e85d04",cursor:"pointer",fontSize:13,padding:"2px 8px",borderRadius:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>DEL</button>}
-                        </div>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <input type="number" value={acc.weight} placeholder="lbs" readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{color:lift.color,borderColor:lift.color}} onChange={e=>{if(!isReadOnly){updateAcc(week,activeId,acc.id,"weight",e.target.value);if(e.target.value)setExerciseHistory(h=>({...h,[acc.name]:e.target.value}));}}} />
-                        <span style={{color:"#555",fontSize:11}}>lbs</span>
-                        <input type="number" value={acc.reps} readOnly={isReadOnly} onFocus={e=>e.target.select()} style={{width:56,color:lift.color,borderColor:lift.color}} onChange={e=>!isReadOnly&&updateAcc(week,activeId,acc.id,"reps",e.target.value)} />
-                        <span style={{color:"#555",fontSize:11}}>reps</span>
-                        {!isReadOnly&&(
-                          <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                            <div style={{display:"flex",gap:4}}>
-                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
-                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
-                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
-                            </div>
-                            {adj && acc.weight && (
-                              <div style={{fontSize:10,color:"#555"}}>
-                                next: <span style={{color:adj==="up"?"#06d6a0":adj==="down"?"#e85d04":"#3a86ff"}}>
-                                  {adj==="up"?+acc.weight+5:adj==="down"?Math.max(0,+acc.weight-5):+acc.weight} lbs
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                      return (<AccItem key={acc.id} acc={acc} adj={adj} lift={lift} isReadOnly={isReadOnly} onRemove={()=>removeAcc(week,activeId,acc.id)} onUpdate={(f,v)=>updateAcc(week,activeId,acc.id,f,v)} onAdj={(v)=>setAdj(acc.id,v)} onHistUpdate={(n,v)=>setExerciseHistory(h=>({...h,[n]:v}))} />);
+                    })}
                   </div>
                 )}
               </div>
-
+              
               {!isReadOnly && (
                 <div style={{marginBottom:14}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:6}}>SESSION NOTES</div>
