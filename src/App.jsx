@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.135 - removed duplicate primeAudio, faster font loading
+// v6.2 - social reactions: persistent selected state on Friends tab, reduced to 5 options
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -356,7 +356,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v6.1";
+  const APP_VERSION = "v6.2";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -2014,7 +2014,7 @@ export default function App() {
                         {/* Reactions */}
                         <div style={{marginTop:8}}>
                           <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
-                            {["💪","🔥","⚡","🏆","👏","😤","🚀","💯"].map(emoji => {
+                            {["💪","🔥","⚡","😤","💯"].map(emoji => {
                               const reactorsForEmoji = postReactions.filter(r=>r.emoji===emoji);
                               const reactionCount = reactorsForEmoji.length + (myReaction?.emoji===emoji?1:0);
                               const isSelected = myReaction?.emoji === emoji;
@@ -2142,12 +2142,16 @@ export default function App() {
                         <div style={{borderTop:"1px solid #1a1a1a",paddingTop:10}}>
                           <div style={{color:"#555",fontSize:10,marginBottom:6}}>{lastSession.liftName + " · " + fmtDate(lastSession.date)}</div>
                           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                            {["👊","🔥","💪","⚡","❤️","🙌","😤","💯"].map(emoji => (
-                              <button key={emoji} onClick={()=>sendReaction(f.id, lastSession.date, lastSession.liftName, emoji)}
-                                style={{background:"#1a1a2e",border:"1px solid #333",borderRadius:6,padding:"4px 8px",fontSize:18,cursor:"pointer"}}>
-                                {emoji}
-                              </button>
-                            ))}
+                            {["💪","🔥","⚡","😤","💯"].map(emoji => {
+                              const myFR = sentReactions.find(r => r.session_date === lastSession.date && r.to_id === f.id);
+                              const isSelected = myFR?.emoji === emoji;
+                              return (
+                                <button key={emoji} onClick={()=>sendReaction(f.id, lastSession.date, lastSession.liftName, emoji)}
+                                  style={{background:isSelected?"#2a1a0a":"#1a1a2e",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:6,padding:"4px 8px",fontSize:18,cursor:"pointer",transform:isSelected?"scale(1.1)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none",transition:"all 0.2s"}}>
+                                  {emoji}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
