@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v5.146 - removed duplicate primeAudio, faster font loading
+// v5.147 - removed duplicate primeAudio, faster font loading
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -345,7 +345,7 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v5.146";
+  const APP_VERSION = "v5.147";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -2911,8 +2911,8 @@ export default function App() {
                     )}
                     {getAccList(week,activeId,"support").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No support lifts added</div>}
                     {getAccList(week,activeId,"support").map(acc=>{
-                  const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
-                  return (
+                      const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
+                      return (
                     <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                         <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
@@ -2983,8 +2983,8 @@ export default function App() {
                     )}
                     {getAccList(week,activeId,"isolation").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No isolation lifts added</div>}
                     {getAccList(week,activeId,"isolation").map(acc=>{
-                  const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
-                  return (
+                      const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
+                      return (
                     <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                         <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
@@ -3055,8 +3055,8 @@ export default function App() {
                     )}
                     {getAccList(week,activeId,"aux").length===0&&<div style={{color:"#333",fontSize:12,textAlign:"center",padding:"8px 0"}}>No aux lifts added</div>}
                     {getAccList(week,activeId,"aux").map(acc=>{
-                  const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
-                  return (
+                      const adj=weightAdjust?.[week]?.[activeId]?.[acc.id];
+                      return (
                     <div key={acc.id} style={{padding:"10px 0",borderBottom:"1px solid #161616"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                         <div style={{color:"#ccc",fontSize:12}}>{acc.name}</div>
