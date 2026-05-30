@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.4 - mid-program editor: toggle lifts/C25K on-off (reversible, history kept), edit training days, running status shown in active program. active flag in lifts jsonb, runActive in body_stats jsonb (no schema change)
+// v6.5 - lift tab rest day: always show rest banner ("Enjoy the rest"), next workout as "Bench · Monday" with Lift Anyway; complete modal no longer hijacks rest days
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.4";
+  const APP_VERSION = "v6.5";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -2894,6 +2894,9 @@ export default function App() {
           </div>
         )}
         {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && (()=>{
+          const todayAbbr = DAY_ABBR[new Date().getDay()];
+          const scheduledToday = lifts.some(l=>l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
+          if(!scheduledToday) return false;
           const cd = completedDays?.[liftWeeks[activeId]-1]?.[activeId];
           const completedRecently = cd?.done && cd?.date && (new Date(todayISO())-new Date(cd.date))/86400000 < 7;
           return completedRecently;
@@ -2909,7 +2912,12 @@ export default function App() {
             </div>
           </div>
         )}
-        {view==="workout" && !workoutInProgress && !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done && (()=>{
+        {view==="workout" && !workoutInProgress && (()=>{
+          const ta = DAY_ABBR[new Date().getDay()];
+          const sched = lifts.some(l=>l.active!==false && (l.trainingDays||[]).includes(ta));
+          if(!sched) return true;
+          return !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done;
+        })() && (()=>{
           const todayAbbr = DAY_ABBR[new Date().getDay()];
           const scheduledLifts = lifts.filter(l=>l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
           const isScheduledToday = scheduledLifts.length > 0;
@@ -2939,12 +2947,12 @@ export default function App() {
                 <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #333"}}>
                   <div style={{fontSize:40,marginBottom:8}}>😴</div>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,color:"#555",letterSpacing:2,marginBottom:8}}>REST DAY</div>
-                  <div style={{color:"#444",fontSize:12,marginBottom:20}}>No lifts scheduled today. Recovery is part of the program.</div>
+                  <div style={{color:"#888",fontSize:14,marginBottom:20}}>Enjoy the rest. Recovery is part of the program.</div>
                   {nextLift && (
                     <div style={{background:"#111",borderRadius:10,padding:"14px",marginBottom:20}}>
-                      <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>NEXT UP</div>
-                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:nextLift.lift.color,letterSpacing:1,marginBottom:2}}>{nextLift.lift.name.toUpperCase()}</div>
-                      <div style={{color:"#555",fontSize:11}}>{nextLift.daysAway === 1 ? "Tomorrow" : "In "+nextLift.daysAway+" days"} · {nextLift.day} · Week {liftWeeks[nextLift.lift.id]||1}</div>
+                      <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>NEXT WORKOUT</div>
+                      <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:nextLift.lift.color,letterSpacing:1,marginBottom:2}}>{nextLift.lift.name.toUpperCase()} · {({Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Friday",Sat:"Saturday",Sun:"Sunday"})[nextLift.day]}</div>
+                      <div style={{color:"#555",fontSize:11}}>{nextLift.daysAway === 1 ? "Tomorrow" : "In "+nextLift.daysAway+" days"} · Week {liftWeeks[nextLift.lift.id]||1}</div>
                     </div>
                   )}
                   <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
