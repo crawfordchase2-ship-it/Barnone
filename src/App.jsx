@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.5 - lift tab rest day: always show rest banner ("Enjoy the rest"), next workout as "Bench · Monday" with Lift Anyway; complete modal no longer hijacks rest days
+// v6.6 - light theme overhaul: wired ~240 hardcoded dark colors to theme CSS variables (bg-card/input/sunken/secondary/border/text). dark mode pixel-identical; light retuned for contrast. share card stays dark.
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.5";
+  const APP_VERSION = "v6.6";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1141,30 +1141,30 @@ export default function App() {
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
         html,body,#root{min-height:100%;}
         body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
-        .theme-dark{--bg-primary:#000000;--bg-secondary:#0a0a0f;--bg-card:#0f0f1a;--bg-input:#1a1a2e;--text-primary:#f0f0f0;--text-muted:#555;--border:#1a1a1a;--border-input:#333;}
-        .theme-midnight{--bg-primary:#0d1117;--bg-secondary:#0d1117;--bg-card:#161b22;--bg-input:#1c2128;--text-primary:#e6edf3;--text-muted:#484f58;--border:#21262d;--border-input:#30363d;}
-        .theme-light{--bg-primary:#f5f0e8;--bg-secondary:#f5f0e8;--bg-card:#ede8de;--bg-input:#e0d8cc;--text-primary:#1a1a1a;--text-muted:#888;--border:#ccc;--border-input:#bbb;}
-        input[type=number],input[type=text],input[type=date],input[type=email],input[type=password]{background:#1a1a2e;border:1px solid #333;color:#f0f0f0;border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:13px;}
+        .theme-dark{--bg-primary:#000000;--bg-secondary:#0a0a0f;--bg-card:#0f0f1a;--bg-input:#1a1a2e;--bg-sunken:#111111;--text-primary:#f0f0f0;--text-secondary:#aaaaaa;--text-muted:#555;--border:#1a1a1a;--border-input:#333;}
+        .theme-midnight{--bg-primary:#0d1117;--bg-secondary:#0d1117;--bg-card:#161b22;--bg-input:#1c2128;--bg-sunken:#131820;--text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#484f58;--border:#21262d;--border-input:#30363d;}
+        .theme-light{--bg-primary:#f3eee4;--bg-secondary:#efe9dd;--bg-card:#fdfbf7;--bg-input:#eae3d6;--bg-sunken:#e8e1d3;--text-primary:#2a2521;--text-secondary:#6b6155;--text-muted:#938979;--border:#d9d1c2;--border-input:#cabfac;}
+        input[type=number],input[type=text],input[type=date],input[type=email],input[type=password]{background:var(--bg-input);border:1px solid #333;color:var(--text-primary);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:13px;}
         input[type=number]{width:64px;text-align:center;-moz-appearance:textfield;}
         input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;}
         input:focus,select:focus,textarea:focus{outline:none;border-color:#888;}
-        input[readonly]{background:#111;border-color:#1a1a1a;color:#444;cursor:default;}
-        select{background:#1a1a2e;border:1px solid #333;color:#f0f0f0;border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:12px;}
-        textarea{background:#1a1a2e;border:1px solid #333;color:#f0f0f0;border-radius:6px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:12px;resize:none;width:100%;}
+        input[readonly]{background:var(--bg-sunken);border-color:var(--border);color:#444;cursor:default;}
+        select{background:var(--bg-input);border:1px solid #333;color:var(--text-primary);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:12px;}
+        textarea{background:var(--bg-input);border:1px solid #333;color:var(--text-primary);border-radius:6px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:12px;resize:none;width:100%;}
         .bn{border:none;cursor:pointer;border-radius:6px;font-family:'Roboto Condensed',sans-serif;font-size:17px;letter-spacing:1px;padding:8px 14px;transition:all 0.15s;}
         .bigbtn{border:none;cursor:pointer;border-radius:8px;font-family:'Roboto Condensed',sans-serif;font-size:20px;letter-spacing:2px;padding:14px;width:100%;transition:all 0.2s;margin-bottom:8px;}
         .ntab{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;color:#444;font-family:'DM Mono',monospace;font-size:9px;transition:all 0.15s;flex:1;}
-        .ntab.on{color:#f0f0f0;}
-        .srow{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #1a1a1a;}
+        .ntab.on{color:var(--text-primary);}
+        .srow{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
       `}</style>
 
       {authScreen && authScreen!=="profile" && (
-        <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:100,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+        <div style={{position:"fixed",inset:0,background:"var(--bg-secondary)",zIndex:100,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
           <img src="/logo.png" alt="Bar None" style={{width:"100%",maxWidth:360,objectFit:"contain",marginBottom:36}} />
           <div style={{width:"100%",maxWidth:360}}>
-            <div style={{display:"flex",marginBottom:20,background:"#0f0f1a",borderRadius:8,padding:4}}>
+            <div style={{display:"flex",marginBottom:20,background:"var(--bg-card)",borderRadius:8,padding:4}}>
               {["login","register"].map(tab=>(
-                <button key={tab} onClick={()=>{setAuthScreen(tab);setAuthErr("");}} style={{flex:1,background:authScreen===tab?"#1a1a2e":"none",border:authScreen===tab?"1px solid #333":"none",color:authScreen===tab?"#f0f0f0":"#555",borderRadius:6,padding:"8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
+                <button key={tab} onClick={()=>{setAuthScreen(tab);setAuthErr("");}} style={{flex:1,background:authScreen===tab?"var(--bg-input)":"none",border:authScreen===tab?"1px solid #333":"none",color:authScreen===tab?"var(--text-primary)":"#555",borderRadius:6,padding:"8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
                   {tab==="login"?"SIGN IN":"CREATE ACCOUNT"}
                 </button>
               ))}
@@ -1211,7 +1211,7 @@ export default function App() {
                   <div style={{display:"flex",gap:8}}>
                     {["lbs","kg"].map(u=>(
                       <button key={u} onClick={()=>setWeightUnitPref(u)}
-                        style={{flex:1,background:weightUnit===u?"#1a1a2e":"#111",border:"1px solid "+(weightUnit===u?"#e85d04":"#333"),color:weightUnit===u?"#e85d04":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
+                        style={{flex:1,background:weightUnit===u?"var(--bg-input)":"var(--bg-sunken)",border:"1px solid "+(weightUnit===u?"#e85d04":"#333"),color:weightUnit===u?"#e85d04":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
                         {u.toUpperCase()}
                       </button>
                     ))}
@@ -1222,7 +1222,7 @@ export default function App() {
                   <div style={{display:"flex",gap:8}}>
                     {[{id:"dark",label:"DARK"},{id:"midnight",label:"MIDNIGHT"},{id:"light",label:"LIGHT"}].map(t=>(
                       <button key={t.id} onClick={()=>setThemePref(t.id)}
-                        style={{flex:1,background:theme===t.id?"#1a1a2e":"#111",border:"1px solid "+(theme===t.id?"#3a86ff":"#333"),color:theme===t.id?"#3a86ff":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,letterSpacing:1,cursor:"pointer"}}>
+                        style={{flex:1,background:theme===t.id?"var(--bg-input)":"var(--bg-sunken)",border:"1px solid "+(theme===t.id?"#3a86ff":"#333"),color:theme===t.id?"#3a86ff":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,letterSpacing:1,cursor:"pointer"}}>
                         {t.label}
                       </button>
                     ))}
@@ -1236,7 +1236,7 @@ export default function App() {
                   <div style={{marginBottom:12}}>
                     <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>DISPLAY NAME</div>
                     <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                      <div style={{color:"#f0f0f0",fontSize:15,flex:1}}>{displayName || currentUser?.user_metadata?.name || currentUser?.email}</div>
+                      <div style={{color:"var(--text-primary)",fontSize:15,flex:1}}>{displayName || currentUser?.user_metadata?.name || currentUser?.email}</div>
                       <button onClick={()=>setEditingName(true)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"2px 8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:11,cursor:"pointer"}}>EDIT</button>
                     </div>
                   </div>
@@ -1244,13 +1244,13 @@ export default function App() {
                 {username && (
                   <div style={{marginBottom:12}}>
                     <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>USERNAME</div>
-                    <div style={{color:"#f0f0f0",fontSize:15}}>@{username}</div>
+                    <div style={{color:"var(--text-primary)",fontSize:15}}>@{username}</div>
                   </div>
                 )}
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <div style={{color:"#aaa",fontSize:12}}>Public profile</div>
+                  <div style={{color:"var(--text-secondary)",fontSize:12}}>Public profile</div>
                   <button onClick={()=>{const v=!isPublic;setIsPublic(v);if(username)supabase.from("public_profiles").update({is_public:v}).eq("id",uid);}}
-                    style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                    style={{background:isPublic?"#06d6a0":"var(--bg-input)",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
                     {isPublic?"ON":"OFF"}
                   </button>
                 </div>
@@ -1265,7 +1265,7 @@ export default function App() {
       )}
 
       {loading && (
-        <div style={{position:"fixed",inset:0,background:"#0a0a0f",zIndex:200,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+        <div style={{position:"fixed",inset:0,background:"var(--bg-secondary)",zIndex:200,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
           <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#444",letterSpacing:2,marginTop:8}}>LOADING...</div>
         </div>
@@ -1273,7 +1273,7 @@ export default function App() {
 
       {restAlert && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid #f7b731"}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid #f7b731"}}>
             <div style={{fontSize:48,marginBottom:8}}>⏱️</div>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#f7b731",letterSpacing:2,marginBottom:8}}>REST OVER!</div>
             <div style={{color:"#555",fontSize:12,marginBottom:24}}>Time for your next set</div>
@@ -1284,16 +1284,16 @@ export default function App() {
 
       {prAlert && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid "+prAlert.color}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid "+prAlert.color}}>
             <div style={{fontSize:48,marginBottom:8}}>🏆</div>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:prAlert.color,letterSpacing:2,marginBottom:4}}>NEW PR!</div>
             <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>{prAlert.liftName.toUpperCase()}</div>
             <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:24}}>
-              <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
+              <div style={{background:"var(--bg-input)",borderRadius:10,padding:"12px 20px"}}>
                 <div style={{color:"#555",fontSize:10,marginBottom:4}}>BEFORE</div>
                 <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#555"}}>{prAlert.prevMax} lbs</div>
               </div>
-              <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
+              <div style={{background:"var(--bg-input)",borderRadius:10,padding:"12px 20px"}}>
                 <div style={{color:"#555",fontSize:10,marginBottom:4}}>NEW MAX</div>
                 <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#06d6a0"}}>{prAlert.estMax} lbs</div>
               </div>
@@ -1305,15 +1305,15 @@ export default function App() {
 
       {newWeekAlert && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid "+newWeekAlert.color}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid "+newWeekAlert.color}}>
             <div style={{fontSize:48,marginBottom:8}}>📅</div>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:newWeekAlert.color,letterSpacing:2,marginBottom:4}}>WEEK {newWeekAlert.week}!</div>
             <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>{newWeekAlert.liftName.toUpperCase()} — NEW WEIGHTS</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:24}}>
               {newWeekAlert.weights.map((w,i)=>(
-                <div key={i} style={{background:"#1a1a2e",borderRadius:8,padding:"10px"}}>
+                <div key={i} style={{background:"var(--bg-input)",borderRadius:8,padding:"10px"}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:2}}>SET {i+1}</div>
-                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f0f0f0"}}>{w} lbs</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"var(--text-primary)"}}>{w} lbs</div>
                 </div>
               ))}
             </div>
@@ -1324,7 +1324,7 @@ export default function App() {
 
       {streakAlert && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid #e85d04"}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:320,textAlign:"center",borderTop:"4px solid #e85d04"}}>
             <div style={{fontSize:48,marginBottom:8}}>🔥</div>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#e85d04",letterSpacing:2,marginBottom:8}}>GET BACK IN THE GYM!</div>
             <div style={{color:"#555",fontSize:12,marginBottom:24}}>It's been a few days. Time to lift!</div>
@@ -1335,10 +1335,10 @@ export default function App() {
 
       {confirmDeleteSession !== null && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid #e85d04"}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid #e85d04"}}>
             <div style={{fontSize:40,marginBottom:8}}>⚠️</div>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,color:"#e85d04",letterSpacing:2,marginBottom:12}}>DELETE SESSION?</div>
-            <div style={{background:"#111",borderRadius:8,padding:12,marginBottom:20,fontSize:11,color:"#aaa",textAlign:"left"}}>
+            <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:12,marginBottom:20,fontSize:11,color:"var(--text-secondary)",textAlign:"left"}}>
               <div style={{color:"#e85d04",marginBottom:6,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>THIS WILL AFFECT YOUR CHARTS</div>
               Deleting this session removes it from your progress charts and volume history. This cannot be undone.
             </div>
@@ -1353,13 +1353,13 @@ export default function App() {
 
       {confirmContinue && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
             <div style={{fontSize:40,marginBottom:8}}>🔄</div>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#06d6a0",letterSpacing:2,marginBottom:8}}>CONTINUE PROGRAM?</div>
             <div style={{color:"#555",fontSize:12,marginBottom:8}}>
               {fmtDate(confirmContinue.startDate)} program
             </div>
-            <div style={{background:"#111",borderRadius:8,padding:12,marginBottom:20,fontSize:11,color:"#aaa",textAlign:"left"}}>
+            <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:12,marginBottom:20,fontSize:11,color:"var(--text-secondary)",textAlign:"left"}}>
               <div style={{color:"#e85d04",marginBottom:4,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1}}>⚠️ YOUR CURRENT PROGRAM WILL BE ARCHIVED</div>
               You can always come back to it from the PROGRAM tab.
             </div>
@@ -1522,25 +1522,25 @@ export default function App() {
 
       {postWorkoutScreen && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid "+postWorkoutScreen.color}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid "+postWorkoutScreen.color}}>
             <div style={{fontSize:48,marginBottom:8}}>✅</div>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:postWorkoutScreen.color,letterSpacing:2,marginBottom:4}}>{postWorkoutScreen.liftName.toUpperCase()} DONE!</div>
             <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:16,letterSpacing:1}}>WEEK {postWorkoutScreen.week} COMPLETE</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
-              <div style={{background:"#111",borderRadius:10,padding:12}}>
+              <div style={{background:"var(--bg-sunken)",borderRadius:10,padding:12}}>
                 <div style={{color:"#555",fontSize:10,marginBottom:4}}>VOLUME</div>
-                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0"}}>{postWorkoutScreen.vol?.toLocaleString()}<span style={{fontSize:11,color:"#555"}}> lbs</span></div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"var(--text-primary)"}}>{postWorkoutScreen.vol?.toLocaleString()}<span style={{fontSize:11,color:"#555"}}> lbs</span></div>
               </div>
-              <div style={{background:"#111",borderRadius:10,padding:12}}>
+              <div style={{background:"var(--bg-sunken)",borderRadius:10,padding:12}}>
                 <div style={{color:"#555",fontSize:10,marginBottom:4}}>EST MAX</div>
                 <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#06d6a0"}}>{postWorkoutScreen.estMax||"—"}<span style={{fontSize:11,color:"#555"}}> lbs</span></div>
               </div>
             </div>
-            <div style={{background:"#111",borderRadius:8,padding:10,marginBottom:20,fontSize:11,color:"#555"}}>
+            <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:10,marginBottom:20,fontSize:11,color:"#555"}}>
               Next up: <span style={{color:postWorkoutScreen.color}}>Week {postWorkoutScreen.nextWeek}</span> when you return
             </div>
             <button onClick={()=>{setPostWorkoutScreen(null);setView("dashboard");}} style={{width:"100%",background:postWorkoutScreen.color,border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:2,cursor:"pointer",marginBottom:10}}>HOME</button>
-            <button onClick={()=>{setPostWorkoutScreen(null);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>VIEW THIS WORKOUT</button>
+            <button onClick={()=>{setPostWorkoutScreen(null);}} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-secondary)",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>VIEW THIS WORKOUT</button>
             <button onClick={()=>{setPostWorkoutScreen(null);setEditingPastWeek(true);}} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>EDIT THIS WORKOUT</button>
           </div>
         </div>
@@ -1548,17 +1548,17 @@ export default function App() {
 
       {finishAlert && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid "+finishAlert.color}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:360,textAlign:"center",borderTop:"4px solid "+finishAlert.color}}>
             <div style={{fontSize:48,marginBottom:8}}>💪</div>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:32,color:finishAlert.color,letterSpacing:2,marginBottom:4}}>{finishAlert.liftName.toUpperCase()} DONE!</div>
             <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>WEEK {finishAlert.week} COMPLETE</div>
             <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:24}}>
-              <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
+              <div style={{background:"var(--bg-input)",borderRadius:10,padding:"12px 20px"}}>
                 <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>VOLUME</div>
-                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#f0f0f0"}}>{finishAlert.vol.toLocaleString()}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
+                <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"var(--text-primary)"}}>{finishAlert.vol.toLocaleString()}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
               </div>
               {finishAlert.estMax && (
-                <div style={{background:"#1a1a2e",borderRadius:10,padding:"12px 20px"}}>
+                <div style={{background:"var(--bg-input)",borderRadius:10,padding:"12px 20px"}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>EST MAX</div>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#06d6a0"}}>{finishAlert.estMax}<span style={{fontSize:12,color:"#555"}}> lbs</span></div>
                 </div>
@@ -1571,14 +1571,14 @@ export default function App() {
 
       {showWeightPrompt && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0f99",zIndex:200,display:"flex",alignItems:"flex-end"}}>
-          <div style={{background:"#0f0f1a",borderRadius:"16px 16px 0 0",padding:24,width:"100%",maxWidth:500,margin:"0 auto",borderTop:"3px solid #06d6a0"}}>
+          <div style={{background:"var(--bg-card)",borderRadius:"16px 16px 0 0",padding:24,width:"100%",maxWidth:500,margin:"0 auto",borderTop:"3px solid #06d6a0"}}>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#06d6a0",marginBottom:4,letterSpacing:1}}>LOG THIS WEEK'S WEIGHT</div>
             <div style={{color:"#555",fontSize:12,marginBottom:16}}>Track your progress alongside your lifts.</div>
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:16}}>
               <input type="number" value={weightEntry} placeholder="185 lbs" autoFocus
                 onChange={e=>setWeightEntry(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&weightEntry){logWeightAndDismiss();setShowWeightPrompt(false);}}}
-                style={{flex:1,background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"10px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,textAlign:"center"}} />
+                style={{flex:1,background:"var(--bg-input)",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"10px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,textAlign:"center"}} />
               <span style={{color:"#555",fontSize:12}}>lbs</span>
             </div>
             <button onClick={()=>{if(weightEntry){logWeightAndDismiss();setShowWeightPrompt(false);}}} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG WEIGHT</button>
@@ -1589,14 +1589,14 @@ export default function App() {
 
       {showWeightModal && (
         <div style={{position:"fixed",inset:0,background:"#0a0a0fdd",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:360,borderTop:"4px solid #f7b731"}}>
+          <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:360,borderTop:"4px solid #f7b731"}}>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,letterSpacing:2,color:"#f7b731",marginBottom:6}}>HEY! LOG YOUR WEIGHT</div>
-            <div style={{color:"#aaa",fontSize:13,marginBottom:20,lineHeight:1.6}}>You've skipped a couple times this week. Tracking your weight is just as important as tracking your lifts. Takes 5 seconds.</div>
+            <div style={{color:"var(--text-secondary)",fontSize:13,marginBottom:20,lineHeight:1.6}}>You've skipped a couple times this week. Tracking your weight is just as important as tracking your lifts. Takes 5 seconds.</div>
             <div style={{display:"flex",gap:8,marginBottom:16}}>
               <input type="number" value={weightEntry} placeholder="185 lbs"
                 onChange={e=>setWeightEntry(e.target.value)}
                 onKeyDown={e=>e.key==="Enter"&&logWeightAndDismiss()}
-                style={{flex:1,background:"#1a1a2e",border:"1px solid #f7b731",color:"#f7b731",borderRadius:6,padding:"10px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,textAlign:"center"}} />
+                style={{flex:1,background:"var(--bg-input)",border:"1px solid #f7b731",color:"#f7b731",borderRadius:6,padding:"10px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,textAlign:"center"}} />
             </div>
             <button onClick={logWeightAndDismiss} style={{width:"100%",background:"#f7b731",border:"none",color:"#000",borderRadius:8,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>LOG IT NOW</button>
             <button onClick={()=>setShowWeightModal(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:8,padding:"10px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>maybe later</button>
@@ -1607,11 +1607,11 @@ export default function App() {
 }
 
 
-      <div style={{padding:"12px 16px",borderBottom:"1px solid #1a1a1a",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg-secondary)",zIndex:10}}>
+      <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg-secondary)",zIndex:10}}>
         <div>
           <img src="/logo.png" alt="Bar None" style={{height:80,objectFit:"contain"}} />
         </div>
-        <button onClick={()=>setShowProfile(true)} style={{background:"#0f0f1a",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",textAlign:"center"}}>
+        <button onClick={()=>setShowProfile(true)} style={{background:"var(--bg-card)",border:"1px solid #222",color:"#555",borderRadius:6,padding:"5px 12px",fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",textAlign:"center"}}>
           <div style={{display:"flex",alignItems:"center",gap:4}}>
             <span>{(currentUser?.user_metadata?.name || currentUser?.email || "USER").split(" ")[0].toUpperCase()}</span>
             <span style={{fontSize:9}}>⚙️</span>
@@ -1636,7 +1636,7 @@ export default function App() {
               {/* Run view tabs */}
               <div style={{display:"flex",gap:8,marginBottom:16}}>
                 {["today","plan","history"].map(t=>(
-                  <button key={t} onClick={()=>setRunView(t)} style={{flex:1,background:runView===t?"#1a1a2e":"#0f0f1a",border:"1px solid "+(runView===t?"#3a86ff":"#222"),color:runView===t?"#3a86ff":"#555",borderRadius:6,padding:"8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
+                  <button key={t} onClick={()=>setRunView(t)} style={{flex:1,background:runView===t?"var(--bg-input)":"var(--bg-card)",border:"1px solid "+(runView===t?"#3a86ff":"#222"),color:runView===t?"#3a86ff":"#555",borderRadius:6,padding:"8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
                     {t.toUpperCase()}
                   </button>
                 ))}
@@ -1661,7 +1661,7 @@ export default function App() {
                 // No run today
                 if (!isRunDay) return (
                   <div>
-                    <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #333",display:"flex",alignItems:"center",gap:16}}>
+                    <div style={{background:"var(--bg-card)",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #333",display:"flex",alignItems:"center",gap:16}}>
                       <div style={{fontSize:38}}>😴</div>
                       <div style={{flex:1}}>
                         <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#555",letterSpacing:2,lineHeight:1}}>NO RUN TODAY</div>
@@ -1674,7 +1674,7 @@ export default function App() {
                 // Completed today
                 if (completedToday) return (
                   <div>
-                    <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #06d6a0",display:"flex",alignItems:"center",gap:16}}>
+                    <div style={{background:"var(--bg-card)",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #06d6a0",display:"flex",alignItems:"center",gap:16}}>
                       <div style={{fontSize:38}}>✅</div>
                       <div style={{flex:1}}>
                         <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#06d6a0",letterSpacing:2,lineHeight:1}}>RUN COMPLETE!</div>
@@ -1687,7 +1687,7 @@ export default function App() {
                 // Run day - show workout
                 return (
                   <div>
-                    <div style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #3a86ff"}}>
+                    <div style={{background:"var(--bg-card)",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid #3a86ff"}}>
                       <div style={{display:"flex",alignItems:"center",gap:16}}>
                         <div style={{fontSize:38}}>🏃</div>
                         <div style={{flex:1}}>
@@ -1698,21 +1698,21 @@ export default function App() {
                     </div>
 
                     {!showRunLog && dayPlan && (
-                      <div style={{background:"#0f0f1a",borderRadius:12,marginBottom:16,borderTop:"4px solid #3a86ff",overflow:"hidden"}}>
+                      <div style={{background:"var(--bg-card)",borderRadius:12,marginBottom:16,borderTop:"4px solid #3a86ff",overflow:"hidden"}}>
                         <div style={{padding:"14px 16px 10px"}}>
                           <div style={{color:"#555",fontSize:10,marginBottom:4,letterSpacing:1}}>WEEK {runWeek} — DAY {runDay}{dayPlan.isEasy?" · EASY RUN":""}</div>
                           <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#3a86ff",letterSpacing:2,marginBottom:14}}>{weekPlan.goal}</div>
                         </div>
                         {dayPlan.intervals.map((seg,i) => (
                           seg.type==="repeat" ? (
-                            <div key={i} style={{margin:"0 12px 10px",borderRadius:10,overflow:"hidden",border:"1px solid #1a1a2e"}}>
-                              <div style={{background:"#1a1a2e",padding:"8px 14px",display:"flex",alignItems:"center",gap:10}}>
+                            <div key={i} style={{margin:"0 12px 10px",borderRadius:10,overflow:"hidden",border:"1px solid var(--bg-input)"}}>
+                              <div style={{background:"var(--bg-input)",padding:"8px 14px",display:"flex",alignItems:"center",gap:10}}>
                                 <span style={{fontSize:16}}>🔁</span>
                                 <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,color:"#8338ec",letterSpacing:1,flex:1}}>REPEAT</span>
                                 <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#8338ec"}}>× {seg.reps}</span>
                               </div>
                               {seg.intervals.map((s,j) => (
-                                <div key={j} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:s.type==="jog"?"#1a2a4a":"#1a1a0a",borderTop:"1px solid #111"}}>
+                                <div key={j} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:s.type==="jog"?"#1a2a4a":"#1a1a0a",borderTop:"1px solid var(--bg-sunken)"}}>
                                   <span style={{fontSize:20}}>{s.type==="jog"?"🏃":"🚶"}</span>
                                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:s.type==="jog"?"#3a86ff":"#f7b731",flex:1,letterSpacing:1}}>{s.type==="jog"?"JOG":"WALK"}</span>
                                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:s.type==="jog"?"#3a86ff":"#f7b731"}}>{s.duration<1?s.duration*60+"s":s.duration+"min"}</span>
@@ -1720,7 +1720,7 @@ export default function App() {
                               ))}
                             </div>
                           ) : (
-                            <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",background:seg.type==="jog"?"#1a2a4a":"transparent",borderTop:"1px solid #111"}}>
+                            <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",background:seg.type==="jog"?"#1a2a4a":"transparent",borderTop:"1px solid var(--bg-sunken)"}}>
                               <span style={{fontSize:20}}>{seg.type==="jog"?"🏃":"🚶"}</span>
                               <div style={{flex:1}}>
                                 <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:seg.type==="jog"?"#3a86ff":"#f7b731",letterSpacing:1}}>{seg.type==="jog"?"JOG":"WALK"}</div>
@@ -1730,37 +1730,37 @@ export default function App() {
                             </div>
                           )
                         ))}
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:"#111",borderTop:"1px solid #1a1a1a"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:"var(--bg-sunken)",borderTop:"1px solid var(--border)"}}>
                           <div style={{fontSize:10,color:"#555",letterSpacing:1}}>TOTAL TIME</div>
-                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f0f0f0"}}>~{dayPlan.totalMin} min</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"var(--text-primary)"}}>~{dayPlan.totalMin} min</div>
                         </div>
                       </div>
                     )}
 
                     {showRunLog && (
-                      <div style={{background:"#0f0f1a",borderRadius:12,marginBottom:16,borderTop:"4px solid #06d6a0",padding:"18px 16px"}}>
+                      <div style={{background:"var(--bg-card)",borderRadius:12,marginBottom:16,borderTop:"4px solid #06d6a0",padding:"18px 16px"}}>
                         <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#06d6a0",letterSpacing:2,marginBottom:4}}>LOG YOUR RUN</div>
                         <div style={{color:"#555",fontSize:11,marginBottom:18}}>WEEK {runWeek} · DAY {runDay} — all fields optional</div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
                           <div>
                             <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>DISTANCE</div>
                             <input type="number" step="0.1" value={runDistEntry} onChange={e=>setRunDistEntry(e.target.value)} placeholder="0.0"
-                              style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,fontWeight:700,textAlign:"center",outline:"none"}} />
+                              style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,fontWeight:700,textAlign:"center",outline:"none"}} />
                             <div style={{fontSize:10,color:"#555",textAlign:"center",marginTop:4}}>miles</div>
                           </div>
                           <div>
                             <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>TIME</div>
                             <div style={{display:"flex",alignItems:"center",gap:4}}>
                               <input type="number" value={runMinEntry} onChange={e=>setRunMinEntry(e.target.value)} placeholder="00"
-                                style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,fontWeight:700,textAlign:"center",outline:"none"}} />
+                                style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,fontWeight:700,textAlign:"center",outline:"none"}} />
                               <span style={{color:"#555",fontSize:18,fontWeight:700}}>:</span>
                               <input type="number" value={runSecEntry} onChange={e=>setRunSecEntry(e.target.value)} placeholder="00"
-                                style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,fontWeight:700,textAlign:"center",outline:"none"}} />
+                                style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"#3a86ff",borderRadius:8,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,fontWeight:700,textAlign:"center",outline:"none"}} />
                             </div>
                             <div style={{fontSize:10,color:"#555",textAlign:"center",marginTop:4}}>min : sec</div>
                           </div>
                         </div>
-                        <div style={{background:"#111",borderRadius:10,padding:"14px",textAlign:"center",marginBottom:16}}>
+                        <div style={{background:"var(--bg-sunken)",borderRadius:10,padding:"14px",textAlign:"center",marginBottom:16}}>
                           <div style={{color:"#555",fontSize:10,letterSpacing:1,marginBottom:4}}>PACE</div>
                           <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:32,fontWeight:700,color:runDistEntry&&runMinEntry?"#06d6a0":"#333"}}>
                             {runDistEntry&&runMinEntry ? (()=>{
@@ -1774,7 +1774,7 @@ export default function App() {
                         <div style={{marginBottom:16}}>
                           <div style={{color:"#555",fontSize:10,letterSpacing:1,marginBottom:6}}>NOTES <span style={{color:"#333"}}>(optional)</span></div>
                           <textarea value={runNotesEntry} onChange={e=>setRunNotesEntry(e.target.value)} placeholder="How did it feel?"
-                            style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:8,padding:10,fontFamily:"'Roboto',sans-serif",fontSize:13,resize:"none",height:70,outline:"none"}} />
+                            style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-secondary)",borderRadius:8,padding:10,fontFamily:"'Roboto',sans-serif",fontSize:13,resize:"none",height:70,outline:"none"}} />
                         </div>
                         <button onClick={()=>{
                           const totalSecs=(+runMinEntry*60)+(+runSecEntry||0);
@@ -1812,13 +1812,13 @@ export default function App() {
                         <div key={wp.week} style={{...card,borderLeft:"3px solid "+color,marginBottom:10,opacity:wp.week>runWeek+1?0.5:1}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color,letterSpacing:1}}>WEEK {wp.week}{isCurrent?" ← YOU ARE HERE":""}</div>
-                            <div style={{background:isDone?"#06d6a020":isCurrent?"#3a86ff20":"#1a1a2e",color:isDone?"#06d6a0":isCurrent?"#3a86ff":"#555",borderRadius:4,padding:"2px 8px",fontSize:10,fontFamily:"'Roboto Condensed',sans-serif"}}>
+                            <div style={{background:isDone?"#06d6a020":isCurrent?"#3a86ff20":"var(--bg-input)",color:isDone?"#06d6a0":isCurrent?"#3a86ff":"#555",borderRadius:4,padding:"2px 8px",fontSize:10,fontFamily:"'Roboto Condensed',sans-serif"}}>
                               {isDone?"✓ DONE":isCurrent?"IN PROGRESS":"UPCOMING"}
                             </div>
                           </div>
                           <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>{wp.goal}</div>
                           {wp.days.map(d=>(
-                            <div key={d.day} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #1a1a1a",fontSize:11}}>
+                            <div key={d.day} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)",fontSize:11}}>
                               <span style={{color,minWidth:45,fontFamily:"'Roboto Condensed',sans-serif"}}>DAY {d.day}{d.isEasy?" 🟢":""}</span>
                               <span style={{color:"#555",flex:1,padding:"0 8px"}}>{d.intervals.find(i=>i.type==="jog"||i.type==="repeat")?.label || (d.intervals.find(i=>i.type==="jog")?.duration ? d.intervals.find(i=>i.type==="jog").duration+"min jog" : "Intervals")}</span>
                               <span style={{color:"#f7b731",fontFamily:"'Roboto Condensed',sans-serif"}}>{d.totalMin}min</span>
@@ -1838,15 +1838,15 @@ export default function App() {
                   ) : (
                     <>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
-                        <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
+                        <div style={{background:"var(--bg-card)",borderRadius:8,padding:12,textAlign:"center"}}>
                           <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>RUNS</div>
                           <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#3a86ff"}}>{runHistory.length}</div>
                         </div>
-                        <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
+                        <div style={{background:"var(--bg-card)",borderRadius:8,padding:12,textAlign:"center"}}>
                           <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>TOTAL</div>
                           <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:"#f7b731"}}>{runHistory.reduce((s,r)=>s+(r.dist||0),0).toFixed(1)}<span style={{fontSize:11}}>mi</span></div>
                         </div>
-                        <div style={{background:"#0f0f1a",borderRadius:8,padding:12,textAlign:"center"}}>
+                        <div style={{background:"var(--bg-card)",borderRadius:8,padding:12,textAlign:"center"}}>
                           <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>BEST PACE</div>
                           <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0"}}>{(()=>{const best=runHistory.filter(r=>r.pace).sort((a,b)=>a.pace.localeCompare(b.pace))[0];return best?.pace||"—"})()}</div>
                         </div>
@@ -1859,12 +1859,12 @@ export default function App() {
                               <div style={{color:"#555",fontSize:10,marginTop:2}}>{fmtDate(r.date)}</div>
                             </div>
                             <div style={{textAlign:"right"}}>
-                              {r.dist?<div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,fontWeight:700,color:"#f0f0f0"}}>{r.dist} <span style={{fontSize:12,color:"#555"}}>mi</span></div>:null}
+                              {r.dist?<div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,fontWeight:700,color:"var(--text-primary)"}}>{r.dist} <span style={{fontSize:12,color:"#555"}}>mi</span></div>:null}
                               {r.pace?<div style={{color:"#06d6a0",fontSize:12}}>{r.pace} / mile</div>:null}
                               {r.totalSecs?<div style={{color:"#555",fontSize:11}}>{Math.floor(r.totalSecs/60)}:{String(r.totalSecs%60).padStart(2,"0")} total</div>:null}
                             </div>
                           </div>
-                          {r.notes&&<div style={{color:"#888",fontSize:12,fontStyle:"italic",borderTop:"1px solid #1a1a1a",paddingTop:6}}>"{r.notes}"</div>}
+                          {r.notes&&<div style={{color:"#888",fontSize:12,fontStyle:"italic",borderTop:"1px solid var(--border)",paddingTop:6}}>"{r.notes}"</div>}
                         </div>
                       ))}
                     </>
@@ -1881,9 +1881,9 @@ export default function App() {
           <div style={{padding:"16px 16px 0"}}>
             <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,letterSpacing:2,color:"#888",marginBottom:14}}>SOCIAL</div>
           </div>
-          <div style={{display:"flex",borderBottom:"1px solid #1a1a1a"}}>
+          <div style={{display:"flex",borderBottom:"1px solid var(--border)"}}>
             {[{id:"feed",label:"FEED"},{id:"friends",label:"FRIENDS"},{id:"requests",label:friendRequests.length > 0 ? "REQUESTS (" + friendRequests.length + ")" : "REQUESTS"},{id:"profile",label:"MY PROFILE"}].map(t => (
-              <button key={t.id} onClick={()=>{setSocialTab(t.id);if(t.id==="profile"||t.id==="feed"){localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewReactionCount(0);setNewFriendSessions(0);localStorage.setItem("barnone_social_check_"+uid, new Date().toISOString());}}} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"#f0f0f0":"#555",padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
+              <button key={t.id} onClick={()=>{setSocialTab(t.id);if(t.id==="profile"||t.id==="feed"){localStorage.setItem("barnone_last_reaction_"+uid, lastSeenReaction);setNewReactionCount(0);setNewFriendSessions(0);localStorage.setItem("barnone_social_check_"+uid, new Date().toISOString());}}} style={{flex:1,background:"none",border:"none",borderBottom:socialTab===t.id?"2px solid #e85d04":"2px solid transparent",color:socialTab===t.id?"var(--text-primary)":"#555",padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>
                 {t.label}
               </button>
             ))}
@@ -1958,11 +1958,11 @@ export default function App() {
                     const timeStr = daysSince === 0 ? "Today" : daysSince === 1 ? "Yesterday" : daysSince + "d ago";
 
                     return (
-                      <div key={i} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:10,borderLeft:"3px solid "+(post.liftColor||"#555")}}>
+                      <div key={i} style={{background:"var(--bg-card)",borderRadius:10,padding:14,marginBottom:10,borderLeft:"3px solid "+(post.liftColor||"#555")}}>
                         {/* Header */}
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                           <div>
-                            <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#f0f0f0"}}>{post.isMe ? "You" : post.authorName}</span>
+                            <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"var(--text-primary)"}}>{post.isMe ? "You" : post.authorName}</span>
                             {post.authorUsername ? <span style={{color:"#555",fontSize:11}}> @{post.authorUsername}</span> : null}
                           </div>
                           <span style={{color:"#555",fontSize:11}}>{timeStr}</span>
@@ -1971,7 +1971,7 @@ export default function App() {
                         {/* Lift post */}
                         {post.type === "lift" && (
                           <div>
-                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:post.liftColor||"#f0f0f0",marginBottom:4}}>
+                            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:post.liftColor||"var(--text-primary)",marginBottom:4}}>
                               {post.liftName} · Week {post.week}
                             </div>
                             {(()=>{
@@ -1986,11 +1986,11 @@ export default function App() {
                               return (
                                 <div>
                                   <div style={{display:"flex",gap:12,fontSize:11,color:"#555",marginBottom:8,flexWrap:"wrap"}}>
-                                    {post.volume > 0 && <span>Vol: <span style={{color:"#aaa"}}>{post.volume?.toLocaleString()} lbs</span></span>}
+                                    {post.volume > 0 && <span>Vol: <span style={{color:"var(--text-secondary)"}}>{post.volume?.toLocaleString()} lbs</span></span>}
                                     {newMax > 0 && (
                                       <span style={{display:"flex",alignItems:"center",gap:3}}>
                                         {maxIncreased && <span style={{color:"#06d6a0",fontSize:13}}>↑</span>}
-                                        <span style={{color:maxIncreased?"#06d6a0":"#aaa"}}>New Max: {newMax} lbs</span>
+                                        <span style={{color:maxIncreased?"#06d6a0":"var(--text-secondary)"}}>New Max: {newMax} lbs</span>
                                       </span>
                                     )}
                                     {post.durationSecs > 0 && <span>⏱ {fmtDuration(post.durationSecs)}</span>}
@@ -2014,7 +2014,7 @@ export default function App() {
                               🏃 C25K · Week {post.week} Day {post.day}
                             </div>
                             <div style={{display:"flex",gap:16,fontSize:11,color:"#555",marginBottom:8}}>
-                              {post.dist && <span>Dist: <span style={{color:"#aaa"}}>{post.dist} mi</span></span>}
+                              {post.dist && <span>Dist: <span style={{color:"var(--text-secondary)"}}>{post.dist} mi</span></span>}
                               {post.pace && <span>Pace: <span style={{color:"#06d6a0"}}>{post.pace}/mi</span></span>}
                             </div>
                           </div>
@@ -2029,7 +2029,7 @@ export default function App() {
                               const isSelected = myReaction?.emoji === emoji;
                               if(!post.isMe && reactionCount===0) return (
                                 <button key={emoji} onClick={()=>sendReaction(post.authorId, post.date, post.liftName||"run", emoji)}
-                                  style={{background:"transparent",border:"1px solid #1a1a1a",borderRadius:20,padding:"3px 8px",fontSize:15,cursor:"pointer",transition:"all 0.15s"}}>
+                                  style={{background:"transparent",border:"1px solid var(--border)",borderRadius:20,padding:"3px 8px",fontSize:15,cursor:"pointer",transition:"all 0.15s"}}>
                                   {emoji}
                                 </button>
                               );
@@ -2038,7 +2038,7 @@ export default function App() {
                                 <button key={emoji} onClick={()=>{
                                   if(!post.isMe) sendReaction(post.authorId, post.date, post.liftName||"run", emoji);
                                 }}
-                                  style={{background:isSelected?"#2a1a0a":"#1a1a1a",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:20,padding:"3px 10px",fontSize:15,cursor:post.isMe?"default":"pointer",display:"flex",alignItems:"center",gap:4,transition:"all 0.2s",transform:isSelected?"scale(1.15)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none"}}>
+                                  style={{background:isSelected?"#2a1a0a":"var(--border)",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:20,padding:"3px 10px",fontSize:15,cursor:post.isMe?"default":"pointer",display:"flex",alignItems:"center",gap:4,transition:"all 0.2s",transform:isSelected?"scale(1.15)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none"}}>
                                   {emoji}<span style={{fontSize:11,color:isSelected?"#e85d04":"#888",fontFamily:"'Roboto Condensed',sans-serif",fontWeight:isSelected?"700":"400"}}>{reactionCount}</span>
                                 </button>
                               );
@@ -2072,7 +2072,7 @@ export default function App() {
                                   {label}{clickable ? (open ? " ▲" : " ▼") : ""}
                                 </div>
                                 {open && (
-                                  <div style={{marginTop:4,background:"#0f0f1a",borderRadius:8,padding:"6px 10px"}}>
+                                  <div style={{marginTop:4,background:"var(--bg-card)",borderRadius:8,padding:"6px 10px"}}>
                                     {reactors.map(rc => (
                                       <div key={rc.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0",fontSize:12,color:"#ccc"}}>
                                         <span>{rc.name}</span><span style={{fontSize:15}}>{rc.emoji}</span>
@@ -2097,11 +2097,11 @@ export default function App() {
                   <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>FIND FRIENDS</div>
                   <input type="text" value={friendSearch} placeholder="Search by name or username..."
                     onChange={e => { setFriendSearch(e.target.value); searchFriends(e.target.value); }}
-                    style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:12}} />
+                    style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-primary)",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:12}} />
                   {friendSearchResults.map(u => (
-                    <div key={u.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #1a1a1a"}}>
+                    <div key={u.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
                       <div>
-                        <div style={{color:"#f0f0f0",fontSize:13}}>{u.name}</div>
+                        <div style={{color:"var(--text-primary)",fontSize:13}}>{u.name}</div>
                         {u.username && <div style={{color:"#555",fontSize:11}}>{"@" + u.username}</div>}
                       </div>
                       <button onClick={()=>sendFriendRequest(u.id)} style={{background:"#e85d04",border:"none",color:"#000",borderRadius:4,padding:"5px 12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>ADD</button>
@@ -2141,10 +2141,10 @@ export default function App() {
                     return Math.round(wm / 0.9 / 5) * 5;
                   }
                   return (
-                    <div key={f.id} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:12}}>
+                    <div key={f.id} style={{background:"var(--bg-card)",borderRadius:10,padding:14,marginBottom:12}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                         <div>
-                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f0f0f0"}}>{f.name}</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"var(--text-primary)"}}>{f.name}</div>
                           {f.username && <div style={{color:"#555",fontSize:11}}>{"@" + f.username}</div>}
                         </div>
                         <div style={{textAlign:"right"}}>
@@ -2156,18 +2156,18 @@ export default function App() {
                         {fLifts.filter(l => l.startingMax > 0).map(l => {
                           const curMax = getFriendEffMax(l);
                           const gained = curMax - (l.startingMax || 0);
-                          const cardStyle = {background:"#1a1a2e",borderRadius:6,padding:"6px 10px",borderLeft:"2px solid " + l.color};
+                          const cardStyle = {background:"var(--bg-input)",borderRadius:6,padding:"6px 10px",borderLeft:"2px solid " + l.color};
                           return (
                             <div key={l.id} style={cardStyle}>
                               <div style={{color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:13}}>{l.name}</div>
-                              <div style={{color:"#f0f0f0",fontSize:13,fontFamily:"'Roboto Condensed',sans-serif"}}>{curMax} lbs</div>
+                              <div style={{color:"var(--text-primary)",fontSize:13,fontFamily:"'Roboto Condensed',sans-serif"}}>{curMax} lbs</div>
                               {gained > 0 && <div style={{color:"#06d6a0",fontSize:10}}>+{gained} from start</div>}
                             </div>
                           );
                         })}
                       </div>
                       {lastSession && (
-                        <div style={{borderTop:"1px solid #1a1a1a",paddingTop:10}}>
+                        <div style={{borderTop:"1px solid var(--border)",paddingTop:10}}>
                           <div style={{color:"#555",fontSize:10,marginBottom:6}}>{lastSession.liftName + " · " + fmtDate(lastSession.date)}</div>
                           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                             {["💪","🔥","⚡","😤","💯"].map(emoji => {
@@ -2175,7 +2175,7 @@ export default function App() {
                               const isSelected = myFR?.emoji === emoji;
                               return (
                                 <button key={emoji} onClick={()=>sendReaction(f.id, lastSession.date, lastSession.liftName, emoji)}
-                                  style={{background:isSelected?"#2a1a0a":"#1a1a2e",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:6,padding:"4px 8px",fontSize:18,cursor:"pointer",transform:isSelected?"scale(1.1)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none",transition:"all 0.2s"}}>
+                                  style={{background:isSelected?"#2a1a0a":"var(--bg-input)",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:6,padding:"4px 8px",fontSize:18,cursor:"pointer",transform:isSelected?"scale(1.1)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none",transition:"all 0.2s"}}>
                                   {emoji}
                                 </button>
                               );
@@ -2192,9 +2192,9 @@ export default function App() {
               <div>
                 {friendRequests.length === 0 && <div style={{color:"#333",fontSize:12,textAlign:"center",padding:30}}>No pending friend requests</div>}
                 {friendRequests.map(r => (
-                  <div key={r.id} style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div key={r.id} style={{background:"var(--bg-card)",borderRadius:10,padding:14,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
-                      <div style={{color:"#f0f0f0",fontSize:14}}>{r.from_name || "Someone"}</div>
+                      <div style={{color:"var(--text-primary)",fontSize:14}}>{r.from_name || "Someone"}</div>
                       {r.from_username && <div style={{color:"#555",fontSize:11}}>@{r.from_username}</div>}
                       <div style={{color:"#444",fontSize:11}}>wants to be friends</div>
                     </div>
@@ -2208,7 +2208,7 @@ export default function App() {
             )}
             {socialTab === "profile" && (
               <div>
-                <div style={{background:"#0f0f1a",borderRadius:10,padding:14,marginBottom:14}}>
+                <div style={{background:"var(--bg-card)",borderRadius:10,padding:14,marginBottom:14}}>
                   {username ? (
                     <>
                       <div style={{marginBottom:12}}>
@@ -2216,7 +2216,7 @@ export default function App() {
                         {editingName
                           ? <div style={{display:"flex",gap:8}}>
                               <input type="text" value={displayName} onChange={e=>setDisplayName(e.target.value)}
-                                style={{flex:1,background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"6px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
+                                style={{flex:1,background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-primary)",borderRadius:6,padding:"6px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
                               <button onClick={async()=>{
                                 await supabase.from("public_profiles").update({name:displayName}).eq("id",uid);
                                 setEditingName(false);
@@ -2224,21 +2224,21 @@ export default function App() {
                               <button onClick={()=>setEditingName(false)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:6,padding:"6px 10px",fontSize:12,cursor:"pointer"}}>✕</button>
                             </div>
                           : <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              <div style={{color:"#f0f0f0",fontSize:15}}>{displayName || currentUser?.user_metadata?.name || currentUser?.email}</div>
+                              <div style={{color:"var(--text-primary)",fontSize:15}}>{displayName || currentUser?.user_metadata?.name || currentUser?.email}</div>
                               <button onClick={()=>setEditingName(true)} style={{background:"none",border:"1px solid #555",color:"#555",borderRadius:4,padding:"2px 8px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:11,cursor:"pointer"}}>EDIT</button>
                             </div>
                         }
                       </div>
                       <div style={{marginBottom:12}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:4}}>USERNAME</div>
-                        <div style={{color:"#f0f0f0",fontSize:16,fontFamily:"'DM Mono',monospace"}}>@{username}</div>
+                        <div style={{color:"var(--text-primary)",fontSize:16,fontFamily:"'DM Mono',monospace"}}>@{username}</div>
                         <div style={{color:"#333",fontSize:10,marginTop:4}}>Connections stay linked to your account, not your username.</div>
                       </div>
                       <div style={{marginBottom:14}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>PUBLIC PROFILE</div>
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                          <div style={{color:"#aaa",fontSize:12}}>Friends can find and see your progress</div>
-                          <button onClick={()=>{const newVal=!isPublic;setIsPublic(newVal);if(username){supabase.from("public_profiles").update({is_public:newVal}).eq("id",uid);}}} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                          <div style={{color:"var(--text-secondary)",fontSize:12}}>Friends can find and see your progress</div>
+                          <button onClick={()=>{const newVal=!isPublic;setIsPublic(newVal);if(username){supabase.from("public_profiles").update({is_public:newVal}).eq("id",uid);}}} style={{background:isPublic?"#06d6a0":"var(--bg-input)",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
                             {isPublic?"ON":"OFF"}
                           </button>
                         </div>
@@ -2248,7 +2248,7 @@ export default function App() {
                         <div style={{display:"flex",gap:8}}>
                           {["lbs","kg"].map(u=>(
                             <button key={u} onClick={()=>setWeightUnitPref(u)}
-                              style={{flex:1,background:weightUnit===u?"#1a1a2e":"#111",border:"1px solid "+(weightUnit===u?"#e85d04":"#333"),color:weightUnit===u?"#e85d04":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
+                              style={{flex:1,background:weightUnit===u?"var(--bg-input)":"var(--bg-sunken)",border:"1px solid "+(weightUnit===u?"#e85d04":"#333"),color:weightUnit===u?"#e85d04":"#555",borderRadius:6,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer"}}>
                               {u.toUpperCase()}
                             </button>
                           ))}
@@ -2259,7 +2259,7 @@ export default function App() {
                         <div style={{display:"flex",gap:8}}>
                           {[{id:"dark",label:"DARK"},{id:"midnight",label:"MIDNIGHT"},{id:"light",label:"LIGHT"}].map(t=>(
                             <button key={t.id} onClick={()=>setThemePref(t.id)}
-                              style={{flex:1,background:theme===t.id?"#1a1a2e":"#111",border:"1px solid "+(theme===t.id?"#3a86ff":"#333"),color:theme===t.id?"#3a86ff":"#555",borderRadius:6,padding:"8px 4px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
+                              style={{flex:1,background:theme===t.id?"var(--bg-input)":"var(--bg-sunken)",border:"1px solid "+(theme===t.id?"#3a86ff":"#333"),color:theme===t.id?"#3a86ff":"#555",borderRadius:6,padding:"8px 4px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,letterSpacing:1,cursor:"pointer"}}>
                               {t.label}
                             </button>
                           ))}
@@ -2274,14 +2274,14 @@ export default function App() {
                         <span style={{color:"#555",fontSize:14}}>@</span>
                         <input type="text" value={usernameEntry} placeholder="yourname"
                           onChange={e => setUsernameEntry(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                          style={{flex:1,background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
+                          style={{flex:1,background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-primary)",borderRadius:6,padding:"8px 10px",fontFamily:"'DM Mono',monospace",fontSize:13}} />
                       </div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
                         <div>
-                          <div style={{color:"#f0f0f0",fontSize:13}}>Public profile</div>
+                          <div style={{color:"var(--text-primary)",fontSize:13}}>Public profile</div>
                           <div style={{color:"#555",fontSize:11}}>Friends can find and see your progress</div>
                         </div>
-                        <button onClick={()=>setIsPublic(p=>!p)} style={{background:isPublic?"#06d6a0":"#1a1a2e",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
+                        <button onClick={()=>setIsPublic(p=>!p)} style={{background:isPublic?"#06d6a0":"var(--bg-input)",border:"1px solid "+(isPublic?"#06d6a0":"#555"),color:isPublic?"#000":"#555",borderRadius:20,padding:"4px 14px",fontFamily:"'DM Mono',monospace",fontSize:12,cursor:"pointer"}}>
                           {isPublic ? "ON" : "OFF"}
                         </button>
                       </div>
@@ -2290,10 +2290,10 @@ export default function App() {
                   )}
                 </div>
                 {myReactions.length > 0 && (
-                  <div style={{background:"#0f0f1a",borderRadius:10,padding:14}}>
+                  <div style={{background:"var(--bg-card)",borderRadius:10,padding:14}}>
                     <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>REACTIONS RECEIVED</div>
                     {myReactions.slice(0,10).map((r,i) => (
-                      <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a",fontSize:12}}>
+                      <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border)",fontSize:12}}>
                         <span style={{color:"#555"}}>{r.lift_name + " · " + fmtDate(r.session_date)}</span>
                         <span style={{fontSize:18}}>{r.emoji}</span>
                       </div>
@@ -2397,7 +2397,7 @@ export default function App() {
                   : "ENJOY THE RECOVERY";
               }
               return (
-                <div onClick={()=>{ if(todayPending.length>0) { setActiveId(todayPending[0].id); setView("workout"); } else if(isRunDay&&!runCompletedToday) { setView("run"); setRunView("today"); } }} style={{background:"#0f0f1a",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:(todayPending.length>0||(isRunDay&&!runCompletedToday))?"pointer":"default"}}>
+                <div onClick={()=>{ if(todayPending.length>0) { setActiveId(todayPending[0].id); setView("workout"); } else if(isRunDay&&!runCompletedToday) { setView("run"); setRunView("today"); } }} style={{background:"var(--bg-card)",borderRadius:12,padding:"20px",marginBottom:16,border:"2px solid "+bannerColor,display:"flex",alignItems:"center",gap:16,cursor:(todayPending.length>0||(isRunDay&&!runCompletedToday))?"pointer":"default"}}>
                   <div style={{fontSize:38}}>{bannerIcon}</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:bannerColor,letterSpacing:2,lineHeight:1}}>{bannerTitle}</div>
@@ -2434,7 +2434,7 @@ export default function App() {
             {nudgeLevel === 1 && (
               <div style={{...card,borderLeft:"3px solid #f7b731",marginBottom:14}}>
                 <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#f7b731",letterSpacing:1,marginBottom:4}}>YOUR BODY IS CHANGING</div>
-                <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>You're putting in the work — track the results. Log this week's weight to see how your body is responding to the program.</div>
+                <div style={{color:"var(--text-secondary)",fontSize:12,marginBottom:14}}>You're putting in the work — track the results. Log this week's weight to see how your body is responding to the program.</div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <input type="number" value={weightEntry} placeholder="lbs" step="0.1" onFocus={e=>e.target.select()}
                     onChange={e=>setWeightEntry(e.target.value)}
@@ -2447,7 +2447,7 @@ export default function App() {
             )}
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
-              {[{l:"SESSIONS",v:totalPossible > 0 ? totalSessions + " of " + totalPossible : totalSessions,c:"#f0f0f0"},{l:"STREAK",v:streak+"🔥",c:"#f7b731"},{l:"VOLUME",v:programVolume > 0 ? programVolumeDisplay + " lbs" : "—",c:"#3a86ff"}].map(s=>(
+              {[{l:"SESSIONS",v:totalPossible > 0 ? totalSessions + " of " + totalPossible : totalSessions,c:"var(--text-primary)"},{l:"STREAK",v:streak+"🔥",c:"#f7b731"},{l:"VOLUME",v:programVolume > 0 ? programVolumeDisplay + " lbs" : "—",c:"#3a86ff"}].map(s=>(
                 <div key={s.l} style={{...card,textAlign:"center",marginBottom:0}}>
                   <div style={{color:"#555",fontSize:9,marginBottom:4}}>{s.l}</div>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:s.c}}>{s.v}</div>
@@ -2464,13 +2464,13 @@ export default function App() {
                 return (
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
                     {bodyStats.heightIn && (
-                      <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
+                      <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:"12px"}}>
                         <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>HEIGHT</div>
-                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"#aaa",lineHeight:1}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
+                        <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:"var(--text-secondary)",lineHeight:1}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</div>
                       </div>
                     )}
                     {/* Weight card with trend */}
-                    <div style={{background:"#111",borderRadius:8,padding:"12px"}}>
+                    <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:"12px"}}>
                       <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>WEIGHT</div>
                       {latestWeight ? (
                         <>
@@ -2490,7 +2490,7 @@ export default function App() {
                       )}
                     </div>
                     {/* LOG card */}
-                    <div style={{background:"#111",borderRadius:8,padding:"12px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}>
+                    <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:"12px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}>
                       <div style={{color:"#555",fontSize:10,marginBottom:8,letterSpacing:1}}>LOG</div>
                       <button onClick={()=>setShowWeightPrompt(true)} style={{background:"#06d6a0",border:"none",color:"#000",borderRadius:8,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer",letterSpacing:1,width:"100%"}}>LOG WEIGHT</button>
                       {loggedThisWeek && <div style={{color:"#06d6a0",fontSize:9,marginTop:4}}>✓ logged this week</div>}
@@ -2507,7 +2507,7 @@ export default function App() {
             <div style={{...card}}>
               <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:10,letterSpacing:1}}>CURRENT MAXES</div>
               {PRs.map(l=>(
-                <div key={l.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #1a1a1a"}}>
+                <div key={l.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
                   <div>
                     <div style={{color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1}}>{l.name}</div>
                     <div style={{color:"#555",fontSize:10}}>Week {liftWeeks[l.id]||1} · Started {l.startMax} lbs</div>
@@ -2529,11 +2529,11 @@ export default function App() {
                 </div>
                 {runHistory.length > 0 ? (
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-                    <div style={{background:"#111",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                    <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:"10px",textAlign:"center"}}>
                       <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>TOTAL MILES</div>
                       <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f7b731"}}>{runHistory.reduce((s,r)=>s+(r.dist||0),0).toFixed(1)}</div>
                     </div>
-                    <div style={{background:"#111",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                    <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:"10px",textAlign:"center"}}>
                       <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>AVG PACE</div>
                       <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#3a86ff"}}>{(()=>{
                         const runs = runHistory.filter(r=>r.totalSecs&&r.dist);
@@ -2542,7 +2542,7 @@ export default function App() {
                         return Math.floor(avgPace/60)+":"+String(Math.round(avgPace%60)).padStart(2,"0");
                       })()}</div>
                     </div>
-                    <div style={{background:"#111",borderRadius:8,padding:"10px",textAlign:"center"}}>
+                    <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:"10px",textAlign:"center"}}>
                       <div style={{color:"#555",fontSize:9,marginBottom:4,letterSpacing:1}}>BEST PACE</div>
                       <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0"}}>{(()=>{
                         const best=runHistory.filter(r=>r.pace).sort((a,b)=>a.pace.localeCompare(b.pace))[0];
@@ -2554,13 +2554,13 @@ export default function App() {
                   <div style={{color:"#333",fontSize:11,marginBottom:10}}>No runs logged yet — get out there! 🏃</div>
                 )}
                 {runHistory[0] && (
-                  <div style={{background:"#111",borderRadius:8,padding:"10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{background:"var(--bg-sunken)",borderRadius:8,padding:"10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
                       <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#3a86ff"}}>LAST RUN · WK {runHistory[0].week} DAY {runHistory[0].day}</div>
                       <div style={{color:"#555",fontSize:10,marginTop:2}}>{fmtDate(runHistory[0].date)}</div>
                     </div>
                     <div style={{textAlign:"right"}}>
-                      {runHistory[0].dist && <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:"#f0f0f0"}}>{runHistory[0].dist} mi</div>}
+                      {runHistory[0].dist && <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:"var(--text-primary)"}}>{runHistory[0].dist} mi</div>}
                       {runHistory[0].pace && <div style={{color:"#555",fontSize:10}}>{runHistory[0].pace}/mi</div>}
                     </div>
                   </div>
@@ -2581,7 +2581,7 @@ export default function App() {
                   <div style={{color:sessionLedger[0].liftColor,fontFamily:"'Roboto Condensed',sans-serif",fontSize:18}}>{sessionLedger[0].liftName}</div>
                   <div style={{color:"#555",fontSize:11}}>{fmtDate(sessionLedger[0].date)} · Wk {sessionLedger[0].week}</div>
                 </div>
-                <div style={{color:"#555",fontSize:11}}>Vol: <span style={{color:"#f0f0f0"}}>{sessionLedger[0].volume?.toLocaleString()} lbs</span>{sessionLedger[0].estMax?<> · Est: <span style={{color:"#06d6a0"}}>{sessionLedger[0].estMax} lbs</span></>:""}</div>
+                <div style={{color:"#555",fontSize:11}}>Vol: <span style={{color:"var(--text-primary)"}}>{sessionLedger[0].volume?.toLocaleString()} lbs</span>{sessionLedger[0].estMax?<> · Est: <span style={{color:"#06d6a0"}}>{sessionLedger[0].estMax} lbs</span></>:""}</div>
                 {sessionLedger[0].notes && <div style={{color:"#444",fontSize:11,marginTop:4,fontStyle:"italic"}}>"{sessionLedger[0].notes}"</div>}
               </div>
             )}
@@ -2590,9 +2590,9 @@ export default function App() {
               <div style={{...card}}>
                 <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#888",marginBottom:8,letterSpacing:1}}>STRENGTH / BW RATIO</div>
                 {PRs.filter(l=>l.curMax>0).map(l=>(
-                  <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #1a1a1a"}}>
+                  <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)"}}>
                     <span style={{color:l.color,fontSize:12}}>{l.name}</span>
-                    <span style={{color:"#aaa",fontSize:12}}>{(l.curMax/latestWeight).toFixed(2)}× bodyweight</span>
+                    <span style={{color:"var(--text-secondary)",fontSize:12}}>{(l.curMax/latestWeight).toFixed(2)}× bodyweight</span>
                   </div>
                 ))}
               </div>
@@ -2608,11 +2608,11 @@ export default function App() {
               <>
                 <div style={{...card,borderLeft:"3px solid #06d6a0"}}>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:8}}>PROGRAM ACTIVE</div>
-                  <div style={{color:"#555",fontSize:11,marginBottom:4}}>Started: <span style={{color:"#aaa"}}>{fmtDate(startDate)}</span></div>
+                  <div style={{color:"#555",fontSize:11,marginBottom:4}}>Started: <span style={{color:"var(--text-secondary)"}}>{fmtDate(startDate)}</span></div>
                   {lifts.map(l=>{
                     const on = l.active!==false;
                     return (
-                    <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a",opacity:on?1:0.45}}>
+                    <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border)",opacity:on?1:0.45}}>
                       <span style={{color:on?l.color:"#666",fontFamily:"'Roboto Condensed',sans-serif",fontSize:15}}>{l.name}{on?"":" · NOT ACTIVE"}</span>
                       <span style={{color:"#555",fontSize:11}}>{on?("Week "+(liftWeeks[l.id]||1)+" · "+l.startingMax+" lbs"):"off"}</span>
                     </div>
@@ -2624,7 +2624,7 @@ export default function App() {
                   </div>
                 </div>
                 <div style={{marginTop:14}}>
-                  <button onClick={()=>setEditingProgram(v=>!v)} style={{width:"100%",background:"#1a1a2e",border:"1px solid #444",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,cursor:"pointer"}}>{editingProgram ? "✕ CLOSE EDITOR" : "✎ EDIT PROGRAM"}</button>
+                  <button onClick={()=>setEditingProgram(v=>!v)} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #444",color:"var(--text-secondary)",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,cursor:"pointer"}}>{editingProgram ? "✕ CLOSE EDITOR" : "✎ EDIT PROGRAM"}</button>
                 </div>
                 {editingProgram && (
                   <div style={{...card,marginTop:10,borderLeft:"3px solid #888"}}>
@@ -2632,32 +2632,32 @@ export default function App() {
                     {lifts.map(l=>{
                       const on = l.active!==false;
                       return (
-                        <div key={l.id} style={{background:"#0f0f1a",borderRadius:10,padding:12,marginBottom:10,opacity:on?1:0.55,borderLeft:"3px solid "+(on?l.color:"#333")}}>
+                        <div key={l.id} style={{background:"var(--bg-card)",borderRadius:10,padding:12,marginBottom:10,opacity:on?1:0.55,borderLeft:"3px solid "+(on?l.color:"#333")}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                             <span style={{color:on?l.color:"#666",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1}}>{l.name}{on?"":" · NOT ACTIVE"}</span>
-                            <button onClick={()=>updateLift(l.id,"active",!on)} style={{background:on?"#1a1a2e":"#06d6a0",border:"1px solid "+(on?"#555":"#06d6a0"),color:on?"#888":"#000",borderRadius:6,padding:"5px 12px",fontSize:12,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1,cursor:"pointer"}}>{on?"TURN OFF":"TURN ON"}</button>
+                            <button onClick={()=>updateLift(l.id,"active",!on)} style={{background:on?"var(--bg-input)":"#06d6a0",border:"1px solid "+(on?"#555":"#06d6a0"),color:on?"#888":"#000",borderRadius:6,padding:"5px 12px",fontSize:12,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1,cursor:"pointer"}}>{on?"TURN OFF":"TURN ON"}</button>
                           </div>
                           <div style={{color:"#555",fontSize:10,marginBottom:6}}>TRAINING DAYS</div>
                           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                             {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>{
                               const sel=(l.trainingDays||[]).includes(d);
-                              return <button key={d} disabled={!on} onClick={()=>{const cur=l.trainingDays||[];const next=sel?cur.filter(x=>x!==d):[...cur,d];if(next.length===0)return;updateLift(l.id,"trainingDays",next);}} style={{background:sel?l.color:"#111",color:sel?"#000":"#555",border:"1px solid "+(sel?l.color:"#333"),borderRadius:4,padding:"4px 9px",fontSize:11,cursor:on?"pointer":"not-allowed",opacity:on?1:0.6}}>{d}</button>;
+                              return <button key={d} disabled={!on} onClick={()=>{const cur=l.trainingDays||[];const next=sel?cur.filter(x=>x!==d):[...cur,d];if(next.length===0)return;updateLift(l.id,"trainingDays",next);}} style={{background:sel?l.color:"var(--bg-sunken)",color:sel?"#000":"#555",border:"1px solid "+(sel?l.color:"#333"),borderRadius:4,padding:"4px 9px",fontSize:11,cursor:on?"pointer":"not-allowed",opacity:on?1:0.6}}>{d}</button>;
                             })}
                           </div>
                           {on && (l.trainingDays||[]).length===1 && <div style={{color:"#555",fontSize:9,marginTop:5}}>An active lift needs at least one day — turn it off instead to remove it.</div>}
                         </div>
                       );
                     })}
-                    <div style={{background:"#0f0f1a",borderRadius:10,padding:12,opacity:runActive?1:0.55,borderLeft:"3px solid "+(runActive?"#3a86ff":"#333")}}>
+                    <div style={{background:"var(--bg-card)",borderRadius:10,padding:12,opacity:runActive?1:0.55,borderLeft:"3px solid "+(runActive?"#3a86ff":"#333")}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                         <span style={{color:runActive?"#3a86ff":"#666",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1}}>🏃 COUCH TO 5K{runActive?"":" · NOT ACTIVE"}</span>
-                        <button onClick={()=>setBodyStats(prev=>({...prev,runActive:!runActive}))} style={{background:runActive?"#1a1a2e":"#06d6a0",border:"1px solid "+(runActive?"#555":"#06d6a0"),color:runActive?"#888":"#000",borderRadius:6,padding:"5px 12px",fontSize:12,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1,cursor:"pointer"}}>{runActive?"TURN OFF":"TURN ON"}</button>
+                        <button onClick={()=>setBodyStats(prev=>({...prev,runActive:!runActive}))} style={{background:runActive?"var(--bg-input)":"#06d6a0",border:"1px solid "+(runActive?"#555":"#06d6a0"),color:runActive?"#888":"#000",borderRadius:6,padding:"5px 12px",fontSize:12,fontFamily:"'Roboto Condensed',sans-serif",letterSpacing:1,cursor:"pointer"}}>{runActive?"TURN OFF":"TURN ON"}</button>
                       </div>
                       <div style={{color:"#555",fontSize:10,marginBottom:6}}>RUNNING DAYS (pick 2–3)</div>
                       <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                         {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>{
                           const sel=runDays.includes(d);
-                          return <button key={d} disabled={!runActive} onClick={()=>setRunDays(prev=>prev.includes(d)?prev.filter(x=>x!==d):prev.length<3?[...prev,d]:prev)} style={{background:sel?"#1a1a2e":"#111",color:sel?"#3a86ff":"#555",border:"1px solid "+(sel?"#3a86ff":"#333"),borderRadius:4,padding:"4px 9px",fontSize:11,cursor:runActive?"pointer":"not-allowed",opacity:runActive?1:0.6}}>{d}</button>;
+                          return <button key={d} disabled={!runActive} onClick={()=>setRunDays(prev=>prev.includes(d)?prev.filter(x=>x!==d):prev.length<3?[...prev,d]:prev)} style={{background:sel?"var(--bg-input)":"var(--bg-sunken)",color:sel?"#3a86ff":"#555",border:"1px solid "+(sel?"#3a86ff":"#333"),borderRadius:4,padding:"4px 9px",fontSize:11,cursor:runActive?"pointer":"not-allowed",opacity:runActive?1:0.6}}>{d}</button>;
                         })}
                       </div>
                       {runActive && runDays.length<2 && <div style={{color:"#e85d04",fontSize:9,marginTop:5}}>Pick at least 2 days or turn running off.</div>}
@@ -2669,9 +2669,9 @@ export default function App() {
                   <button onClick={()=>{setSetupSnapshot({lifts:[...lifts],startDate});setConfirmStart(true);}} className="bigbtn" style={{background:"none",border:"1px solid #e85d04",color:"#e85d04"}}>START NEW 12-WEEK PROGRAM</button>
                 )}
                 {confirmStart && (
-                  <div style={{background:"#0f0f1a",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #e85d04"}}>
+                  <div style={{background:"var(--bg-card)",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #e85d04"}}>
                     <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#e85d04",marginBottom:6,letterSpacing:1}}>⚠️ START NEW PROGRAM?</div>
-                    <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>Your current program will be archived. All workout history, progress and custom exercises will be saved. Enter your new starting maxes before confirming.</div>
+                    <div style={{color:"var(--text-secondary)",fontSize:12,marginBottom:14}}>Your current program will be archived. All workout history, progress and custom exercises will be saved. Enter your new starting maxes before confirming.</div>
                     <div style={{display:"flex",gap:8}}>
                       <button className="bigbtn" onClick={()=>{startNewProgram();setConfirmStart(false);}} style={{background:"#e85d04",color:"#000",flex:2,marginBottom:0}}>CONFIRM →</button>
                       <button className="bigbtn" onClick={()=>setConfirmStart(false)} style={{background:"none",border:"1px solid #555",color:"#555",flex:1,marginBottom:0}}>BACK</button>
@@ -2688,10 +2688,10 @@ export default function App() {
                   <div style={{marginBottom:14}}>
                     <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>PROGRAM NAME <span style={{color:"#333"}}>(optional)</span></div>
                     <input type="text" value={programName} onChange={e=>setProgramName(e.target.value)} placeholder="e.g. Bulk 2026, Cut Season..."
-                      style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",borderRadius:8,padding:"10px 12px",fontFamily:"'Roboto',sans-serif",fontSize:14,outline:"none"}} />
+                      style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-primary)",borderRadius:8,padding:"10px 12px",fontFamily:"'Roboto',sans-serif",fontSize:14,outline:"none"}} />
                   </div>
                   <div style={{color:"#555",fontSize:10,marginBottom:6}}>PROGRAM START DATE</div>
-                  <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"#1a1a2e",border:"1px solid #333",color:"#f0f0f0",fontSize:14,outline:"none",width:"100%",borderRadius:6,padding:"8px 10px"}} />
+                  <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-primary)",fontSize:14,outline:"none",width:"100%",borderRadius:6,padding:"8px 10px"}} />
                 </div>
                 <div style={{...card,borderLeft:"3px solid #06d6a0"}}>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:10,letterSpacing:1}}>BODY STATS</div>
@@ -2713,7 +2713,7 @@ export default function App() {
                   </div>
                   {bodyStats.heightIn && latestWeight && (
                     <div style={{marginTop:10,color:"#555",fontSize:11}}>
-                      Height: <span style={{color:"#aaa"}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</span>
+                      Height: <span style={{color:"var(--text-secondary)"}}>{Math.floor(+bodyStats.heightIn/12)}′{+bodyStats.heightIn%12}″</span>
                       {"  ·  "}Weight: <span style={{color:"#06d6a0"}}>{latestWeight} lbs</span>
                       {bmi && <>{" · "}BMI: <span style={{color:bmiCol(bmi)}}>{bmi} ({bmiCat(bmi)})</span></>}
                     </div>
@@ -2727,7 +2727,7 @@ export default function App() {
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                     {DAY_ABBR.slice(1).concat(["Sun"]).map(d=>(
                       <button key={d} onClick={()=>setRunDays(prev=>prev.includes(d)?prev.filter(x=>x!==d):prev.length<3?[...prev,d]:prev)}
-                        style={{background:runDays.includes(d)?"#1a1a2e":"#111",border:"1px solid "+(runDays.includes(d)?"#3a86ff":"#333"),color:runDays.includes(d)?"#3a86ff":"#444",borderRadius:4,padding:"6px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>
+                        style={{background:runDays.includes(d)?"var(--bg-input)":"var(--bg-sunken)",border:"1px solid "+(runDays.includes(d)?"#3a86ff":"#333"),color:runDays.includes(d)?"#3a86ff":"#444",borderRadius:4,padding:"6px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>
                         {d}
                       </button>
                     ))}
@@ -2738,7 +2738,7 @@ export default function App() {
 
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:1}}>YOUR LIFTS</div>
-                  <button onClick={addLift} className="bn" style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",fontSize:13,padding:"4px 10px"}}>+ ADD LIFT</button>
+                  <button onClick={addLift} className="bn" style={{background:"var(--bg-input)",border:"1px solid #555",color:"var(--text-secondary)",fontSize:13,padding:"4px 10px"}}>+ ADD LIFT</button>
                 </div>
             {lifts.map(l=>{
               const cur=l.startingMax?calcCurrentMax(l.startingMax):null;
@@ -2748,11 +2748,11 @@ export default function App() {
                   <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10}}>
                     <div style={{flex:1}}>
                       <select value={l.mainLiftOption||"Bench"} onChange={e=>{const v=e.target.value;updateLift(l.id,"mainLiftOption",v);if(v==="Custom")updateLift(l.id,"name","");else updateLift(l.id,"name",v);}} style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid "+l.color+"66",color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,letterSpacing:1,padding:"2px 0",cursor:"pointer",marginBottom:6}}>
-                        {MAIN_LIFT_OPTIONS.map(o=><option key={o} value={o} style={{background:"#1a1a2e",fontFamily:"sans-serif",fontSize:14}}>{o}</option>)}
+                        {MAIN_LIFT_OPTIONS.map(o=><option key={o} value={o} style={{background:"var(--bg-input)",fontFamily:"sans-serif",fontSize:14}}>{o}</option>)}
                       </select>
                       {l.mainLiftOption==="Custom" && <input type="text" value={l.name} placeholder="Type lift name..." onChange={e=>updateLift(l.id,"name",e.target.value)} style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid "+l.color+"44",color:l.color,fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,padding:"2px 0",outline:"none",marginBottom:6}} />}
                       <div style={{display:"flex",gap:6}}>
-                        {["UPPER","LOWER"].map(t=><button key={t} onClick={()=>updateLift(l.id,"isLower",t==="LOWER")} style={{background:(t==="LOWER")===l.isLower?l.color:"#111",color:(t==="LOWER")===l.isLower?"#000":"#555",border:"1px solid "+((t==="LOWER")===l.isLower?l.color:"#333"),borderRadius:3,padding:"2px 8px",fontSize:10,cursor:"pointer"}}>{t}</button>)}
+                        {["UPPER","LOWER"].map(t=><button key={t} onClick={()=>updateLift(l.id,"isLower",t==="LOWER")} style={{background:(t==="LOWER")===l.isLower?l.color:"var(--bg-sunken)",color:(t==="LOWER")===l.isLower?"#000":"#555",border:"1px solid "+((t==="LOWER")===l.isLower?l.color:"#333"),borderRadius:3,padding:"2px 8px",fontSize:10,cursor:"pointer"}}>{t}</button>)}
                       </div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -2763,13 +2763,13 @@ export default function App() {
                   </div>
                   {cur && <div style={{color:"#555",fontSize:11,marginBottom:8}}>Training at: <span style={{color:l.color}}>{cur} lbs</span>{"  "}<button onClick={()=>setPreviewLift(previewLift===l.id?null:l.id)} style={{background:"none",border:"1px solid "+l.color,color:l.color,borderRadius:3,padding:"1px 7px",fontSize:10,cursor:"pointer"}}>{previewLift===l.id?"hide":"preview"}</button></div>}
                   {previewLift===l.id && wkts && (
-                    <div style={{background:"#0a0a0f",borderRadius:6,padding:"10px 12px",marginBottom:10}}>
-                      {wkts.map((w,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid #1a1a1a",fontSize:12}}><span style={{color:"#555"}}>Set {i+1}</span><span style={{color:l.color}}>{w} lbs</span><span style={{color:"#444"}}>{i<3?"× 10":"max reps"}</span></div>)}
+                    <div style={{background:"var(--bg-secondary)",borderRadius:6,padding:"10px 12px",marginBottom:10}}>
+                      {wkts.map((w,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid var(--border)",fontSize:12}}><span style={{color:"#555"}}>Set {i+1}</span><span style={{color:l.color}}>{w} lbs</span><span style={{color:"#444"}}>{i<3?"× 10":"max reps"}</span></div>)}
                     </div>
                   )}
                   <div style={{color:"#555",fontSize:10,marginBottom:5}}>TRAINING DAYS</div>
                   <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>{const sel=(l.trainingDays||[]).includes(d);return <button key={d} onClick={()=>updateLift(l.id,"trainingDays",sel?l.trainingDays.filter(x=>x!==d):[...(l.trainingDays||[]),d])} style={{background:sel?l.color:"#111",color:sel?"#000":"#555",border:"1px solid "+(sel?l.color:"#333"),borderRadius:4,padding:"3px 8px",fontSize:11,cursor:"pointer",transition:"all 0.15s"}}>{d}</button>;})}
+                    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>{const sel=(l.trainingDays||[]).includes(d);return <button key={d} onClick={()=>updateLift(l.id,"trainingDays",sel?l.trainingDays.filter(x=>x!==d):[...(l.trainingDays||[]),d])} style={{background:sel?l.color:"var(--bg-sunken)",color:sel?"#000":"#555",border:"1px solid "+(sel?l.color:"#333"),borderRadius:4,padding:"3px 8px",fontSize:11,cursor:"pointer",transition:"all 0.15s"}}>{d}</button>;})}
                   </div>
                 </div>
               );
@@ -2807,18 +2807,18 @@ export default function App() {
                         <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,color:"#06d6a0",marginBottom:4,letterSpacing:1}}>✅ READY TO GO</div>
                         <div style={{color:"#555",fontSize:11,marginBottom:12}}>All lifts configured. Review your maxes above then confirm to lock them in.</div>
                         {lifts.map(l=>(
-                          <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #1a1a1a",fontSize:12}}>
+                          <div key={l.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid var(--border)",fontSize:12}}>
                             <span style={{color:l.color,fontFamily:"'Roboto Condensed',sans-serif"}}>{l.name}</span>
-                            <span style={{color:"#aaa"}}>{calcCurrentMax(l.startingMax)} lbs training max</span>
+                            <span style={{color:"var(--text-secondary)"}}>{calcCurrentMax(l.startingMax)} lbs training max</span>
                           </div>
                         ))}
                         <button className="bigbtn" onClick={()=>setConfirmStart(true)} style={{background:"#06d6a0",color:"#000",marginTop:14,marginBottom:0}}>CONFIRM & START PROGRAM →</button>
                       </div>
                     )}
                     {confirmStart && (
-                      <div style={{background:"#0f0f1a",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #06d6a0"}}>
+                      <div style={{background:"var(--bg-card)",borderRadius:10,padding:16,marginTop:8,borderLeft:"3px solid #06d6a0"}}>
                         <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"#06d6a0",marginBottom:6,letterSpacing:1}}>LAST CHANCE!</div>
-                        <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>
+                        <div style={{color:"var(--text-secondary)",fontSize:12,marginBottom:14}}>
                           Starting {fmtDate(startDate)} with {lifts.length} lift{lifts.length>1?"s":""}. Your maxes are locked in once you start — you cannot change them mid-program.
                         </div>
                         <div style={{display:"flex",gap:8}}>
@@ -2863,13 +2863,13 @@ export default function App() {
                         {p.bestStreak > 0 && <span>🔥 {p.bestStreak} day best streak</span>}
                       </div>
                       <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>setConfirmContinue(p)} style={{background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>CONTINUE</button>
-                        <button onClick={()=>setShareCard(p)} style={{background:"#1a1a2e",border:"1px solid #555",color:"#aaa",borderRadius:6,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>SHARE</button>
+                        <button onClick={()=>setConfirmContinue(p)} style={{background:"var(--bg-input)",border:"1px solid #06d6a0",color:"#06d6a0",borderRadius:6,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>CONTINUE</button>
+                        <button onClick={()=>setShareCard(p)} style={{background:"var(--bg-input)",border:"1px solid #555",color:"var(--text-secondary)",borderRadius:6,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:1}}>SHARE</button>
                       </div>
                     </div>
                     {(p.lifts||[]).map(l=>{const sm=l.startingMax||0;const fm=p.finalMaxes?.[l.id]||0;return(<div key={l.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555",padding:"2px 0"}}><span style={{color:l.color}}>{l.name}</span><span>{sm} → {fm} lbs{fm>sm?<span style={{color:"#06d6a0"}}> (+{fm-sm})</span>:""}</span></div>);})}
                     {(p.runHistory||[]).length > 0 && (
-                      <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1a1a1a"}}>
+                      <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid var(--border)"}}>
                         <div style={{display:"flex",gap:16,fontSize:11,color:"#555"}}>
                           <span>🏃 {(p.runHistory||[]).length} runs</span>
                           <span>{((p.runHistory||[]).reduce((s,r)=>s+(r.dist||0),0)).toFixed(1)} mi total</span>
@@ -2885,12 +2885,12 @@ export default function App() {
         )}
 
         {view==="workout" && workoutInProgress && (
-          <div style={{background:"#0f0f1a",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #1a1a1a"}}>
+          <div style={{background:"var(--bg-card)",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--border)"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <div style={{width:8,height:8,borderRadius:"50%",background:"#06d6a0",animation:"pulse 1s infinite"}}></div>
               <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#06d6a0",letterSpacing:1}}>WORKOUT IN PROGRESS</span>
             </div>
-            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"#f0f0f0",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"var(--text-primary)",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
           </div>
         )}
         {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && (()=>{
@@ -2902,12 +2902,12 @@ export default function App() {
           return completedRecently;
         })() && (
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-            <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
+            <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
               <div style={{fontSize:40,marginBottom:8}}>✅</div>
               <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:26,color:"#06d6a0",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
               <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:20,letterSpacing:1}}>TODAY'S WORKOUT COMPLETE</div>
               <button onClick={()=>{setView("dashboard");setReviewingCompletedWorkout(false);}} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,letterSpacing:2,cursor:"pointer",marginBottom:10}}>HOME</button>
-              <button onClick={()=>{setReviewingCompletedWorkout(true);setViewingWeek((liftWeeks[activeId]||1)-1||1);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #333",color:"#aaa",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>REVIEW WORKOUT</button>
+              <button onClick={()=>{setReviewingCompletedWorkout(true);setViewingWeek((liftWeeks[activeId]||1)-1||1);}} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-secondary)",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:8}}>REVIEW WORKOUT</button>
               <button onClick={()=>{setReviewingCompletedWorkout(true);setEditingPastWeek(true);setViewingWeek((liftWeeks[activeId]||1)-1||1);}} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>EDIT WORKOUT</button>
             </div>
           </div>
@@ -2935,27 +2935,27 @@ export default function App() {
           return (
             <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
               {isScheduledToday ? (
-                <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid "+(lift?.color||"#e85d04")}}>
+                <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid "+(lift?.color||"#e85d04")}}>
                   <div style={{fontSize:40,marginBottom:8}}>🏋️</div>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:lift?.color||"#e85d04",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
                   <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:12}}>WEEK {liftWeeks[activeId]||1}</div>
-                  <div style={{color:"#aaa",fontSize:13,marginBottom:24,fontStyle:"italic"}}>"{pumpMsg}"</div>
+                  <div style={{color:"var(--text-secondary)",fontSize:13,marginBottom:24,fontStyle:"italic"}}>"{pumpMsg}"</div>
                   <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               ) : (
-                <div style={{background:"#0f0f1a",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #333"}}>
+                <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #333"}}>
                   <div style={{fontSize:40,marginBottom:8}}>😴</div>
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,color:"#555",letterSpacing:2,marginBottom:8}}>REST DAY</div>
                   <div style={{color:"#888",fontSize:14,marginBottom:20}}>Enjoy the rest. Recovery is part of the program.</div>
                   {nextLift && (
-                    <div style={{background:"#111",borderRadius:10,padding:"14px",marginBottom:20}}>
+                    <div style={{background:"var(--bg-sunken)",borderRadius:10,padding:"14px",marginBottom:20}}>
                       <div style={{color:"#555",fontSize:10,marginBottom:6,letterSpacing:1}}>NEXT WORKOUT</div>
                       <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:22,color:nextLift.lift.color,letterSpacing:1,marginBottom:2}}>{nextLift.lift.name.toUpperCase()} · {({Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Friday",Sat:"Saturday",Sun:"Sunday"})[nextLift.day]}</div>
                       <div style={{color:"#555",fontSize:11}}>{nextLift.daysAway === 1 ? "Tomorrow" : "In "+nextLift.daysAway+" days"} · Week {liftWeeks[nextLift.lift.id]||1}</div>
                     </div>
                   )}
-                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);}} style={{width:"100%",background:"#1a1a2e",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
+                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);}} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#444",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               )}
@@ -2964,27 +2964,27 @@ export default function App() {
         })()}
         {view==="workout" && (
           <>
-            <div style={{padding:"8px 16px",display:"flex",gap:8,borderBottom:"1px solid #1a1a1a",flexWrap:"wrap"}}>
+            <div style={{padding:"8px 16px",display:"flex",gap:8,borderBottom:"1px solid var(--border)",flexWrap:"wrap"}}>
               {lifts.map(l=>(
                 <div key={l.id} style={{display:"flex",alignItems:"center",gap:4}}>
                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:11,color:activeId===l.id?l.color:"#333",letterSpacing:1}}>{l.name}</span>
-                  <span style={{background:activeId===l.id?l.color:"#1a1a2e",color:activeId===l.id?"#000":"#444",borderRadius:3,padding:"1px 5px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:11}}>W{liftWeeks[l.id]||1}</span>
+                  <span style={{background:activeId===l.id?l.color:"var(--bg-input)",color:activeId===l.id?"#000":"#444",borderRadius:3,padding:"1px 5px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:11}}>W{liftWeeks[l.id]||1}</span>
                 </div>
               ))}
             </div>
-            <div style={{padding:"10px 16px",display:"flex",gap:6,flexWrap:"wrap",borderBottom:"1px solid #1a1a1a"}}>
-              {lifts.map(l=>{const done=completedDays?.[liftWeeks[l.id]]?.[l.id];return <button key={l.id} className="bn" onClick={()=>switchLift(l.id)} style={{background:activeId===l.id?l.color:"#1a1a2e",color:activeId===l.id?"#000":l.color,border:"1px solid "+l.color,opacity:done&&activeId!==l.id?0.5:1}}>{l.name}{done?" ✓":""}</button>;})}
+            <div style={{padding:"10px 16px",display:"flex",gap:6,flexWrap:"wrap",borderBottom:"1px solid var(--border)"}}>
+              {lifts.map(l=>{const done=completedDays?.[liftWeeks[l.id]]?.[l.id];return <button key={l.id} className="bn" onClick={()=>switchLift(l.id)} style={{background:activeId===l.id?l.color:"var(--bg-input)",color:activeId===l.id?"#000":l.color,border:"1px solid "+l.color,opacity:done&&activeId!==l.id?0.5:1}}>{l.name}{done?" ✓":""}</button>;})}
             </div>
-            <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid #1a1a1a"}}>
-              <button onClick={()=>navigateWeek(-1)} disabled={viewingWeek<=1} style={{background:"#1a1a2e",border:"1px solid #333",color:viewingWeek<=1?"#333":"#aaa",borderRadius:4,width:32,height:32,cursor:viewingWeek<=1?"default":"pointer",fontSize:18}}>‹</button>
+            <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid var(--border)"}}>
+              <button onClick={()=>navigateWeek(-1)} disabled={viewingWeek<=1} style={{background:"var(--bg-input)",border:"1px solid #333",color:viewingWeek<=1?"#333":"var(--text-secondary)",borderRadius:4,width:32,height:32,cursor:viewingWeek<=1?"default":"pointer",fontSize:18}}>‹</button>
               <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:lift.color,minWidth:80,textAlign:"center"}}>
                 WEEK {viewingWeek}{isPastWeek&&<div style={{color:"#555",fontSize:10,fontFamily:"'DM Mono',monospace"}}>current: w{activeLiftWeek}</div>}
               </div>
-              <button onClick={()=>navigateWeek(1)} disabled={viewingWeek>=activeLiftWeek} style={{background:"#1a1a2e",border:"1px solid #333",color:viewingWeek>=activeLiftWeek?"#333":"#aaa",borderRadius:4,width:32,height:32,cursor:viewingWeek>=activeLiftWeek?"default":"pointer",fontSize:18}}>›</button>
+              <button onClick={()=>navigateWeek(1)} disabled={viewingWeek>=activeLiftWeek} style={{background:"var(--bg-input)",border:"1px solid #333",color:viewingWeek>=activeLiftWeek?"#333":"var(--text-secondary)",borderRadius:4,width:32,height:32,cursor:viewingWeek>=activeLiftWeek?"default":"pointer",fontSize:18}}>›</button>
               {isPastWeek && (
                 <>
                   <button onClick={()=>{setViewingWeek(activeLiftWeek);setEditingPastWeek(false);}} style={{background:"none",border:"1px solid "+lift.color,color:lift.color,borderRadius:4,padding:"4px 10px",fontSize:11,cursor:"pointer"}}>current</button>
-                  <button onClick={()=>setEditingPastWeek(e=>!e)} style={{background:editingPastWeek?"#2e1a1a":"#1a1a2e",border:"1px solid "+(editingPastWeek?"#e85d04":"#555"),color:editingPastWeek?"#e85d04":"#aaa",borderRadius:4,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>{editingPastWeek?"CANCEL":"EDIT"}</button>
+                  <button onClick={()=>setEditingPastWeek(e=>!e)} style={{background:editingPastWeek?"#2e1a1a":"var(--bg-input)",border:"1px solid "+(editingPastWeek?"#e85d04":"#555"),color:editingPastWeek?"#e85d04":"var(--text-secondary)",borderRadius:4,padding:"4px 10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>{editingPastWeek?"CANCEL":"EDIT"}</button>
                 </>
               )}
             </div>
@@ -3017,10 +3017,10 @@ export default function App() {
                         ? <div style={{color:lift.color,fontSize:13}}>{getReps(week,activeId,i)} reps</div>
                         : <div style={{display:"flex",alignItems:"center",gap:0}}>
                             <button onClick={()=>setReps(week,activeId,i,String(Math.max(1,+(getReps(week,activeId,i)||10)-1)))}
-                              style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"8px 0 0 8px",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                            <div style={{background:"#1a1a2e",borderTop:"2px solid "+lift.color,borderBottom:"2px solid "+lift.color,color:lift.color,width:64,height:48,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Roboto Condensed',sans-serif",fontSize:28}}>{getReps(week,activeId,i)}</div>
+                              style={{background:"var(--bg-card)",border:"2px solid "+lift.color,color:lift.color,borderRadius:"8px 0 0 8px",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                            <div style={{background:"var(--bg-input)",borderTop:"2px solid "+lift.color,borderBottom:"2px solid "+lift.color,color:lift.color,width:64,height:48,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Roboto Condensed',sans-serif",fontSize:28}}>{getReps(week,activeId,i)}</div>
                             <button onClick={()=>setReps(week,activeId,i,String(+(getReps(week,activeId,i)||10)+1))}
-                              style={{background:"#0f0f1a",border:"2px solid "+lift.color,color:lift.color,borderRadius:"0 8px 8px 0",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                              style={{background:"var(--bg-card)",border:"2px solid "+lift.color,color:lift.color,borderRadius:"0 8px 8px 0",width:48,height:48,cursor:"pointer",fontSize:24,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
                           </div>
                     }
                   </div>
@@ -3029,7 +3029,7 @@ export default function App() {
 
               {/* ─── SUPPORT LIFTS ─── */}
               <div style={{marginBottom:8}}>
-                <button onClick={()=>setAccSectionOpen(p=>({...p,support:!p.support}))} style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.support?6:0}}>
+                <button onClick={()=>setAccSectionOpen(p=>({...p,support:!p.support}))} style={{width:"100%",background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:8,padding:"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.support?6:0}}>
                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,letterSpacing:2,color:"#888"}}>SUPPORT LIFTS</span>
                   <span style={{color:"#555",fontSize:16,display:"inline-block",transform:accSectionOpen.support?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
                 </button>
@@ -3068,9 +3068,9 @@ export default function App() {
                         {!isReadOnly&&(
                           <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                             <div style={{display:"flex",gap:4}}>
-                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
-                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
-                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"var(--bg-card)",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
+                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"var(--bg-card)",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
+                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"var(--bg-card)",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
                             </div>
                             {adj && acc.weight && (
                               <div style={{fontSize:10,color:"#555"}}>
@@ -3090,7 +3090,7 @@ export default function App() {
 
               {/* ─── ISOLATION ─── */}
               <div style={{marginBottom:8}}>
-                <button onClick={()=>setAccSectionOpen(p=>({...p,isolation:!p.isolation}))} style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.isolation?6:0}}>
+                <button onClick={()=>setAccSectionOpen(p=>({...p,isolation:!p.isolation}))} style={{width:"100%",background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:8,padding:"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.isolation?6:0}}>
                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,letterSpacing:2,color:"#888"}}>ISOLATION</span>
                   <span style={{color:"#555",fontSize:16,display:"inline-block",transform:accSectionOpen.isolation?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
                 </button>
@@ -3133,9 +3133,9 @@ export default function App() {
                         {!isReadOnly&&(
                           <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                             <div style={{display:"flex",gap:4}}>
-                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
-                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
-                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"var(--bg-card)",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
+                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"var(--bg-card)",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
+                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"var(--bg-card)",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
                             </div>
                             {adj && acc.weight && (
                               <div style={{fontSize:10,color:"#555"}}>
@@ -3155,7 +3155,7 @@ export default function App() {
 
               {/* ─── AUX ─── */}
               <div style={{marginBottom:20}}>
-                <button onClick={()=>setAccSectionOpen(p=>({...p,aux:!p.aux}))} style={{width:"100%",background:"#0f0f1a",border:"1px solid #1a1a1a",borderRadius:8,padding:"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.aux?6:0}}>
+                <button onClick={()=>setAccSectionOpen(p=>({...p,aux:!p.aux}))} style={{width:"100%",background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:8,padding:"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",marginBottom:accSectionOpen.aux?6:0}}>
                   <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,letterSpacing:2,color:"#888"}}>AUX</span>
                   <span style={{color:"#555",fontSize:16,display:"inline-block",transform:accSectionOpen.aux?"rotate(90deg)":"none",transition:"transform 0.2s"}}>›</span>
                 </button>
@@ -3194,9 +3194,9 @@ export default function App() {
                         {!isReadOnly&&(
                           <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                             <div style={{display:"flex",gap:4}}>
-                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"#0f0f1a",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
-                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"#0f0f1a",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
-                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"#0f0f1a",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
+                              <button onClick={()=>setAdj(acc.id,"up")} style={{background:adj==="up"?"#06d6a0":"var(--bg-card)",border:"1px solid "+(adj==="up"?"#06d6a0":"#333"),color:adj==="up"?"#000":"#06d6a0",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>+</button>
+                              <button onClick={()=>setAdj(acc.id,"same")} style={{background:adj==="same"?"#3a86ff":"var(--bg-card)",border:"1px solid "+(adj==="same"?"#3a86ff":"#333"),color:adj==="same"?"#000":"#3a86ff",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>=</button>
+                              <button onClick={()=>setAdj(acc.id,"down")} style={{background:adj==="down"?"#e85d04":"var(--bg-card)",border:"1px solid "+(adj==="down"?"#e85d04":"#333"),color:adj==="down"?"#000":"#e85d04",borderRadius:4,width:36,height:36,cursor:"pointer",fontSize:18,fontWeight:"bold",transition:"all 0.15s"}}>−</button>
                             </div>
                             {adj && acc.weight && (
                               <div style={{fontSize:10,color:"#555"}}>
@@ -3225,14 +3225,14 @@ export default function App() {
               {reviewingCompletedWorkout && !editingPastWeek && (
                 <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:8}}>
                   <div style={{display:"flex",gap:8}}>
-                    <button className="bigbtn" onClick={()=>{setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{flex:1,background:"#1a1a2e",border:"1px solid #06d6a0",color:"#06d6a0",marginBottom:0}}>← BACK</button>
-                    <button className="bigbtn" onClick={()=>{setEditingPastWeek(true);}} style={{flex:1,background:"#1a1a2e",border:"1px solid #f7b731",color:"#f7b731",marginBottom:0}}>EDIT</button>
+                    <button className="bigbtn" onClick={()=>{setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{flex:1,background:"var(--bg-input)",border:"1px solid #06d6a0",color:"#06d6a0",marginBottom:0}}>← BACK</button>
+                    <button className="bigbtn" onClick={()=>{setEditingPastWeek(true);}} style={{flex:1,background:"var(--bg-input)",border:"1px solid #f7b731",color:"#f7b731",marginBottom:0}}>EDIT</button>
                   </div>
                   <button className="bigbtn" onClick={()=>{setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);setView("dashboard");}} style={{background:"none",border:"1px solid #333",color:"#555"}}>HOME</button>
                 </div>
               )}
               {reviewingCompletedWorkout && editingPastWeek && (
-                <button className="bigbtn" onClick={()=>{setEditingPastWeek(false);setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{background:"#1a1a2e",border:"1px solid #555",color:"#555"}}>CANCEL EDIT</button>
+                <button className="bigbtn" onClick={()=>{setEditingPastWeek(false);setReviewingCompletedWorkout(false);setViewingWeek(liftWeeks[activeId]||1);}} style={{background:"var(--bg-input)",border:"1px solid #555",color:"#555"}}>CANCEL EDIT</button>
               )}
               {isPastWeek&&editingPastWeek&&<button className="bigbtn" onClick={()=>{
                 // Recalculate volume and estMax from edited logs
@@ -3259,7 +3259,7 @@ export default function App() {
               }} style={{background:lift.color,color:"#000"}}>SAVE CHANGES</button>}
               {!isPastWeek && (
                 <>
-                  <button className="bigbtn" onClick={finishDay} style={{background:isDayDone?"#0f0f1a":lift.color,color:isDayDone?lift.color:"#000",border:isDayDone?"1px solid "+lift.color:"none"}}>
+                  <button className="bigbtn" onClick={finishDay} style={{background:isDayDone?"var(--bg-card)":lift.color,color:isDayDone?lift.color:"#000",border:isDayDone?"1px solid "+lift.color:"none"}}>
                     {isDayDone?"✓ DAY COMPLETE":"FINISH DAY"}
                   </button>
                   {willProgress&&!isDayDone&&!isAssisted&&<div style={{textAlign:"center",color:"#06d6a0",fontSize:12}}>🔥 Next week's max: {nextMax} lbs</div>}
@@ -3320,12 +3320,12 @@ export default function App() {
                   <div style={{color:"#555",fontSize:11,marginBottom:10}}>
                     {isAssistedPullUp(l)
                       ? <>
-                          Start: <span style={{color:"#aaa"}}>{l.startingMax} lbs assist</span>{"  →  "}
+                          Start: <span style={{color:"var(--text-secondary)"}}>{l.startingMax} lbs assist</span>{"  →  "}
                           Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax === 0 ? "UNASSISTED! 🎉" : curMax+" lbs assist"}</span>
                           {latestWeight && curMax > 0 && <span style={{color:"#06d6a0"}}> · Pulling {latestWeight - curMax} lbs</span>}
                           {latestWeight && curMax === 0 && <span style={{color:"#f7b731"}}> · Full {latestWeight} lbs!</span>}
                         </>
-                      : <>Start: <span style={{color:"#aaa"}}>{startMax} lbs</span>{"  →  "}Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax} lbs</span>{curMax>startMax&&<span style={{color:"#06d6a0"}}> (+{curMax-startMax})</span>}</>
+                      : <>Start: <span style={{color:"var(--text-secondary)"}}>{startMax} lbs</span>{"  →  "}Week {liftWeeks[l.id]||1}: <span style={{color:l.color}}>{curMax} lbs</span>{curMax>startMax&&<span style={{color:"#06d6a0"}}> (+{curMax-startMax})</span>}</>
                     }
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
@@ -3343,10 +3343,10 @@ export default function App() {
                   </div>
                   <ResponsiveContainer width="100%" height={110}>
                     <LineChart data={maxData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-input)" />
                       <XAxis dataKey="w" tick={{fill:"#555",fontSize:9}} />
                       <YAxis tick={{fill:"#555",fontSize:9}} domain={[yMin,yMax]} ticks={yTicks} />
-                      <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} formatter={(v,n)=>[v+" lbs",n==="max"?"Program Max":"Est Max"]} />
+                      <Tooltip contentStyle={{background:"var(--bg-input)",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} formatter={(v,n)=>[v+" lbs",n==="max"?"Program Max":"Est Max"]} />
                       <Line type="monotone" dataKey="max" stroke={l.color} strokeWidth={2} dot={{fill:l.color,r:3}} name="max" connectNulls />
                       <Line type="monotone" dataKey="est" stroke={l.color} strokeWidth={1.5} strokeDasharray="5 3" dot={{fill:l.color,r:2}} name="est" connectNulls />
                     </LineChart>
@@ -3358,7 +3358,7 @@ export default function App() {
                         <LineChart data={effPullData}>
                           <XAxis dataKey="w" tick={{fill:"#555",fontSize:8}} />
                           <YAxis tick={{fill:"#555",fontSize:8}} domain={["auto","auto"]} />
-                          <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} />
+                          <Tooltip contentStyle={{background:"var(--bg-input)",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} />
                           <Line type="monotone" dataKey="pull" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="Effective Pull" />
                         </LineChart>
                       </ResponsiveContainer>
@@ -3369,7 +3369,7 @@ export default function App() {
                     <>
                       <div style={{color:"#555",fontSize:10,marginTop:10,marginBottom:4}}>VOLUME (1000s lbs)</div>
                       <ResponsiveContainer width="100%" height={80}>
-                        <BarChart data={volData}><XAxis dataKey="d" tick={{fill:"#555",fontSize:8}} /><YAxis tick={{fill:"#555",fontSize:8}} /><Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} /><Bar dataKey="v" fill={l.color} radius={[3,3,0,0]} name="Vol(k)" /></BarChart>
+                        <BarChart data={volData}><XAxis dataKey="d" tick={{fill:"#555",fontSize:8}} /><YAxis tick={{fill:"#555",fontSize:8}} /><Tooltip contentStyle={{background:"var(--bg-input)",border:"1px solid "+l.color,borderRadius:6,fontSize:11}} /><Bar dataKey="v" fill={l.color} radius={[3,3,0,0]} name="Vol(k)" /></BarChart>
                       </ResponsiveContainer>
                     </>
                   )}
@@ -3402,10 +3402,10 @@ export default function App() {
                   <div style={{color:"#555",fontSize:10,marginBottom:10}}>12-WEEK WEEKLY AVERAGE</div>
                   <ResponsiveContainer width="100%" height={110}>
                     <LineChart data={weeklyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-input)" />
                       <XAxis dataKey="d" tick={{fill:"#555",fontSize:9}} />
                       <YAxis tick={{fill:"#555",fontSize:9}} domain={["auto","auto"]} />
-                      <Tooltip contentStyle={{background:"#1a1a2e",border:"1px solid #06d6a0",borderRadius:6,fontSize:11}} />
+                      <Tooltip contentStyle={{background:"var(--bg-input)",border:"1px solid #06d6a0",borderRadius:6,fontSize:11}} />
                       <Line type="monotone" dataKey="w" stroke="#06d6a0" strokeWidth={2} dot={{fill:"#06d6a0",r:3}} name="avg lbs" />
                     </LineChart>
                   </ResponsiveContainer>
@@ -3453,11 +3453,11 @@ export default function App() {
                   <div key={g.programId} style={{marginBottom:12}}>
                     {/* Program header */}
                     <div onClick={()=>setExpandedProgramId(isExpanded?null:g.programId)}
-                      style={{background:"#0f0f1a",borderRadius:isExpanded?"10px 10px 0 0":10,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",border:"1px solid "+(isActive?"#e85d04":"#1a1a1a"),borderBottom:isExpanded?"none":"1px solid "+(isActive?"#e85d04":"#1a1a1a")}}>
+                      style={{background:"var(--bg-card)",borderRadius:isExpanded?"10px 10px 0 0":10,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",border:"1px solid "+(isActive?"#e85d04":"var(--border)"),borderBottom:isExpanded?"none":"1px solid "+(isActive?"#e85d04":"var(--border)")}}>
                       <div>
                         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                           {isActive && <div style={{width:8,height:8,borderRadius:"50%",background:"#06d6a0",flexShrink:0}}></div>}
-                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:isActive?"#e85d04":"#f0f0f0",letterSpacing:1}}>{displayName}</div>
+                          <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:17,color:isActive?"#e85d04":"var(--text-primary)",letterSpacing:1}}>{displayName}</div>
                         </div>
                         <div style={{color:"#555",fontSize:11}}>{fmtDate(g.startDate)}{!isActive?" → "+fmtDate(g.endDate):""} · {g.sessions.length} sessions · {Math.round(totalVol/1000)}k lbs</div>
                       </div>
@@ -3466,11 +3466,11 @@ export default function App() {
 
                     {/* Expanded sessions */}
                     {isExpanded && (
-                      <div style={{border:"1px solid "+(isActive?"#e85d04":"#1a1a1a"),borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
+                      <div style={{border:"1px solid "+(isActive?"#e85d04":"var(--border)"),borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
                         {g.sessions.map((s,si) => (
-                          <div key={si} style={{padding:"12px 16px",borderBottom:si<g.sessions.length-1?"1px solid #111":"none",background:si%2===0?"#0a0a0f":"#0f0f1a"}}>
+                          <div key={si} style={{padding:"12px 16px",borderBottom:si<g.sessions.length-1?"1px solid var(--bg-sunken)":"none",background:si%2===0?"var(--bg-secondary)":"var(--bg-card)"}}>
                             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:s.liftColor||"#f0f0f0"}}>{s.liftName}</div>
+                              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,color:s.liftColor||"var(--text-primary)"}}>{s.liftName}</div>
                               <div style={{display:"flex",alignItems:"center",gap:8}}>
                                 <div style={{color:"#555",fontSize:11}}>{fmtDate(s.date)} · Wk {s.week}</div>
                                 <button onClick={()=>setConfirmDeleteSession(g.indices[si])} style={{background:"none",border:"1px solid #333",color:"#444",borderRadius:4,padding:"2px 6px",fontSize:10,cursor:"pointer"}}>DEL</button>
@@ -3487,7 +3487,7 @@ export default function App() {
                             </div>
                             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                               <div style={{color:"#555",fontSize:11}}>
-                                Vol: <span style={{color:"#aaa"}}>{s.volume?.toLocaleString()} lbs</span>
+                                Vol: <span style={{color:"var(--text-secondary)"}}>{s.volume?.toLocaleString()} lbs</span>
                                 {s.estMax&&<> · Est: <span style={{color:"#06d6a0"}}>{s.estMax} lbs</span></>}
                               </div>
                               <div style={{display:"flex",gap:8}}>
@@ -3512,7 +3512,7 @@ export default function App() {
         <div style={{position:"fixed",bottom:70,left:0,right:0,background:"var(--bg-secondary)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",zIndex:9,display:"flex",alignItems:"center",gap:10,padding:"8px 12px"}}>
           {/* Timer display */}
           <div style={{textAlign:"center",minWidth:60}}>
-            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"#f0f0f0",lineHeight:1}}>
+            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:restRunning?"#f7b731":restTimer===0?"#06d6a0":"var(--text-primary)",lineHeight:1}}>
               {restTimer!==null?Math.floor(restTimer/60)+":"+String(restTimer%60).padStart(2,"0"):restDuration+"s"}
             </div>
             <div style={{color:"#555",fontSize:8,letterSpacing:1}}>REST</div>
@@ -3521,7 +3521,7 @@ export default function App() {
           <div style={{display:"flex",gap:4,flex:1}}>
             {[60,90,120,180].map(s=>(
               <button key={s} onClick={()=>{setRestDuration(s);setRestTimer(s);setRestRunning(false);setRestStartTime(null);}}
-                style={{flex:1,background:restDuration===s?"#1a1a2e":"#111",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"#aaa":"#444",borderRadius:5,padding:"5px 0",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>
+                style={{flex:1,background:restDuration===s?"var(--bg-input)":"var(--bg-sunken)",border:"1px solid "+(restDuration===s?"#555":"#222"),color:restDuration===s?"var(--text-secondary)":"#444",borderRadius:5,padding:"5px 0",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,cursor:"pointer"}}>
                 {s}s
               </button>
             ))}
