@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.2 - social reactions: persistent selected state on Friends tab, reduced to 5 options
+// v6.3 - reactions: fix persistence (delete+insert instead of failing upsert), dedupe reactors, "Name and N others" with tap-to-expand list
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -356,7 +356,8 @@ export default function App() {
   const [restRunning, setRestRunning] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
-  const APP_VERSION = "v6.2";
+  const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
+  const APP_VERSION = "v6.3";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -918,10 +919,15 @@ export default function App() {
       const filtered = prev.filter(r => !(r.session_date === sessionDate && r.to_id === toId));
       return [...filtered, {from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji, from_name: fromName, from_username: username||"", created_at: new Date().toISOString()}];
     });
-    await supabase.from("reactions").upsert({
+    // Replace any prior reaction from me on this session, then insert. delete+insert avoids
+    // depending on a DB unique constraint (the old upsert onConflict silently failed to save,
+    // which caused the highlight to vanish on reload and left duplicate rows).
+    await supabase.from("reactions").delete().match({ from_id: uid, to_id: toId, session_date: sessionDate });
+    const { error: reactErr } = await supabase.from("reactions").insert({
       from_id: uid, to_id: toId, session_date: sessionDate, lift_name: liftName, emoji,
       from_name: fromName, from_username: username || ""
-    }, { onConflict: "from_id,to_id,session_date" });
+    });
+    if (reactErr) { console.error("reaction save failed", reactErr); return; }
     loadSocialData(uid);
   }
 
@@ -2036,25 +2042,44 @@ export default function App() {
                             })}
                           </div>
                           {/* Who reacted */}
-                          {(postReactions.length > 0 || myReaction) && (
-                            <div style={{fontSize:10,color:"#555",marginTop:2}}>
-                              {(()=>{
-                                const names = [];
-                                postReactions.forEach(r => {
-                                  if(r.from_id === uid) { names.push("You"); return; }
-                                  // Look up name from friends list first
-                                  const friend = friends.find(f => f.id === r.from_id);
-                                  const name = friend?.name || r.from_name || r.from_username;
-                                  if(name && name !== "Someone") names.push(name);
-                                  else names.push("Someone");
-                                });
-                                if(myReaction && !post.isMe) { /* my reaction is in sentReactions not postReactions */ }
-                                if(names.length===0) return null;
-                                if(names.length<=2) return names.join(" & ") + " reacted";
-                                return names.slice(0,2).join(", ") + " +" + (names.length-2) + " more reacted";
-                              })()}
-                            </div>
-                          )}
+                          {(()=>{
+                            // Build a deduped reactor list — one entry per person
+                            const seen = new Set();
+                            const reactors = [];
+                            const addR = (fromId, fromName, fromUsername, emj, isYou) => {
+                              if(seen.has(fromId)) return;
+                              seen.add(fromId);
+                              const friend = friends.find(f => f.id === fromId);
+                              const nm = isYou ? "You" : (friend?.name || fromName || fromUsername || "Someone");
+                              reactors.push({ id: fromId, name: nm, emoji: emj });
+                            };
+                            postReactions.forEach(r => addR(r.from_id, r.from_name, r.from_username, r.emoji, r.from_id === uid));
+                            if(myReaction && !post.isMe) addR(uid, "You", "", myReaction.emoji, true);
+                            if(reactors.length === 0) return null;
+                            const open = reactorsOpen === postKey;
+                            const clickable = reactors.length > 2;
+                            let label;
+                            if(reactors.length === 1) label = reactors[0].name + " reacted";
+                            else if(reactors.length === 2) label = reactors[0].name + " and " + reactors[1].name + " reacted";
+                            else label = reactors[0].name + " and " + (reactors.length - 1) + " others";
+                            return (
+                              <div style={{marginTop:2}}>
+                                <div onClick={clickable ? (()=>setReactorsOpen(open ? null : postKey)) : undefined}
+                                  style={{fontSize:10,color:clickable?"#999":"#555",marginTop:2,cursor:clickable?"pointer":"default",textDecoration:clickable?"underline":"none"}}>
+                                  {label}{clickable ? (open ? " ▲" : " ▼") : ""}
+                                </div>
+                                {open && (
+                                  <div style={{marginTop:4,background:"#0f0f1a",borderRadius:8,padding:"6px 10px"}}>
+                                    {reactors.map(rc => (
+                                      <div key={rc.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0",fontSize:12,color:"#ccc"}}>
+                                        <span>{rc.name}</span><span style={{fontSize:15}}>{rc.emoji}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
