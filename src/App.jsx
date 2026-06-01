@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.13 - self-healing week: derived from completed history on load (max with stored, prevents downward drift); stepper down-arrow clears redone weeks so manual changes stick
+// v6.14 - "done" is now date-based (logged today) via shared isLiftDoneToday, replacing the prior-week 7-day-window inference that blocked a fresh training day. fixes "all caught up / workout done" showing on a new week
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.13";
+  const APP_VERSION = "v6.14";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -805,6 +805,16 @@ export default function App() {
     let vol = wts[0]*10 + wts[1]*10 + wts[2]*10 + wts[3]*(+(logs?.[w]?.[liftId]?.[3]?.reps)||10);
     (accList?.[w]?.[liftId]||[]).forEach(a => { vol += (+a.weight||0)*(+a.reps||10)*3; });
     return vol;
+  }
+
+  // A lift counts as done only if it was actually logged TODAY (date-based, no 7-day window).
+  // This is the source of truth for "already worked out" so a fresh training day is never blocked.
+  function isLiftDoneToday(liftId) {
+    const cd = completedDays || {};
+    return Object.keys(cd).some(w => {
+      const e = cd[w]?.[liftId];
+      return e?.done && e?.date === todayISO();
+    });
   }
 
   function addLift() {
@@ -2326,36 +2336,13 @@ export default function App() {
               const todayScheduled = lifts.filter(l => l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
               const isRunDay = runActive && runDays.includes(todayAbbr);
               const runCompletedToday = runHistory.some(r => r.date === todayISO());
-              const isCompletedThisWeek = (l) => {
-                // liftWeeks advances after finish so check current AND previous week
-                const currentWeek = liftWeeks[l.id] || 1;
-                const cd = completedDays?.[currentWeek]?.[l.id] || completedDays?.[currentWeek-1]?.[l.id];
-                if (!cd) return false;
-                // After migration all entries have {done, date}
-                if (cd?.done && cd?.date) {
-                  const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
-                  return daysSince < 7;
-                }
-                return false;
-              };
-              const todayCompleted = todayScheduled.filter(l => isCompletedThisWeek(l));
-              const todayPending = todayScheduled.filter(l => !isCompletedThisWeek(l));
+              const todayCompleted = todayScheduled.filter(l => isLiftDoneToday(l.id));
+              const todayPending = todayScheduled.filter(l => !isLiftDoneToday(l.id));
               // Find next upcoming lift
               const getNextLift = () => {
                 for(let i=1; i<=7; i++){
                   const nextDay = DAY_ABBR[(new Date().getDay()+i)%7];
-                  const found = lifts.find(l => {
-                    if (l.active===false) return false;
-                    if (!(l.trainingDays||[]).includes(nextDay)) return false;
-                    const cw = liftWeeks[l.id] || 1;
-                    const cd = completedDays?.[cw]?.[l.id] || completedDays?.[cw-1]?.[l.id];
-                    if (!cd) return true;
-                    if (cd?.done && cd?.date) {
-                      const daysSince = (new Date(todayISO()) - new Date(cd.date)) / 86400000;
-                      return daysSince >= 7;
-                    }
-                    return true;
-                  });
+                  const found = lifts.find(l => l.active!==false && (l.trainingDays||[]).includes(nextDay));
                   if(found) return {lift:found, day:nextDay, daysAway:i};
                 }
                 return null;
@@ -2916,9 +2903,7 @@ export default function App() {
           const todayAbbr = DAY_ABBR[new Date().getDay()];
           const scheduledToday = lifts.some(l=>l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
           if(!scheduledToday) return false;
-          const cd = completedDays?.[liftWeeks[activeId]-1]?.[activeId];
-          const completedRecently = cd?.done && cd?.date && (new Date(todayISO())-new Date(cd.date))/86400000 < 7;
-          return completedRecently;
+          return isLiftDoneToday(activeId);
         })() && (
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
             <div style={{background:"var(--bg-card)",borderRadius:16,padding:28,width:"100%",maxWidth:340,textAlign:"center",borderTop:"4px solid #06d6a0"}}>
@@ -2935,7 +2920,7 @@ export default function App() {
           const ta = DAY_ABBR[new Date().getDay()];
           const sched = lifts.some(l=>l.active!==false && (l.trainingDays||[]).includes(ta));
           if(!sched) return true;
-          return !completedDays?.[liftWeeks[activeId]-1]?.[activeId]?.done;
+          return !isLiftDoneToday(activeId);
         })() && (()=>{
           const todayAbbr = DAY_ABBR[new Date().getDay()];
           const scheduledLifts = lifts.filter(l=>l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
