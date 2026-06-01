@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.14 - "done" is now date-based (logged today) via shared isLiftDoneToday, replacing the prior-week 7-day-window inference that blocked a fresh training day. fixes "all caught up / workout done" showing on a new week
+// v6.15 - workout timer pause/resume: PAUSE freezes the elapsed timer, RESUME shifts start forward so it continues seamlessly; paused state survives reload via localStorage; finish excludes paused time
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.14";
+  const APP_VERSION = "v6.15";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -380,6 +380,7 @@ export default function App() {
   const [inProgressLiftId, setInProgressLiftId] = useState(null);
   const [workoutStartTime, setWorkoutStartTime] = useState(null); // ISO timestamp when workout started
   const [workoutElapsed, setWorkoutElapsed] = useState(0); // seconds elapsed, updates every second
+  const [workoutPausedAt, setWorkoutPausedAt] = useState(null); // ISO timestamp when paused, null if running
   // Running module
   const [runDays, setRunDays] = useState([]);
   const [runWeek, setRunWeek] = useState(1);
@@ -465,13 +466,28 @@ export default function App() {
   useEffect(() => {
     if (!workoutInProgress || !workoutStartTime) { setWorkoutElapsed(0); return; }
     const tick = () => {
-      const elapsed = Math.floor((Date.now() - new Date(workoutStartTime).getTime()) / 1000);
-      setWorkoutElapsed(elapsed);
+      const endRef = workoutPausedAt ? new Date(workoutPausedAt).getTime() : Date.now();
+      setWorkoutElapsed(Math.max(0, Math.floor((endRef - new Date(workoutStartTime).getTime()) / 1000)));
     };
     tick();
+    if (workoutPausedAt) return; // frozen while paused — no ticking
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [workoutInProgress, workoutStartTime]);
+  }, [workoutInProgress, workoutStartTime, workoutPausedAt]);
+
+  function pauseWorkout() {
+    const nowISO = new Date().toISOString();
+    setWorkoutPausedAt(nowISO);
+    if (uid) localStorage.setItem("barnone_pausedat_" + uid, nowISO);
+  }
+  function resumeWorkout() {
+    if (!workoutPausedAt || !workoutStartTime) { setWorkoutPausedAt(null); return; }
+    const pausedMs = Date.now() - new Date(workoutPausedAt).getTime();
+    // Shift start forward by the paused duration so elapsed continues seamlessly (and persists)
+    setWorkoutStartTime(new Date(new Date(workoutStartTime).getTime() + pausedMs).toISOString());
+    setWorkoutPausedAt(null);
+    if (uid) localStorage.removeItem("barnone_pausedat_" + uid);
+  }
 
   useEffect(() => {
     if (!uid || !dataLoaded) return;
@@ -620,6 +636,8 @@ export default function App() {
       setWorkoutInProgress(d.workout_in_progress || false);
       setInProgressLiftId(d.in_progress_lift_id || null);
       setWorkoutStartTime(d.workout_start_time || null);
+      const pausedAtStored = (typeof localStorage !== "undefined") ? localStorage.getItem("barnone_pausedat_" + userId) : null;
+      setWorkoutPausedAt(d.workout_in_progress && pausedAtStored ? pausedAtStored : null);
       setRunDays(d.run_days || []);
       setRunWeek(d.run_week || 1);
       setRunDay(d.run_day || 1);
@@ -990,7 +1008,8 @@ export default function App() {
     };
     setSessionLedger(prev=>[entry,...prev]);
     checkForPR(activeId, sessionEstMax);
-    const workoutDurationSecs = workoutStartTime ? Math.floor((Date.now() - new Date(workoutStartTime).getTime()) / 1000) : 0;
+    const workoutEndRef = workoutPausedAt ? new Date(workoutPausedAt).getTime() : Date.now();
+    const workoutDurationSecs = workoutStartTime ? Math.max(0, Math.floor((workoutEndRef - new Date(workoutStartTime).getTime()) / 1000)) : 0;
     const weightKg = (bodyStats.entries?.[bodyStats.entries.length-1]?.weight || 180) / 2.205;
     const hours = workoutDurationSecs / 3600;
     const caloriesBurned = Math.round(3.5 * weightKg * hours); // MET 3.5 for weightlifting
@@ -998,6 +1017,8 @@ export default function App() {
     setInProgressLiftId(null);
     setWorkoutStartTime(null);
     setWorkoutElapsed(0);
+    setWorkoutPausedAt(null);
+    if (uid) localStorage.removeItem("barnone_pausedat_" + uid);
     // Save duration and calories to session ledger
     setSessionLedger(prev => {
       const updated = [...prev];
@@ -2893,10 +2914,13 @@ export default function App() {
         {view==="workout" && workoutInProgress && (
           <div style={{background:"var(--bg-card)",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--border)"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:"#06d6a0",animation:"pulse 1s infinite"}}></div>
-              <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:"#06d6a0",letterSpacing:1}}>WORKOUT IN PROGRESS</span>
+              <div style={{width:8,height:8,borderRadius:"50%",background:workoutPausedAt?"#f7b731":"#06d6a0",animation:workoutPausedAt?"none":"pulse 1s infinite"}}></div>
+              <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,color:workoutPausedAt?"#f7b731":"#06d6a0",letterSpacing:1}}>{workoutPausedAt?"PAUSED":"WORKOUT IN PROGRESS"}</span>
             </div>
-            <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:"var(--text-primary)",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,color:workoutPausedAt?"#f7b731":"var(--text-primary)",letterSpacing:1}}>{fmtDuration(workoutElapsed)}</div>
+              <button onClick={()=>workoutPausedAt?resumeWorkout():pauseWorkout()} style={{background:workoutPausedAt?"#06d6a0":"var(--bg-input)",border:"1px solid "+(workoutPausedAt?"#06d6a0":"#555"),color:workoutPausedAt?"#000":"var(--text-secondary)",borderRadius:6,padding:"6px 14px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:13,letterSpacing:1,cursor:"pointer"}}>{workoutPausedAt?"RESUME":"PAUSE"}</button>
+            </div>
           </div>
         )}
         {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && (()=>{
