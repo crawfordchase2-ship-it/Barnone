@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.11 - social feed shows AMRAP (set 4 reps) styled like New Max beside it; app opens to Lift whenever a workout is in progress (relaxed load condition + START sets view)
+// v6.13 - self-healing week: derived from completed history on load (max with stored, prevents downward drift); stepper down-arrow clears redone weeks so manual changes stick
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.11";
+  const APP_VERSION = "v6.13";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -591,7 +591,20 @@ export default function App() {
       setAccList(d.acc_list || {});
       setExerciseHistory(d.exercise_history || {});
       setWeightAdjust(d.weight_adjust || {});
-      setLiftWeeks(d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1])));
+      // Self-healing week: derive each lift's week from completed history, and never let the
+      // stored counter sit BELOW it. max() preserves a manual advance while fixing downward drift.
+      const loadedLiftWeeks = d.lift_weeks || Object.fromEntries(DEFAULT_LIFTS.map(l=>[l.id,1]));
+      const healedWeeks = {...loadedLiftWeeks};
+      loadedLifts.forEach(l => {
+        let maxCompleted = 0;
+        Object.keys(migratedCD).forEach(w => {
+          const cd = migratedCD[w]?.[l.id];
+          if ((cd === true || cd?.done) && +w > maxCompleted) maxCompleted = +w;
+        });
+        const derived = Math.min(12, maxCompleted + 1);
+        healedWeeks[l.id] = Math.max(loadedLiftWeeks[l.id] || 1, derived);
+      });
+      setLiftWeeks(healedWeeks);
       setCustomAccessories(d.custom_accessories || {});
       setSessionLedger(d.session_ledger || []);
       const loadedStats = d.body_stats || { heightIn:"", entries:[] };
@@ -2643,6 +2656,14 @@ export default function App() {
                             })}
                           </div>
                           {on && (l.trainingDays||[]).length===1 && <div style={{color:"#555",fontSize:9,marginTop:5}}>An active lift needs at least one day — turn it off instead to remove it.</div>}
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:10,paddingTop:10,borderTop:"1px solid var(--border)"}}>
+                            <span style={{color:"#555",fontSize:10,letterSpacing:1}}>CURRENT WEEK</span>
+                            <div style={{display:"flex",alignItems:"center",gap:10}}>
+                              <button onClick={()=>{const target=Math.max(1,(liftWeeks[l.id]||1)-1);setLiftWeeks(prev=>({...prev,[l.id]:target}));setCompletedDays(prev=>{const n=JSON.parse(JSON.stringify(prev));Object.keys(n).forEach(w=>{if(+w>=target&&n[w])delete n[w][l.id];});return n;});}} style={{background:"var(--bg-sunken)",border:"1px solid #555",color:"var(--text-secondary)",borderRadius:5,width:30,height:30,fontSize:18,cursor:"pointer",lineHeight:1}}>−</button>
+                              <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:l.color,minWidth:22,textAlign:"center"}}>{liftWeeks[l.id]||1}</span>
+                              <button onClick={()=>setLiftWeeks(prev=>({...prev,[l.id]:Math.min(12,(prev[l.id]||1)+1)}))} style={{background:"var(--bg-sunken)",border:"1px solid #555",color:"var(--text-secondary)",borderRadius:5,width:30,height:30,fontSize:18,cursor:"pointer",lineHeight:1}}>+</button>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
