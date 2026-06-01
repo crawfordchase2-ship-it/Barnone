@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.15 - workout timer pause/resume: PAUSE freezes the elapsed timer, RESUME shifts start forward so it continues seamlessly; paused state survives reload via localStorage; finish excludes paused time
+// v6.16 - fix streak showing 0: old calc mixed local weekday with a UTC date string (broke for users behind UTC like Central); now walks local days with a one-day forward tolerance for evening workouts stamped in UTC
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.15";
+  const APP_VERSION = "v6.16";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -1157,17 +1157,24 @@ export default function App() {
     // Get all unique training days across all lifts
     const allTrainingDays = [...new Set(lifts.flatMap(l=>l.active!==false ? (l.trainingDays||[]) : []))];
     if(!allTrainingDays.length) return 0;
-    // Walk backwards through scheduled days from today
+    // Work entirely in LOCAL time so the weekday and the date always refer to the same
+    // calendar day (the old code mixed local getDay() with a UTC date string, which broke
+    // the match for anyone behind UTC). Sessions are stamped with todayISO() (UTC), so an
+    // evening workout can land on the next UTC date — accept that day or the next.
+    const loggedOn = (dt) => {
+      const a = new Date(dt); a.setHours(12,0,0,0);
+      const b = new Date(a); b.setDate(a.getDate()+1);
+      return loggedDates.has(a.toISOString().split("T")[0]) || loggedDates.has(b.toISOString().split("T")[0]);
+    };
     let streak = 0;
-    const today = new Date(todayISO());
+    const today = new Date(); today.setHours(12,0,0,0); // local noon avoids UTC/DST edge
     for(let i=0; i<84; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const abbr = DAY_ABBR[d.getDay()];
-      const iso = d.toISOString().split("T")[0];
       if(!allTrainingDays.includes(abbr)) continue; // skip rest days
-      if(loggedDates.has(iso)) { streak++; }
-      else if(iso === todayISO()) { continue; } // today pending — don't break
+      if(loggedOn(d)) { streak++; }
+      else if(i === 0) { continue; } // today's session may not be logged yet
       else { break; } // missed scheduled day — streak over
     }
     return streak;
