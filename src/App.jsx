@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.8 - removed stray closing brace that was rendering as a "}" text node above the header (also cleared the extra whitespace it created)
+// v6.11 - social feed shows AMRAP (set 4 reps) styled like New Max beside it; app opens to Lift whenever a workout is in progress (relaxed load condition + START sets view)
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.8";
+  const APP_VERSION = "v6.11";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -631,7 +631,7 @@ export default function App() {
     // If workout in progress, go straight back to workout
     if (!d.program_started) {
       setView("setup");
-    } else if (d.workout_in_progress && d.in_progress_lift_id) {
+    } else if (d.workout_in_progress) {
       setView("workout");
     } else {
       setView("dashboard");
@@ -1990,11 +1990,12 @@ export default function App() {
                                         <span style={{color:maxIncreased?"#06d6a0":"var(--text-secondary)"}}>New Max: {newMax} lbs</span>
                                       </span>
                                     )}
+                                    {post.sets?.[3]?.reps != null && <span style={{color:"var(--text-secondary)"}}>AMRAP: {post.sets[3].reps}</span>}
                                     {post.durationSecs > 0 && <span>⏱ {fmtDuration(post.durationSecs)}</span>}
                                     {post.calories > 0 && <span>🔥 {post.calories} cal</span>}
                                   </div>
                                   {post.estMax > 0 && gainFromStart > 0 && (
-                                    <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#0a2a1a",border:"1px solid #06d6a0",borderRadius:6,padding:"3px 10px",fontSize:11,color:"#06d6a0",marginBottom:8}}>
+                                    <div style={{display:"inline-flex",alignItems:"center",gap:4,background:(theme==="light"?"#dcf5ea":"#0a2a1a"),border:"1px solid #06d6a0",borderRadius:6,padding:"3px 10px",fontSize:11,color:(theme==="light"?"#0a7a52":"#06d6a0"),marginBottom:8}}>
                                       📈 Est Max {post.estMax} lbs · +{gainFromStart} from start
                                     </div>
                                   )}
@@ -2035,7 +2036,7 @@ export default function App() {
                                 <button key={emoji} onClick={()=>{
                                   if(!post.isMe) sendReaction(post.authorId, post.date, post.liftName||"run", emoji);
                                 }}
-                                  style={{background:isSelected?"#2a1a0a":"var(--border)",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:20,padding:"3px 10px",fontSize:15,cursor:post.isMe?"default":"pointer",display:"flex",alignItems:"center",gap:4,transition:"all 0.2s",transform:isSelected?"scale(1.15)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none"}}>
+                                  style={{background:isSelected?(theme==="light"?"#ffe6d5":"#2a1a0a"):"var(--border)",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:20,padding:"3px 10px",fontSize:15,cursor:post.isMe?"default":"pointer",display:"flex",alignItems:"center",gap:4,transition:"all 0.2s",transform:isSelected?"scale(1.15)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none"}}>
                                   {emoji}<span style={{fontSize:11,color:isSelected?"#e85d04":"#888",fontFamily:"'Roboto Condensed',sans-serif",fontWeight:isSelected?"700":"400"}}>{reactionCount}</span>
                                 </button>
                               );
@@ -2172,7 +2173,7 @@ export default function App() {
                               const isSelected = myFR?.emoji === emoji;
                               return (
                                 <button key={emoji} onClick={()=>sendReaction(f.id, lastSession.date, lastSession.liftName, emoji)}
-                                  style={{background:isSelected?"#2a1a0a":"var(--bg-input)",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:6,padding:"4px 8px",fontSize:18,cursor:"pointer",transform:isSelected?"scale(1.1)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none",transition:"all 0.2s"}}>
+                                  style={{background:isSelected?(theme==="light"?"#ffe6d5":"#2a1a0a"):"var(--bg-input)",border:"1px solid "+(isSelected?"#e85d04":"#333"),borderRadius:6,padding:"4px 8px",fontSize:18,cursor:"pointer",transform:isSelected?"scale(1.1)":"scale(1)",boxShadow:isSelected?"0 0 8px #e85d0444":"none",transition:"all 0.2s"}}>
                                   {emoji}
                                 </button>
                               );
@@ -2937,7 +2938,7 @@ export default function App() {
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:lift?.color||"#e85d04",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
                   <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:12}}>WEEK {liftWeeks[activeId]||1}</div>
                   <div style={{color:"var(--text-secondary)",fontSize:13,marginBottom:24,fontStyle:"italic"}}>"{pumpMsg}"</div>
-                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
+                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);setView("workout");}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               ) : (
@@ -2952,7 +2953,7 @@ export default function App() {
                       <div style={{color:"#555",fontSize:11}}>{nextLift.daysAway === 1 ? "Tomorrow" : "In "+nextLift.daysAway+" days"} · Week {liftWeeks[nextLift.lift.id]||1}</div>
                     </div>
                   )}
-                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);}} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
+                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);setView("workout");}} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#444",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               )}
