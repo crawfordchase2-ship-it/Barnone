@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.16 - fix streak showing 0: old calc mixed local weekday with a UTC date string (broke for users behind UTC like Central); now walks local days with a one-day forward tolerance for evening workouts stamped in UTC
+// v6.17 - in-progress workout now persists instantly on start (and clears on finish) via a direct write, so leaving/reopening the app reliably returns you to the active workout instead of losing it to the debounced save; streak fix from prior build included
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.16";
+  const APP_VERSION = "v6.17";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -847,6 +847,21 @@ export default function App() {
   function removeLift(id) { setSetupSnapshot(prev => prev || {lifts:[...lifts], startDate}); setLifts(prev=>prev.filter(l=>l.id!==id)); }
   function updateLift(id,field,val) { setLifts(prev=>prev.map(l=>l.id===id?{...l,[field]:val}:l)); }
   function switchLift(id) { setActiveId(id); setViewingWeek(liftWeeks[id]||1); setEditingPastWeek(false); setReviewingCompletedWorkout(false); }
+
+  // Start a workout and persist the in-progress state IMMEDIATELY (not via the 800ms debounce),
+  // so backgrounding/closing the app right after starting still restores into the workout.
+  function startWorkout() {
+    const now = new Date().toISOString();
+    setWorkoutInProgress(true);
+    setInProgressLiftId(activeId);
+    setWorkoutStartTime(now);
+    setWorkoutPausedAt(null);
+    if (uid) {
+      localStorage.removeItem("barnone_pausedat_" + uid);
+      supabase.from("user_data").update({ workout_in_progress: true, in_progress_lift_id: activeId, workout_start_time: now }).eq("user_id", uid);
+    }
+    setView("workout");
+  }
   function navigateWeek(dir) {
     setViewingWeek(v=>Math.max(1,Math.min(liftWeeks[activeId]||1,v+dir)));
     setEditingPastWeek(false);
@@ -1019,6 +1034,7 @@ export default function App() {
     setWorkoutElapsed(0);
     setWorkoutPausedAt(null);
     if (uid) localStorage.removeItem("barnone_pausedat_" + uid);
+    if (uid) supabase.from("user_data").update({ workout_in_progress: false, in_progress_lift_id: null }).eq("user_id", uid);
     // Save duration and calories to session ledger
     setSessionLedger(prev => {
       const updated = [...prev];
@@ -2975,7 +2991,7 @@ export default function App() {
                   <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:28,color:lift?.color||"#e85d04",letterSpacing:2,marginBottom:4}}>{lift?.name?.toUpperCase()}</div>
                   <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:12}}>WEEK {liftWeeks[activeId]||1}</div>
                   <div style={{color:"var(--text-secondary)",fontSize:13,marginBottom:24,fontStyle:"italic"}}>"{pumpMsg}"</div>
-                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);setView("workout");}} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
+                  <button onClick={startWorkout} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               ) : (
@@ -2990,7 +3006,7 @@ export default function App() {
                       <div style={{color:"#555",fontSize:11}}>{nextLift.daysAway === 1 ? "Tomorrow" : "In "+nextLift.daysAway+" days"} · Week {liftWeeks[nextLift.lift.id]||1}</div>
                     </div>
                   )}
-                  <button onClick={()=>{const now=new Date().toISOString();setWorkoutInProgress(true);setInProgressLiftId(activeId);setWorkoutStartTime(now);setView("workout");}} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
+                  <button onClick={startWorkout} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#444",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               )}
