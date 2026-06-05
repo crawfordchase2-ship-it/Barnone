@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.21 - assisted pull-ups rebuilt on EFFECTIVE load (bodyweight - assistance) reusing the normal engine; entered number = assistance for 1 rep; uses latest logged bodyweight; per-set assistance derived; setup/alert/friend/progress all converted; prompts if no bodyweight logged
+// v6.22 - assisted pull-up guard: if entered assistance >= bodyweight (effective load <=0, which collapsed all sets to bodyweight), show a clear warning at setup and on the lift screen instead of garbage equal numbers
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -340,7 +340,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.21";
+  const APP_VERSION = "v6.22";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -885,6 +885,7 @@ export default function App() {
   const isAssisted = isAssistedPullUp(lift);
   const bodyW = latestBodyweight();
   const needsBodyweight = isAssisted && bodyW == null;
+  const assistTooHigh = isAssisted && bodyW != null && (lift?.startingMax||0) >= bodyW;
   // Effective set loads (50/58/67/75% of working max) for both lift types. For assisted, each set's
   // DISPLAYED weight is the assistance (bodyweight − effective load); the hardest set has the least help.
   const effSetWeights = calcWorkingWeights(workingMax);
@@ -2852,7 +2853,8 @@ export default function App() {
                   </div>
                   {isAssistL && <div style={{color:"#555",fontSize:10,marginTop:-4,marginBottom:8}}>Enter the assistance you currently need — the band or machine weight that lets you hit your reps. It drops as you get stronger.</div>}
                   {isAssistL && cur && bwSetup==null && <div style={{color:"#f7b731",fontSize:11,marginBottom:8}}>Log your bodyweight (Body tab) to calculate your assisted loads.</div>}
-                  {cur && !(isAssistL&&bwSetup==null) && <div style={{color:"#555",fontSize:11,marginBottom:8}}>{isAssistL?"Top set: ":"Training at: "}<span style={{color:l.color}}>{wkts?wkts[3]:cur} lbs{isAssistL?" assist":""}</span>{"  "}<button onClick={()=>setPreviewLift(previewLift===l.id?null:l.id)} style={{background:"none",border:"1px solid "+l.color,color:l.color,borderRadius:3,padding:"1px 7px",fontSize:10,cursor:"pointer"}}>{previewLift===l.id?"hide":"preview"}</button></div>}
+                  {isAssistL && cur && bwSetup!=null && (l.startingMax||0)>=bwSetup && <div style={{color:"#f7b731",fontSize:11,marginBottom:8}}>Assistance ({l.startingMax}) must be less than your bodyweight ({bwSetup}). At bodyweight you'd be lifting none of yourself.</div>}
+                  {cur && !(isAssistL&&bwSetup==null) && !(isAssistL&&bwSetup!=null&&(l.startingMax||0)>=bwSetup) && <div style={{color:"#555",fontSize:11,marginBottom:8}}>{isAssistL?"Top set: ":"Training at: "}<span style={{color:l.color}}>{wkts?wkts[3]:cur} lbs{isAssistL?" assist":""}</span>{"  "}<button onClick={()=>setPreviewLift(previewLift===l.id?null:l.id)} style={{background:"none",border:"1px solid "+l.color,color:l.color,borderRadius:3,padding:"1px 7px",fontSize:10,cursor:"pointer"}}>{previewLift===l.id?"hide":"preview"}</button></div>}
                   {previewLift===l.id && wkts && (
                     <div style={{background:"var(--bg-secondary)",borderRadius:6,padding:"10px 12px",marginBottom:10}}>
                       {wkts.map((w,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid var(--border)",fontSize:12}}><span style={{color:"#555"}}>Set {i+1}</span><span style={{color:l.color}}>{w} lbs{isAssistL?" assist":""}</span><span style={{color:"#444"}}>{i<3?"× 10":"max reps"}</span></div>)}
@@ -3099,6 +3101,8 @@ export default function App() {
               <div style={{marginBottom:20}}>
                 <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:19,letterSpacing:2,color:lift.color,marginBottom:10}}>{lift.name} — MAIN SETS</div>
                 {needsBodyweight && <div style={{background:"var(--bg-card)",border:"1px solid #f7b731",borderRadius:8,padding:"12px 14px",color:"#f7b731",fontSize:12,marginBottom:10}}>Log your bodyweight in the Body tab to calculate your assisted pull-up loads — they're worked out from bodyweight minus assistance.</div>}
+                {assistTooHigh && <div style={{background:"var(--bg-card)",border:"1px solid #f7b731",borderRadius:8,padding:"12px 14px",color:"#f7b731",fontSize:12,marginBottom:10}}>Your assistance ({lift.startingMax} lbs) is at or above your bodyweight ({bodyW} lbs). Assistance has to be less than your bodyweight — at bodyweight you'd be lifting none of yourself. Lower it in Setup → Edit Program to the help you need for one hard rep.</div>}
+                {!needsBodyweight && !assistTooHigh && <>
                 <div className="srow" style={{color:"#555",fontSize:10}}><div>SET</div><div>WEIGHT</div><div>REPS</div></div>
                 {weights.map((w,i)=>(
                   <div key={i} className="srow">
@@ -3118,6 +3122,7 @@ export default function App() {
                     }
                   </div>
                 ))}
+                </>}
               </div>
 
               {/* ─── SUPPORT LIFTS ─── */}
