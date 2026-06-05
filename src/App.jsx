@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.19 - running: RUN ANYWAY button on off-days (mirrors Lift Anyway) reveals today's prescribed run + log form; resets after logging
+// v6.21 - assisted pull-ups rebuilt on EFFECTIVE load (bodyweight - assistance) reusing the normal engine; entered number = assistance for 1 rep; uses latest logged bodyweight; per-set assistance derived; setup/alert/friend/progress all converted; prompts if no bodyweight logged
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -185,27 +185,9 @@ const ROOT_KEY = "barnone_v5"; // kept for legacy session cleanup
 
 function isAssistedPullUp(lift) { return lift?.mainLiftOption === "Assisted Pull Up"; }
 
-// For assisted pullups, working weights are assistance amounts that decrease
-// Starting max = assistance weight (e.g. 50 lbs)
-// Each set uses less assistance, encouraging more bodyweight strength
-function calcAssistedWeights(assistanceMax) {
-  // Sets go from most assistance to least — hardest set last
-  // Always round to nearest 5, minimum 5 lbs
-  const r = v => Math.max(5, Math.round(v / 5) * 5);
-  return [
-    r(assistanceMax * 0.75),
-    r(assistanceMax * 0.60),
-    r(assistanceMax * 0.45),
-    r(assistanceMax * 0.30),
-  ];
-}
-
-// Reverse progression — assistance goes DOWN over time
-function calcNextAssistedMax(currentAssist, reps, isLower) {
-  if (+reps <= 10) return currentAssist; // 10 reps = stay same
-  const drop = +reps >= 15 ? 10 : 5; // >15 reps = drop 10 lbs, else 5
-  return Math.max(0, currentAssist - drop);
-}
+// Assisted pull-ups now run on EFFECTIVE load (bodyweight − assistance) through the same engine as
+// every other lift — see getEffMax/getWorkingMax. The entered startingMax is the assistance needed
+// for one rep (the 1RM-equivalent floor); per-set assistance is derived in render as bodyweight − load.
 
 function calcCurrentMax(s) { return Math.round(s * 0.9 / 5) * 5; }
 function calcTrueMax(s) { return s; } // The actual max the user entered
@@ -358,7 +340,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.19";
+  const APP_VERSION = "v6.21";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -537,8 +519,12 @@ export default function App() {
       const key = "barnone_newweek_" + uid + "_" + l.id + "_w" + w + "_" + todayISO();
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, "1");
-      const wts = calcWorkingWeights(getWorkingMax(l.id, w));
-      setNewWeekAlert({ liftName: l.name, week: w, weights: wts, color: l.color });
+      const lAssist = l.mainLiftOption==="Assisted Pull Up";
+      const bwA = latestBodyweight();
+      const wts = (lAssist && bwA!=null)
+        ? calcWorkingWeights(getWorkingMax(l.id, w)).map(x=>Math.max(0,Math.round((bwA-x)/5)*5))
+        : calcWorkingWeights(getWorkingMax(l.id, w));
+      setNewWeekAlert({ liftName: l.name, week: w, weights: wts, color: l.color, assist: lAssist });
     });
   }, [liftWeeks, hasSetup, uid]);
 
@@ -788,16 +774,30 @@ export default function App() {
     setShowProfile(false);
   }
 
+  // Latest logged bodyweight in lbs (entries are stored newest-first), or null if none yet.
+  function latestBodyweight() {
+    const w = bodyStats?.entries?.[0]?.weightLbs;
+    return w ? +w : null;
+  }
+
   function getEffMax(liftId, targetWeek) {
     const lift = lifts.find(l=>l.id===liftId);
     if (!lift) return 0;
     if (isAssistedPullUp(lift)) {
-      let assist = lift.startingMax || 0;
+      // Assisted pull-ups run on EFFECTIVE load = bodyweight − assistance, reusing the normal engine.
+      // The entered startingMax is the assistance needed for ONE rep (the 1RM-equivalent floor).
+      const bw = latestBodyweight();
+      if (bw == null) return lift.startingMax || 0; // no bodyweight yet — can't convert; UI will prompt
+      let workingMax = calcCurrentMax(Math.max(0, bw - (lift.startingMax||0))); // working max of effective 1RM
       for (let w=1; w<targetWeek; w++) {
         const log = logs?.[w]?.[liftId]?.[3];
-        if (log?.reps) assist = calcNextAssistedMax(assist, +log.reps);
+        if (log?.reps && +log.reps>10) {
+          const em = calcEstMax(calcWorkingWeights(workingMax)[3], +log.reps);
+          workingMax = calcNextMax(workingMax, em, lift.isLower);
+        }
       }
-      return assist;
+      const effTrueMax = Math.round(workingMax/0.9/5)*5; // effective 1RM at this week
+      return Math.max(0, Math.round((bw - effTrueMax)/5)*5); // assistance needed for 1 rep
     }
     // Start with the true max (what user entered), convert to working max internally
     let workingMax = calcCurrentMax(lift.startingMax||0);
@@ -815,12 +815,19 @@ export default function App() {
   function getWorkingMax(liftId, targetWeek) {
     const lift = lifts.find(l=>l.id===liftId);
     if (!lift) return 0;
-    if (isAssistedPullUp(lift)) return getEffMax(liftId, targetWeek);
+    if (isAssistedPullUp(lift)) {
+      // Effective-load working max (basis for the set percentages); assistance is derived per set in render.
+      const bw = latestBodyweight();
+      if (bw == null) return 0;
+      const effTrueMax = bw - getEffMax(liftId, targetWeek); // bw − assistance = effective 1RM
+      return calcCurrentMax(Math.max(0, effTrueMax));
+    }
     return calcCurrentMax(getEffMax(liftId, targetWeek));
   }
 
   function calcVolume(liftId, w) {
-    const wts = calcWorkingWeights(getEffMax(liftId, w));
+    const lift = lifts.find(l=>l.id===liftId);
+    const wts = isAssistedPullUp(lift) ? calcWorkingWeights(getWorkingMax(liftId, w)) : calcWorkingWeights(getEffMax(liftId, w));
     let vol = wts[0]*10 + wts[1]*10 + wts[2]*10 + wts[3]*(+(logs?.[w]?.[liftId]?.[3]?.reps)||10);
     (accList?.[w]?.[liftId]||[]).forEach(a => { vol += (+a.weight||0)*(+a.reps||10)*3; });
     return vol;
@@ -876,14 +883,22 @@ export default function App() {
   const effMax = getEffMax(activeId, week);
   const workingMax = getWorkingMax(activeId, week);
   const isAssisted = isAssistedPullUp(lift);
-  const weights = isAssisted ? calcAssistedWeights(effMax) : calcWorkingWeights(workingMax);
+  const bodyW = latestBodyweight();
+  const needsBodyweight = isAssisted && bodyW == null;
+  // Effective set loads (50/58/67/75% of working max) for both lift types. For assisted, each set's
+  // DISPLAYED weight is the assistance (bodyweight − effective load); the hardest set has the least help.
+  const effSetWeights = calcWorkingWeights(workingMax);
+  const weights = isAssisted
+    ? effSetWeights.map(w => Math.max(0, Math.round(((bodyW||0) - w)/5)*5))
+    : effSetWeights;
   const set4Reps = logs?.[week]?.[activeId]?.[3]?.reps ?? "10";
-  const sessionEstMax = +set4Reps>10 ? calcEstMax(weights[3],+set4Reps) : null;
-  const nextTrueMax = isAssisted
-    ? calcNextAssistedMax(effMax, +set4Reps)
-    : calcNextMax(effMax, sessionEstMax, lift?.isLower);
-  const nextMax = nextTrueMax;
-  const nextWorkingMax = isAssisted ? nextTrueMax : calcCurrentMax(nextTrueMax);
+  // 1RM estimate is always computed on the EFFECTIVE top-set load, so assisted reuses the normal estimator.
+  const sessionEstMax = +set4Reps>10 ? calcEstMax(effSetWeights[3], +set4Reps) : null;
+  // Progression runs in effective-load terms; assisted converts the resulting effective 1RM back to assistance.
+  const effTrueMax = isAssisted ? Math.round(workingMax/0.9/5)*5 : effMax;
+  const nextEffTrueMax = calcNextMax(effTrueMax, sessionEstMax, lift?.isLower);
+  const nextMax = isAssisted ? Math.max(0, Math.round(((bodyW||0) - nextEffTrueMax)/5)*5) : nextEffTrueMax;
+  const nextWorkingMax = calcCurrentMax(isAssisted ? nextEffTrueMax : nextMax);
   const willProgress = isAssisted ? nextMax < effMax : nextMax > effMax;
   const isDayDone = completedDays?.[week]?.[activeId];
 
@@ -1381,7 +1396,7 @@ export default function App() {
               {newWeekAlert.weights.map((w,i)=>(
                 <div key={i} style={{background:"var(--bg-input)",borderRadius:8,padding:"10px"}}>
                   <div style={{color:"#555",fontSize:10,marginBottom:2}}>SET {i+1}</div>
-                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"var(--text-primary)"}}>{w} lbs</div>
+                  <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:"var(--text-primary)"}}>{w} {newWeekAlert.assist?"assist":"lbs"}</div>
                 </div>
               ))}
             </div>
@@ -2189,12 +2204,20 @@ export default function App() {
                     const fLogs = f.logs || {};
                     const targetWeek = fLiftWeeks[lift.id] || 1;
                     if (lift.mainLiftOption === "Assisted Pull Up") {
-                      let assist = lift.startingMax || 0;
+                      const fbw = f.body_stats?.entries?.[0]?.weightLbs ? +f.body_stats.entries[0].weightLbs : null;
+                      if (fbw == null) return lift.startingMax || 0; // no friend bodyweight — best-effort
+                      let wmA = calcCurrentMax(Math.max(0, fbw - (lift.startingMax||0)));
                       for (let w = 1; w < targetWeek; w++) {
                         const log = fLogs?.[w]?.[lift.id]?.[3];
-                        if (log?.reps) assist = Math.max(0, assist - (+log.reps >= 15 ? 10 : 5));
+                        if (log?.reps && +log.reps > 10) {
+                          const set4w = Math.round(wmA * 0.75 / 5) * 5;
+                          const em = Math.round((set4w * 1.1 * +log.reps * 0.0333 + set4w * 1.1) / 5) * 5;
+                          const d = em - wmA;
+                          wmA = lift.isLower ? (d >= 20 ? wmA + 15 : d >= 10 ? wmA + 10 : wmA) : (d >= 20 ? wmA + 10 : d >= 10 ? wmA + 5 : wmA);
+                        }
                       }
-                      return assist;
+                      const effTM = Math.round(wmA / 0.9 / 5) * 5;
+                      return Math.max(0, Math.round((fbw - effTM)/5)*5); // assistance
                     }
                     let wm = Math.round((lift.startingMax || 0) * 0.9 / 5) * 5;
                     for (let w = 1; w < targetWeek; w++) {
@@ -2804,8 +2827,11 @@ export default function App() {
                   <button onClick={addLift} className="bn" style={{background:"var(--bg-input)",border:"1px solid #555",color:"var(--text-secondary)",fontSize:13,padding:"4px 10px"}}>+ ADD LIFT</button>
                 </div>
             {lifts.map(l=>{
-              const cur=l.startingMax?calcCurrentMax(l.startingMax):null;
-              const wkts=cur?calcWorkingWeights(cur):null;
+              const isAssistL=l.mainLiftOption==="Assisted Pull Up";
+              const bwSetup=latestBodyweight();
+              const cur=l.startingMax?(isAssistL?l.startingMax:calcCurrentMax(l.startingMax)):null;
+              const effWMSetup=(isAssistL&&bwSetup!=null)?calcCurrentMax(Math.max(0,bwSetup-(l.startingMax||0))):null;
+              const wkts=cur?(isAssistL?(effWMSetup!=null?calcWorkingWeights(effWMSetup).map(w=>Math.max(0,Math.round((bwSetup-w)/5)*5)):null):calcWorkingWeights(cur)):null;
               return (
                 <div key={l.id} style={{...card,borderLeft:"3px solid "+l.color}}>
                   <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10}}>
@@ -2824,10 +2850,12 @@ export default function App() {
                       {lifts.length>1 && <button onClick={()=>removeLift(l.id)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>}
                     </div>
                   </div>
-                  {cur && <div style={{color:"#555",fontSize:11,marginBottom:8}}>Training at: <span style={{color:l.color}}>{cur} lbs</span>{"  "}<button onClick={()=>setPreviewLift(previewLift===l.id?null:l.id)} style={{background:"none",border:"1px solid "+l.color,color:l.color,borderRadius:3,padding:"1px 7px",fontSize:10,cursor:"pointer"}}>{previewLift===l.id?"hide":"preview"}</button></div>}
+                  {isAssistL && <div style={{color:"#555",fontSize:10,marginTop:-4,marginBottom:8}}>Enter the assistance you currently need — the band or machine weight that lets you hit your reps. It drops as you get stronger.</div>}
+                  {isAssistL && cur && bwSetup==null && <div style={{color:"#f7b731",fontSize:11,marginBottom:8}}>Log your bodyweight (Body tab) to calculate your assisted loads.</div>}
+                  {cur && !(isAssistL&&bwSetup==null) && <div style={{color:"#555",fontSize:11,marginBottom:8}}>{isAssistL?"Top set: ":"Training at: "}<span style={{color:l.color}}>{wkts?wkts[3]:cur} lbs{isAssistL?" assist":""}</span>{"  "}<button onClick={()=>setPreviewLift(previewLift===l.id?null:l.id)} style={{background:"none",border:"1px solid "+l.color,color:l.color,borderRadius:3,padding:"1px 7px",fontSize:10,cursor:"pointer"}}>{previewLift===l.id?"hide":"preview"}</button></div>}
                   {previewLift===l.id && wkts && (
                     <div style={{background:"var(--bg-secondary)",borderRadius:6,padding:"10px 12px",marginBottom:10}}>
-                      {wkts.map((w,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid var(--border)",fontSize:12}}><span style={{color:"#555"}}>Set {i+1}</span><span style={{color:l.color}}>{w} lbs</span><span style={{color:"#444"}}>{i<3?"× 10":"max reps"}</span></div>)}
+                      {wkts.map((w,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid var(--border)",fontSize:12}}><span style={{color:"#555"}}>Set {i+1}</span><span style={{color:l.color}}>{w} lbs{isAssistL?" assist":""}</span><span style={{color:"#444"}}>{i<3?"× 10":"max reps"}</span></div>)}
                     </div>
                   )}
                   <div style={{color:"#555",fontSize:10,marginBottom:5}}>TRAINING DAYS</div>
@@ -3070,6 +3098,7 @@ export default function App() {
 
               <div style={{marginBottom:20}}>
                 <div style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:19,letterSpacing:2,color:lift.color,marginBottom:10}}>{lift.name} — MAIN SETS</div>
+                {needsBodyweight && <div style={{background:"var(--bg-card)",border:"1px solid #f7b731",borderRadius:8,padding:"12px 14px",color:"#f7b731",fontSize:12,marginBottom:10}}>Log your bodyweight in the Body tab to calculate your assisted pull-up loads — they're worked out from bodyweight minus assistance.</div>}
                 <div className="srow" style={{color:"#555",fontSize:10}}><div>SET</div><div>WEIGHT</div><div>REPS</div></div>
                 {weights.map((w,i)=>(
                   <div key={i} className="srow">
@@ -3364,17 +3393,12 @@ export default function App() {
               const volData=sessionLedger.filter(s=>s.liftId===l.id).slice(-12).reverse().map(s=>({d:(new Date(s.date).getMonth()+1)+'/'+(new Date(s.date).getDate()),v:Math.round((s.volume||0)/1000)}));
               // For assisted pullups, build effective pull strength data
               const effPullData = isAssistedPullUp(l) ? (() => {
-                let assist = l.startingMax || 0;
+                const bw = latestWeight || latestBodyweight();
+                if (!bw) return [];
                 const data = [];
                 for (let w = 1; w <= (liftWeeks[l.id]||1); w++) {
-                  const bwEntry = bodyStats.entries.find(e => {
-                    const log = logs?.[w]?.[l.id]?.[3];
-                    return log && e.date <= (log.date || todayISO());
-                  });
-                  const bw = bwEntry?.weightLbs || latestWeight || 0;
-                  if (bw) data.push({ w: `W${w}`, pull: bw - assist });
-                  const log = logs?.[w]?.[l.id]?.[3];
-                  if (log?.reps) assist = calcNextAssistedMax(assist, +log.reps);
+                  const assistW = getEffMax(l.id, w); // assistance at week w (effective-load model)
+                  data.push({ w: `W${w}`, pull: Math.max(0, bw - assistW) });
                 }
                 return data;
               })() : [];
