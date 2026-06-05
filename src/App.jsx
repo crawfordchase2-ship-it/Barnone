@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.17 - in-progress workout now persists instantly on start (and clears on finish) via a direct write, so leaving/reopening the app reliably returns you to the active workout instead of losing it to the debounced save; streak fix from prior build included
+// v6.19 - running: RUN ANYWAY button on off-days (mirrors Lift Anyway) reveals today's prescribed run + log form; resets after logging
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -358,7 +358,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.17";
+  const APP_VERSION = "v6.19";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -388,6 +388,7 @@ export default function App() {
   const [runHistory, setRunHistory] = useState([]);
   const [runView, setRunView] = useState("today");
   const [showRunLog, setShowRunLog] = useState(false);
+  const [runAnyway, setRunAnyway] = useState(false); // lets user do today's run on a non-scheduled day
   const [runDistEntry, setRunDistEntry] = useState("");
   const [runNotesEntry, setRunNotesEntry] = useState("");
   const [runMinEntry, setRunMinEntry] = useState("");
@@ -1712,7 +1713,7 @@ export default function App() {
                 const weekPlan = plan[runWeek-1];
                 const dayPlan = weekPlan?.days[runDay-1];
                 const todayAbbr = DAY_ABBR[new Date().getDay()];
-                const isRunDay = runDays.includes(todayAbbr);
+                const isRunDay = runDays.includes(todayAbbr) || runAnyway;
                 const completedToday = runHistory.some(r => r.date === todayISO());
                 const nextRun = (() => {
                   for(let i=1;i<=7;i++){
@@ -1732,6 +1733,7 @@ export default function App() {
                         <div style={{fontSize:12,color:"#888",marginTop:6}}>{nextRun ? "NEXT RUN: "+nextRun.day+" · "+(nextRun.daysAway===1?"TOMORROW":"IN "+nextRun.daysAway+" DAYS")+" · WK "+runWeek+" DAY "+runDay : "REST UP!"}</div>
                       </div>
                     </div>
+                    <button onClick={()=>setRunAnyway(true)} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #3a86ff",color:"#3a86ff",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:15,letterSpacing:1,cursor:"pointer"}}>🏃 RUN ANYWAY</button>
                   </div>
                 );
 
@@ -1852,6 +1854,7 @@ export default function App() {
                           if(runDay<wp.days.length){setRunDay(d=>d+1);}
                           else if(runWeek<12){setRunWeek(w=>w+1);setRunDay(1);}
                           setShowRunLog(false);
+                          setRunAnyway(false);
                           setRunDistEntry("");setRunMinEntry("");setRunSecEntry("");setRunNotesEntry("");
                         }} style={{width:"100%",background:"#06d6a0",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:20,fontWeight:700,letterSpacing:2,cursor:"pointer",marginBottom:8}}>SAVE RUN ✓</button>
                         <button onClick={()=>setShowRunLog(false)} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:10,fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,cursor:"pointer"}}>BACK</button>
@@ -2670,7 +2673,7 @@ export default function App() {
                 </div>
                 {editingProgram && (
                   <div style={{...card,marginTop:10,borderLeft:"3px solid #888"}}>
-                    <div style={{color:"#888",fontSize:11,marginBottom:12,lineHeight:1.5}}>Turn a lift or running off to drop it from your schedule. Nothing is deleted — logged history stays in your Ledger and Progress, and you can switch it back on anytime. Maxes stay locked.</div>
+                    <div style={{color:"#888",fontSize:11,marginBottom:12,lineHeight:1.5}}>Turn a lift or running off to drop it from your schedule. Nothing is deleted — logged history stays in your Ledger and Progress, and you can switch it back on anytime. Editing a starting max recomputes every week from the new number; your logged sessions in the Ledger stay as recorded.</div>
                     {lifts.map(l=>{
                       const on = l.active!==false;
                       return (
@@ -2693,6 +2696,16 @@ export default function App() {
                               <button onClick={()=>{const target=Math.max(1,(liftWeeks[l.id]||1)-1);setLiftWeeks(prev=>({...prev,[l.id]:target}));setCompletedDays(prev=>{const n=JSON.parse(JSON.stringify(prev));Object.keys(n).forEach(w=>{if(+w>=target&&n[w])delete n[w][l.id];});return n;});}} style={{background:"var(--bg-sunken)",border:"1px solid #555",color:"var(--text-secondary)",borderRadius:5,width:30,height:30,fontSize:18,cursor:"pointer",lineHeight:1}}>−</button>
                               <span style={{fontFamily:"'Roboto Condensed',sans-serif",fontSize:18,color:l.color,minWidth:22,textAlign:"center"}}>{liftWeeks[l.id]||1}</span>
                               <button onClick={()=>setLiftWeeks(prev=>({...prev,[l.id]:Math.min(12,(prev[l.id]||1)+1)}))} style={{background:"var(--bg-sunken)",border:"1px solid #555",color:"var(--text-secondary)",borderRadius:5,width:30,height:30,fontSize:18,cursor:"pointer",lineHeight:1}}>+</button>
+                            </div>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:10,paddingTop:10,borderTop:"1px solid var(--border)"}}>
+                            <div>
+                              <span style={{color:"#555",fontSize:10,letterSpacing:1}}>STARTING MAX</span>
+                              <div style={{color:"#555",fontSize:9,marginTop:2}}>Fixes a wrong number — all weeks recompute from it</div>
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:6}}>
+                              <input type="number" inputMode="numeric" defaultValue={l.startingMax||""} key={l.id+"-sm-"+(l.startingMax||0)} onFocus={e=>e.target.select()} onBlur={e=>{const v=Math.max(5,Math.round((+e.target.value||l.startingMax||0)/5)*5);updateLift(l.id,"startingMax",v);}} style={{width:72,fontSize:18,fontFamily:"'Roboto Condensed',sans-serif",background:"var(--bg-sunken)",border:"1px solid "+l.color,color:l.color,textAlign:"center",borderRadius:6,padding:"6px 4px",outline:"none"}} />
+                              <span style={{color:"#555",fontSize:12}}>lbs</span>
                             </div>
                           </div>
                         </div>
