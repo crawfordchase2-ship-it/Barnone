@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.22 - assisted pull-up guard: if entered assistance >= bodyweight (effective load <=0, which collapsed all sets to bodyweight), show a clear warning at setup and on the lift screen instead of garbage equal numbers
+// v6.23 - can now review/edit any lift's past weeks even when it is pending today: added REVIEW / EDIT PAST WEEKS button to the start and rest-day screens, and stopped the start modal from blocking review mode
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -340,7 +340,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.22";
+  const APP_VERSION = "v6.23";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -3006,7 +3006,7 @@ export default function App() {
             </div>
           </div>
         )}
-        {view==="workout" && !workoutInProgress && (()=>{
+        {view==="workout" && !workoutInProgress && !reviewingCompletedWorkout && (()=>{
           const ta = DAY_ABBR[new Date().getDay()];
           const sched = lifts.some(l=>l.active!==false && (l.trainingDays||[]).includes(ta));
           if(!sched) return true;
@@ -3035,6 +3035,7 @@ export default function App() {
                   <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:"#555",marginBottom:12}}>WEEK {liftWeeks[activeId]||1}</div>
                   <div style={{color:"var(--text-secondary)",fontSize:13,marginBottom:24,fontStyle:"italic"}}>"{pumpMsg}"</div>
                   <button onClick={startWorkout} style={{width:"100%",background:lift?.color||"#e85d04",border:"none",color:"#000",borderRadius:10,padding:"16px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:24,letterSpacing:2,cursor:"pointer",marginBottom:10}}>START WORKOUT</button>
+                  {(liftWeeks[activeId]||1) > 1 && <button onClick={()=>{setReviewingCompletedWorkout(true);setEditingPastWeek(false);setViewingWeek((liftWeeks[activeId]||1)-1||1);}} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-secondary)",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,letterSpacing:1,cursor:"pointer",marginBottom:10}}>REVIEW / EDIT PAST WEEKS</button>}
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#555",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               ) : (
@@ -3050,6 +3051,7 @@ export default function App() {
                     </div>
                   )}
                   <button onClick={startWorkout} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #555",color:"#555",borderRadius:10,padding:"12px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,letterSpacing:1,cursor:"pointer",marginBottom:10}}>LIFT ANYWAY</button>
+                  {(liftWeeks[activeId]||1) > 1 && <button onClick={()=>{setReviewingCompletedWorkout(true);setEditingPastWeek(false);setViewingWeek((liftWeeks[activeId]||1)-1||1);}} style={{width:"100%",background:"var(--bg-input)",border:"1px solid #333",color:"var(--text-secondary)",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:14,letterSpacing:1,cursor:"pointer",marginBottom:10}}>REVIEW / EDIT PAST WEEKS</button>}
                   <button onClick={()=>setView("dashboard")} style={{width:"100%",background:"none",border:"1px solid #333",color:"#444",borderRadius:10,padding:"10px",fontFamily:"'Roboto Condensed',sans-serif",fontSize:16,cursor:"pointer"}}>BACK</button>
                 </div>
               )}
