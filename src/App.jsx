@@ -1,6 +1,6 @@
 // ============================================================
 // BAR NONE — THE PROGRAM
-// v6.23 - can now review/edit any lift's past weeks even when it is pending today: added REVIEW / EDIT PAST WEEKS button to the start and rest-day screens, and stopped the start modal from blocking review mode
+// v6.24 - fix Week 1 on reopen: load now sets viewingWeek to the active lift current week (was never set, so a reload fell to week 1); startWorkout forces current week + clears review; app remembers last screen and reopens to it
 // ======================================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -340,7 +340,7 @@ export default function App() {
   const [restStartTime, setRestStartTime] = useState(null); // ISO timestamp when rest started
   const [reactorsOpen, setReactorsOpen] = useState(null); // postKey of expanded "who reacted" list
   const [editingProgram, setEditingProgram] = useState(false); // mid-program editor open/closed
-  const APP_VERSION = "v6.23";
+  const APP_VERSION = "v6.24";
   const [theme, setTheme] = useState(() => localStorage.getItem("barnone_theme") || "dark");
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem("barnone_unit") || "lbs");
   function setThemePref(t) { setTheme(t); localStorage.setItem("barnone_theme", t); }
@@ -480,6 +480,14 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [lifts,startDate,activeId,logs,completedDays,accList,exerciseHistory,weightAdjust,liftWeeks,customAccessories,sessionLedger,bodyStats,weightNudge,programStarted,uid,dataLoaded,runDays,runWeek,runDay,runHistory,workoutInProgress,inProgressLiftId,workoutStartTime,programName]);
 
+  // Remember the last screen so reopening the app returns to where it was left.
+  useEffect(() => {
+    if (!uid || !dataLoaded) return;
+    if (["dashboard","workout","run","social","progress","body","settings"].includes(view)) {
+      try { localStorage.setItem("barnone_view_" + uid, view); } catch(e){}
+    }
+  }, [view, uid, dataLoaded]);
+
   useEffect(() => {
     if (restRunning && restTimer > 0) {
       timerRef.current = setTimeout(() => setRestTimer(t => t-1), 1000);
@@ -571,13 +579,15 @@ export default function App() {
       setStartDate(d.start_date || "");
       // If workout in progress, restore that lift; else auto-select today's
       const loadedLifts = d.lifts || DEFAULT_LIFTS;
+      let activeIdToUse;
       if (d.workout_in_progress && d.in_progress_lift_id) {
-        setActiveId(d.in_progress_lift_id);
+        activeIdToUse = d.in_progress_lift_id;
       } else {
         const todayAbbr = DAY_ABBR[new Date().getDay()];
         const todayLift = loadedLifts.find(l => l.active!==false && (l.trainingDays||[]).includes(todayAbbr));
-        setActiveId(todayLift?.id || d.activeId || loadedLifts[0]?.id || DEFAULT_LIFTS[0].id);
+        activeIdToUse = todayLift?.id || d.activeId || loadedLifts[0]?.id || DEFAULT_LIFTS[0].id;
       }
+      setActiveId(activeIdToUse);
       setLogs(d.logs || {});
       // Migrate old completedDays format (true) to {done, date}
       const rawCD = d.completed_days || {};
@@ -608,6 +618,8 @@ export default function App() {
         healedWeeks[l.id] = Math.max(loadedLiftWeeks[l.id] || 1, derived);
       });
       setLiftWeeks(healedWeeks);
+      // Restore the viewing week to the active lift's CURRENT week, so a reload never lands on Week 1.
+      setViewingWeek(healedWeeks[activeIdToUse] || 1);
       setCustomAccessories(d.custom_accessories || {});
       setSessionLedger(d.session_ledger || []);
       const loadedStats = d.body_stats || { heightIn:"", entries:[] };
@@ -652,7 +664,10 @@ export default function App() {
     } else if (d.workout_in_progress) {
       setView("workout");
     } else {
-      setView("dashboard");
+      // Revert to the last screen the user was on, if we have one; otherwise the dashboard.
+      let lastView = null;
+      try { lastView = localStorage.getItem("barnone_view_" + userId); } catch(e){}
+      setView(["dashboard","workout","run","social","progress","body","settings"].includes(lastView) ? lastView : "dashboard");
     }
     // Save snapshot for cancel
     loadSocialData(userId);
@@ -864,6 +879,9 @@ export default function App() {
     setInProgressLiftId(activeId);
     setWorkoutStartTime(now);
     setWorkoutPausedAt(null);
+    setViewingWeek(liftWeeks[activeId]||1); // always start on the current week, not a stale reviewed week
+    setEditingPastWeek(false);
+    setReviewingCompletedWorkout(false);
     if (uid) {
       localStorage.removeItem("barnone_pausedat_" + uid);
       supabase.from("user_data").update({ workout_in_progress: true, in_progress_lift_id: activeId, workout_start_time: now }).eq("user_id", uid);
